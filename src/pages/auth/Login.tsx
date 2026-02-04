@@ -1,20 +1,45 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Shield, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { Shield, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 export default function Login() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  const { signIn } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  const from = (location.state as { from?: Location })?.from?.pathname || "/dashboard";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simülasyon
-    setTimeout(() => setIsLoading(false), 1500);
+
+    const { error } = await signIn(email, password);
+
+    if (error) {
+      if (error.message.includes("Invalid login credentials")) {
+        toast.error("Geçersiz e-posta veya şifre");
+      } else if (error.message.includes("Email not confirmed")) {
+        toast.error("Lütfen e-posta adresinizi doğrulayın");
+      } else {
+        toast.error("Giriş yapılırken bir hata oluştu");
+      }
+      setIsLoading(false);
+      return;
+    }
+
+    toast.success("Başarıyla giriş yapıldı!");
+    navigate(from, { replace: true });
   };
 
   return (
@@ -54,6 +79,8 @@ export default function Login() {
                   type="email"
                   placeholder="ornek@sirket.com"
                   className="pl-10"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>
@@ -77,6 +104,8 @@ export default function Login() {
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   className="pl-10 pr-10"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                 />
                 <button
@@ -111,7 +140,7 @@ export default function Login() {
             >
               {isLoading ? (
                 <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent-foreground border-t-transparent" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Giriş yapılıyor...
                 </div>
               ) : (
