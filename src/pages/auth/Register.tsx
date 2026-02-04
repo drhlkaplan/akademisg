@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,19 +21,59 @@ import {
   User,
   Building2,
   Phone,
+  Loader2,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 export default function Register() {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [userType, setUserType] = useState<"individual" | "corporate">(
-    "individual"
-  );
+  const [userType, setUserType] = useState<"individual" | "corporate">("individual");
+  const [companyName, setCompanyName] = useState("");
+  const [sector, setSector] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
+
+  const { signUp } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!termsAccepted) {
+      toast.error("Lütfen kullanım koşullarını kabul edin");
+      return;
+    }
+
+    if (password.length < 6) {
+      toast.error("Şifre en az 6 karakter olmalıdır");
+      return;
+    }
+
     setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 1500);
+
+    const { error } = await signUp(email, password, {
+      first_name: firstName,
+      last_name: lastName,
+    });
+
+    if (error) {
+      if (error.message.includes("already registered")) {
+        toast.error("Bu e-posta adresi zaten kayıtlı");
+      } else {
+        toast.error("Kayıt sırasında bir hata oluştu");
+      }
+      setIsLoading(false);
+      return;
+    }
+
+    toast.success("Kayıt başarılı! Lütfen e-posta adresinizi doğrulayın.");
+    navigate("/login");
   };
 
   return (
@@ -139,13 +179,21 @@ export default function Register() {
                     id="firstName"
                     placeholder="Adınız"
                     className="pl-10"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
                     required
                   />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lastName">Soyad</Label>
-                <Input id="lastName" placeholder="Soyadınız" required />
+                <Input
+                  id="lastName"
+                  placeholder="Soyadınız"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                />
               </div>
             </div>
 
@@ -160,13 +208,15 @@ export default function Register() {
                       id="company"
                       placeholder="Firma adını giriniz"
                       className="pl-10"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
                       required
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="sector">Sektör</Label>
-                  <Select>
+                  <Select value={sector} onValueChange={setSector}>
                     <SelectTrigger>
                       <SelectValue placeholder="Sektör seçiniz" />
                     </SelectTrigger>
@@ -196,6 +246,8 @@ export default function Register() {
                   type="email"
                   placeholder="ornek@sirket.com"
                   className="pl-10"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>
@@ -211,7 +263,8 @@ export default function Register() {
                   type="tel"
                   placeholder="0555 555 55 55"
                   className="pl-10"
-                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
                 />
               </div>
             </div>
@@ -224,8 +277,10 @@ export default function Register() {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="En az 8 karakter"
+                  placeholder="En az 6 karakter"
                   className="pl-10 pr-10"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                 />
                 <button
@@ -244,7 +299,12 @@ export default function Register() {
 
             {/* Terms */}
             <div className="flex items-start space-x-2">
-              <Checkbox id="terms" className="mt-1" />
+              <Checkbox
+                id="terms"
+                className="mt-1"
+                checked={termsAccepted}
+                onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+              />
               <Label htmlFor="terms" className="text-sm font-normal leading-5">
                 <Link to="/terms" className="text-accent hover:underline">
                   Kullanım Koşulları
@@ -267,7 +327,7 @@ export default function Register() {
             >
               {isLoading ? (
                 <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent-foreground border-t-transparent" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Kayıt yapılıyor...
                 </div>
               ) : (

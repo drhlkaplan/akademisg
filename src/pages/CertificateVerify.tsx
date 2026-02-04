@@ -4,42 +4,82 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge-custom";
-import { Search, CheckCircle, XCircle, Shield, QrCode } from "lucide-react";
+import { Search, CheckCircle, XCircle, QrCode, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
+
+type DangerClass = Database["public"]["Enums"]["danger_class"];
+
+interface CertificateData {
+  holder_name: string;
+  holder_tc: string | null;
+  course_title: string;
+  danger_class: DangerClass | null;
+  duration_hours: number | null;
+  issue_date: string | null;
+  certificate_number: string;
+}
+
+const dangerClassBadge: Record<DangerClass, "dangerLow" | "dangerMedium" | "dangerHigh"> = {
+  low: "dangerLow",
+  medium: "dangerMedium",
+  high: "dangerHigh",
+};
+
+const dangerClassLabel: Record<DangerClass, string> = {
+  low: "Az Tehlikeli",
+  medium: "Tehlikeli",
+  high: "Çok Tehlikeli",
+};
 
 export default function CertificateVerify() {
   const [certificateCode, setCertificateCode] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [searchResult, setSearchResult] = useState<{
     found: boolean;
-    data?: {
-      name: string;
-      tcNo: string;
-      course: string;
-      category: string;
-      duration: string;
-      date: string;
-      code: string;
-    };
+    data?: CertificateData;
   } | null>(null);
 
-  const handleVerify = (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simüle edilmiş doğrulama
-    if (certificateCode.toUpperCase() === "ISG-2024-00125") {
-      setSearchResult({
-        found: true,
-        data: {
-          name: "Ahmet Kaya",
-          tcNo: "123*****89",
-          course: "Temel İş Sağlığı ve Güvenliği Eğitimi",
-          category: "Az Tehlikeli",
-          duration: "8 Saat",
-          date: "15 Ocak 2024",
-          code: "ISG-2024-00125",
-        },
-      });
-    } else {
+    
+    if (!certificateCode.trim()) return;
+    
+    setIsLoading(true);
+    setSearchResult(null);
+
+    try {
+      const { data, error } = await supabase
+        .from("certificates")
+        .select("holder_name, holder_tc, course_title, danger_class, duration_hours, issue_date, certificate_number")
+        .eq("certificate_number", certificateCode.trim().toUpperCase())
+        .eq("is_valid", true)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setSearchResult({
+          found: true,
+          data: {
+            ...data,
+            holder_tc: data.holder_tc ? maskTcNo(data.holder_tc) : null,
+          },
+        });
+      } else {
+        setSearchResult({ found: false });
+      }
+    } catch (error) {
+      console.error("Error verifying certificate:", error);
       setSearchResult({ found: false });
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const maskTcNo = (tc: string) => {
+    if (tc.length < 6) return tc;
+    return tc.substring(0, 3) + "*****" + tc.substring(tc.length - 2);
   };
 
   return (
@@ -77,8 +117,21 @@ export default function CertificateVerify() {
                     className="pl-12 h-12 text-base"
                   />
                 </div>
-                <Button type="submit" variant="accent" size="lg" className="w-full">
-                  Doğrula
+                <Button
+                  type="submit"
+                  variant="accent"
+                  size="lg"
+                  className="w-full"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Doğrulanıyor...
+                    </div>
+                  ) : (
+                    "Doğrula"
+                  )}
                 </Button>
               </form>
             </CardContent>
@@ -111,41 +164,49 @@ export default function CertificateVerify() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Ad Soyad</span>
                       <span className="font-medium text-foreground">
-                        {searchResult.data.name}
+                        {searchResult.data.holder_name}
                       </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">TC Kimlik No</span>
-                      <span className="font-medium text-foreground">
-                        {searchResult.data.tcNo}
-                      </span>
-                    </div>
+                    {searchResult.data.holder_tc && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">TC Kimlik No</span>
+                        <span className="font-medium text-foreground">
+                          {searchResult.data.holder_tc}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Eğitim</span>
                       <span className="font-medium text-foreground text-right max-w-[200px]">
-                        {searchResult.data.course}
+                        {searchResult.data.course_title}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">
-                        Tehlike Sınıfı
-                      </span>
-                      <Badge variant="dangerLow">
-                        {searchResult.data.category}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Eğitim Süresi</span>
-                      <span className="font-medium text-foreground">
-                        {searchResult.data.duration}
-                      </span>
-                    </div>
+                    {searchResult.data.danger_class && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">
+                          Tehlike Sınıfı
+                        </span>
+                        <Badge variant={dangerClassBadge[searchResult.data.danger_class]}>
+                          {dangerClassLabel[searchResult.data.danger_class]}
+                        </Badge>
+                      </div>
+                    )}
+                    {searchResult.data.duration_hours && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Eğitim Süresi</span>
+                        <span className="font-medium text-foreground">
+                          {searchResult.data.duration_hours} Saat
+                        </span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">
                         Düzenlenme Tarihi
                       </span>
                       <span className="font-medium text-foreground">
-                        {searchResult.data.date}
+                        {searchResult.data.issue_date
+                          ? new Date(searchResult.data.issue_date).toLocaleDateString("tr-TR")
+                          : "-"}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -153,7 +214,7 @@ export default function CertificateVerify() {
                         Sertifika Numarası
                       </span>
                       <span className="font-mono text-accent font-semibold">
-                        {searchResult.data.code}
+                        {searchResult.data.certificate_number}
                       </span>
                     </div>
                   </div>
