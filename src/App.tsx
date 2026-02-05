@@ -13,6 +13,7 @@ import StudentDashboard from "./pages/dashboard/StudentDashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import UsersManagement from "./pages/admin/UsersManagement";
 import CoursesManagement from "./pages/admin/CoursesManagement";
+import FirmsManagement from "./pages/admin/FirmsManagement";
 import CertificateVerify from "./pages/CertificateVerify";
 import NotFound from "./pages/NotFound";
 
@@ -65,6 +66,14 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <CoursesManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/companies"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <FirmsManagement />
                 </ProtectedRoute>
               }
             />
