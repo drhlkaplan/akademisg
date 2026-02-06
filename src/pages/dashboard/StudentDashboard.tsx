@@ -13,6 +13,7 @@ import {
   Play,
   CheckCircle,
   Loader2,
+  FileQuestion,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -43,6 +44,17 @@ interface Certificate {
   issue_date: string | null;
 }
 
+interface AvailableExam {
+  exam_id: string;
+  exam_title: string;
+  enrollment_id: string;
+  course_title: string;
+  duration_minutes: number;
+  passing_score: number;
+  attempts_used: number;
+  max_attempts: number;
+}
+
 const dangerClassBadge: Record<DangerClass, "dangerLow" | "dangerMedium" | "dangerHigh"> = {
   low: "dangerLow",
   medium: "dangerMedium",
@@ -59,6 +71,7 @@ export default function StudentDashboard() {
   const { user, profile } = useAuth();
   const [enrollments, setEnrollments] = useState<EnrollmentWithCourse[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [availableExams, setAvailableExams] = useState<AvailableExam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -101,6 +114,56 @@ export default function StudentDashboard() {
         .limit(5);
 
       setCertificates(certData || []);
+
+      // Fetch available exams for active enrollments
+      const activeEnrollmentsList = (enrollmentData as EnrollmentWithCourse[])?.filter(
+        (e) => e.status === "active"
+      ) || [];
+
+      if (activeEnrollmentsList.length > 0) {
+        const courseIds = activeEnrollmentsList.map((e) => e.course?.id).filter(Boolean) as string[];
+        
+        const { data: examsData } = await supabase
+          .from("exams")
+          .select("id, title, course_id, duration_minutes, passing_score, max_attempts")
+          .eq("is_active", true)
+          .in("course_id", courseIds);
+
+        // Fetch exam attempts
+        const { data: resultsData } = await supabase
+          .from("exam_results")
+          .select("exam_id, status")
+          .eq("user_id", user!.id);
+
+        const attemptsByExam = resultsData?.reduce((acc, r) => {
+          acc[r.exam_id] = (acc[r.exam_id] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>) || {};
+
+        const passedExams = new Set(
+          resultsData?.filter((r) => r.status === "passed").map((r) => r.exam_id) || []
+        );
+
+        const examsWithEnrollment: AvailableExam[] = [];
+        examsData?.forEach((exam) => {
+          if (passedExams.has(exam.id)) return; // Skip passed exams
+          const enrollment = activeEnrollmentsList.find((e) => e.course?.id === exam.course_id);
+          if (enrollment) {
+            examsWithEnrollment.push({
+              exam_id: exam.id,
+              exam_title: exam.title,
+              enrollment_id: enrollment.id,
+              course_title: enrollment.course?.title || "",
+              duration_minutes: exam.duration_minutes || 60,
+              passing_score: exam.passing_score || 70,
+              attempts_used: attemptsByExam[exam.id] || 0,
+              max_attempts: exam.max_attempts || 3,
+            });
+          }
+        });
+
+        setAvailableExams(examsWithEnrollment);
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -291,8 +354,53 @@ export default function StudentDashboard() {
             )}
           </div>
 
-          {/* Recent Certificates */}
+          {/* Right Column */}
           <div className="space-y-4">
+            {/* Available Exams */}
+            {availableExams.length > 0 && (
+              <>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-foreground">
+                    Bekleyen Sınavlar
+                  </h2>
+                </div>
+                <div className="space-y-3">
+                  {availableExams.slice(0, 3).map((exam) => (
+                    <Card key={exam.exam_id} className="border-accent/30">
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="h-10 w-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                            <FileQuestion className="h-5 w-5 text-warning" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-foreground text-sm">
+                              {exam.exam_title}
+                            </h4>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {exam.course_title}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                              <span>{exam.duration_minutes} dk</span>
+                              <span>•</span>
+                              <span>%{exam.passing_score} geçme</span>
+                              <span>•</span>
+                              <span>{exam.attempts_used}/{exam.max_attempts} deneme</span>
+                            </div>
+                          </div>
+                          <Button variant="accent" size="sm" asChild>
+                            <Link to={`/exam/${exam.exam_id}/${exam.enrollment_id}`}>
+                              Başla
+                            </Link>
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Recent Certificates */}
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground">
                 Son Sertifikalar
