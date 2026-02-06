@@ -22,6 +22,7 @@ import {
   Plus,
   MoreHorizontal,
   Download,
+  FileQuestion,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -411,6 +412,17 @@ export default function AdminDashboard() {
                     <Link to="/admin/companies">
                       <Building2 className="mr-2 h-4 w-4" />
                       Firma Yönetimi
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full justify-start"
+                    asChild
+                  >
+                    <Link to="/admin/exams">
+                      <FileQuestion className="mr-2 h-4 w-4" />
+                      Sınav Yönetimi
                     </Link>
                   </Button>
                 </div>
