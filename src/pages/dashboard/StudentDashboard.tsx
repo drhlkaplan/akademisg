@@ -340,9 +340,11 @@ export default function StudentDashboard() {
                                 Kalan: {Math.round(remainingMinutes / 60)} saat
                               </p>
                             </div>
-                            <Button variant="accent" size="sm">
-                              <Play className="h-4 w-4 mr-1" />
-                              Devam Et
+                            <Button variant="accent" size="sm" asChild>
+                              <Link to={`/learn/${course.id}`}>
+                                <Play className="h-4 w-4 mr-1" />
+                                Devam Et
+                              </Link>
                             </Button>
                           </div>
                         </div>

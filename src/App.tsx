@@ -16,6 +16,7 @@ import CoursesManagement from "./pages/admin/CoursesManagement";
 import FirmsManagement from "./pages/admin/FirmsManagement";
 import ExamsManagement from "./pages/admin/ExamsManagement";
 import ExamTaking from "./pages/exam/ExamTaking";
+import CourseLearning from "./pages/course/CourseLearning";
 import CertificateVerify from "./pages/CertificateVerify";
 import NotFound from "./pages/NotFound";
 
@@ -88,6 +89,16 @@ const App = () => (
               }
             />
             
+            {/* Protected Course Learning */}
+            <Route
+              path="/learn/:courseId"
+              element={
+                <ProtectedRoute>
+                  <CourseLearning />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Protected Exam Taking */}
             <Route
               path="/exam/:examId/:enrollmentId"
