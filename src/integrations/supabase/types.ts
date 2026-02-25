@@ -405,11 +405,86 @@ export type Database = {
         }
         Relationships: []
       }
+      group_courses: {
+        Row: {
+          course_id: string
+          created_at: string
+          group_id: string
+          id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          group_id: string
+          id?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          group_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_courses_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_courses_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          created_at: string
+          firm_id: string | null
+          group_key: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          firm_id?: string | null
+          group_key: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          firm_id?: string | null
+          group_key?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groups_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lesson_progress: {
         Row: {
           created_at: string | null
           enrollment_id: string
           id: string
+          lesson_id: string | null
           lesson_location: string | null
           lesson_status: string | null
           score_max: number | null
@@ -424,6 +499,7 @@ export type Database = {
           created_at?: string | null
           enrollment_id: string
           id?: string
+          lesson_id?: string | null
           lesson_location?: string | null
           lesson_status?: string | null
           score_max?: number | null
@@ -438,6 +514,7 @@ export type Database = {
           created_at?: string | null
           enrollment_id?: string
           id?: string
+          lesson_id?: string | null
           lesson_location?: string | null
           lesson_status?: string | null
           score_max?: number | null
@@ -457,10 +534,160 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "lesson_progress_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "lesson_progress_scorm_package_id_fkey"
             columns: ["scorm_package_id"]
             isOneToOne: false
             referencedRelation: "scorm_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lessons: {
+        Row: {
+          content_url: string | null
+          course_id: string
+          created_at: string
+          duration_minutes: number
+          exam_id: string | null
+          id: string
+          is_active: boolean
+          scorm_package_id: string | null
+          sort_order: number
+          title: string
+          type: Database["public"]["Enums"]["lesson_type"]
+          updated_at: string
+        }
+        Insert: {
+          content_url?: string | null
+          course_id: string
+          created_at?: string
+          duration_minutes?: number
+          exam_id?: string | null
+          id?: string
+          is_active?: boolean
+          scorm_package_id?: string | null
+          sort_order?: number
+          title: string
+          type?: Database["public"]["Enums"]["lesson_type"]
+          updated_at?: string
+        }
+        Update: {
+          content_url?: string | null
+          course_id?: string
+          created_at?: string
+          duration_minutes?: number
+          exam_id?: string | null
+          id?: string
+          is_active?: boolean
+          scorm_package_id?: string | null
+          sort_order?: number
+          title?: string
+          type?: Database["public"]["Enums"]["lesson_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lessons_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lessons_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lessons_scorm_package_id_fkey"
+            columns: ["scorm_package_id"]
+            isOneToOne: false
+            referencedRelation: "scorm_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_session_tracking: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          joined_at: string
+          left_at: string | null
+          live_session_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          live_session_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          live_session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_session_tracking_live_session_id_fkey"
+            columns: ["live_session_id"]
+            isOneToOne: false
+            referencedRelation: "live_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          lesson_id: string
+          room_key: string
+          room_url: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          lesson_id: string
+          room_key: string
+          room_url: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          lesson_id?: string
+          room_key?: string
+          room_url?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_sessions_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
             referencedColumns: ["id"]
           },
         ]
@@ -609,6 +836,35 @@ export type Database = {
         }
         Relationships: []
       }
+      users_to_groups: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_to_groups_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -624,7 +880,12 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "super_admin" | "admin" | "company_admin" | "student"
+      app_role:
+        | "super_admin"
+        | "admin"
+        | "company_admin"
+        | "student"
+        | "firm_admin"
       danger_class: "low" | "medium" | "high"
       enrollment_status:
         | "pending"
@@ -638,6 +899,7 @@ export type Database = {
         | "completed"
         | "passed"
         | "failed"
+      lesson_type: "scorm" | "exam" | "live" | "content"
       question_type: "multiple_choice" | "true_false"
     }
     CompositeTypes: {
@@ -766,7 +1028,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["super_admin", "admin", "company_admin", "student"],
+      app_role: [
+        "super_admin",
+        "admin",
+        "company_admin",
+        "student",
+        "firm_admin",
+      ],
       danger_class: ["low", "medium", "high"],
       enrollment_status: [
         "pending",
@@ -782,6 +1050,7 @@ export const Constants = {
         "passed",
         "failed",
       ],
+      lesson_type: ["scorm", "exam", "live", "content"],
       question_type: ["multiple_choice", "true_false"],
     },
   },
