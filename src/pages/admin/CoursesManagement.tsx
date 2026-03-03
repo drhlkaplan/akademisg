@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { LessonManagement } from "@/components/admin/LessonManagement";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +61,7 @@ import {
   Loader2,
   RefreshCw,
   Clock,
+  List,
   Eye,
   EyeOff,
 } from "lucide-react";
@@ -92,6 +94,8 @@ export default function CoursesManagement() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<CourseWithCategory | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [managingLessonsCourseId, setManagingLessonsCourseId] = useState<string | null>(null);
+  const [managingLessonsCourseTitle, setManagingLessonsCourseTitle] = useState<string>("");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -314,6 +318,18 @@ export default function CoursesManagement() {
     return `${hours} saat ${mins} dk`;
   };
 
+  if (managingLessonsCourseId) {
+    return (
+      <DashboardLayout userRole="admin">
+        <LessonManagement
+          courseId={managingLessonsCourseId}
+          courseTitle={managingLessonsCourseTitle}
+          onBack={() => setManagingLessonsCourseId(null)}
+        />
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout userRole="admin">
       <div className="space-y-6">
@@ -483,6 +499,15 @@ export default function CoursesManagement() {
                             >
                               <Edit className="mr-2 h-4 w-4" />
                               Düzenle
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setManagingLessonsCourseId(course.id);
+                                setManagingLessonsCourseTitle(course.title);
+                              }}
+                            >
+                              <List className="mr-2 h-4 w-4" />
+                              Dersler
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem

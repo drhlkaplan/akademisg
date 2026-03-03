@@ -8,11 +8,12 @@ interface ScormData {
 interface UseScormApiOptions {
   enrollmentId: string;
   scormPackageId: string;
+  lessonId: string;
   userId: string;
   onComplete?: () => void;
 }
 
-export function useScormApi({ enrollmentId, scormPackageId, userId, onComplete }: UseScormApiOptions) {
+export function useScormApi({ enrollmentId, scormPackageId, lessonId, userId, onComplete }: UseScormApiOptions) {
   const dataRef = useRef<ScormData>({});
   const isInitialized = useRef(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
@@ -23,14 +24,14 @@ export function useScormApi({ enrollmentId, scormPackageId, userId, onComplete }
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [enrollmentId]);
+  }, [enrollmentId, lessonId]);
 
   const loadProgress = async () => {
     const { data } = await supabase
       .from("lesson_progress")
       .select("*")
       .eq("enrollment_id", enrollmentId)
-      .eq("scorm_package_id", scormPackageId)
+      .eq("lesson_id", lessonId)
       .maybeSingle();
 
     if (data) {
@@ -52,11 +53,12 @@ export function useScormApi({ enrollmentId, scormPackageId, userId, onComplete }
     const scoreRaw = d["cmi.core.score.raw"] ? parseFloat(d["cmi.core.score.raw"]) : null;
     const totalTimeSeconds = parseTimeToSeconds(d["cmi.core.total_time"] || "0000:00:00");
 
-    // Upsert lesson_progress
+    // Upsert lesson_progress with lesson_id
     await supabase
       .from("lesson_progress")
       .upsert({
         enrollment_id: enrollmentId,
+        lesson_id: lessonId,
         scorm_package_id: scormPackageId,
         lesson_location: d["cmi.core.lesson_location"] || null,
         lesson_status: lessonStatus,
@@ -65,31 +67,13 @@ export function useScormApi({ enrollmentId, scormPackageId, userId, onComplete }
         score_max: d["cmi.core.score.max"] ? parseFloat(d["cmi.core.score.max"]) : null,
         total_time: totalTimeSeconds,
         suspend_data: d["cmi.suspend_data"] || null,
-      }, { onConflict: "enrollment_id,scorm_package_id" })
+      }, { onConflict: "enrollment_id,lesson_id" })
       .select();
-
-    // Update enrollment progress
-    let progressPercent = 0;
-    if (lessonStatus === "completed" || lessonStatus === "passed") {
-      progressPercent = 100;
-    } else if (scoreRaw !== null) {
-      const maxScore = d["cmi.core.score.max"] ? parseFloat(d["cmi.core.score.max"]) : 100;
-      progressPercent = Math.round((scoreRaw / maxScore) * 100);
-    }
-
-    await supabase
-      .from("enrollments")
-      .update({
-        progress_percent: progressPercent,
-        status: progressPercent >= 100 ? "completed" : "active",
-        ...(progressPercent >= 100 ? { completed_at: new Date().toISOString() } : {}),
-      })
-      .eq("id", enrollmentId);
 
     if ((lessonStatus === "completed" || lessonStatus === "passed") && onComplete) {
       onComplete();
     }
-  }, [enrollmentId, scormPackageId, onComplete]);
+  }, [enrollmentId, scormPackageId, lessonId, onComplete]);
 
   const debouncedSave = useCallback(() => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
