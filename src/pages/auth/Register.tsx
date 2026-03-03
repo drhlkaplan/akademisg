@@ -22,13 +22,17 @@ import {
   Building2,
   Phone,
   Loader2,
+  CreditCard,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { validateTcKimlik } from "@/lib/tcKimlikValidation";
 
 export default function Register() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [tcKimlik, setTcKimlik] = useState("");
+  const [tcError, setTcError] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -42,11 +46,32 @@ export default function Register() {
   const { signUp } = useAuth();
   const navigate = useNavigate();
 
+  const handleTcChange = (value: string) => {
+    // Only allow digits, max 11
+    const cleaned = value.replace(/\D/g, "").slice(0, 11);
+    setTcKimlik(cleaned);
+    if (cleaned.length === 11) {
+      if (!validateTcKimlik(cleaned)) {
+        setTcError("Geçersiz TC Kimlik numarası");
+      } else {
+        setTcError("");
+      }
+    } else {
+      setTcError("");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!termsAccepted) {
       toast.error("Lütfen kullanım koşullarını kabul edin");
+      return;
+    }
+
+    if (!validateTcKimlik(tcKimlik)) {
+      toast.error("Geçerli bir TC Kimlik numarası giriniz");
+      setTcError("Geçersiz TC Kimlik numarası");
       return;
     }
 
@@ -60,6 +85,7 @@ export default function Register() {
     const { error } = await signUp(email, password, {
       first_name: firstName,
       last_name: lastName,
+      tc_identity: tcKimlik,
     });
 
     if (error) {
@@ -197,7 +223,27 @@ export default function Register() {
               </div>
             </div>
 
-            {/* Corporate Fields */}
+            {/* TC Kimlik */}
+            <div className="space-y-2">
+              <Label htmlFor="tcKimlik">TC Kimlik No</Label>
+              <div className="relative">
+                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="tcKimlik"
+                  placeholder="11 haneli TC Kimlik numaranız"
+                  className={`pl-10 ${tcError ? "border-destructive" : ""}`}
+                  value={tcKimlik}
+                  onChange={(e) => handleTcChange(e.target.value)}
+                  maxLength={11}
+                  inputMode="numeric"
+                  required
+                />
+              </div>
+              {tcError && (
+                <p className="text-xs text-destructive">{tcError}</p>
+              )}
+            </div>
+
             {userType === "corporate" && (
               <>
                 <div className="space-y-2">

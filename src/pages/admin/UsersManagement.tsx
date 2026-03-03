@@ -69,6 +69,7 @@ const roleLabels: Record<AppRole, string> = {
   super_admin: "Süper Admin",
   admin: "Admin",
   company_admin: "Firma Yetkilisi",
+  firm_admin: "Firma Admin",
   student: "Öğrenci",
 };
 
@@ -76,6 +77,7 @@ const roleBadgeVariants: Record<AppRole, "destructive" | "warning" | "info" | "s
   super_admin: "destructive",
   admin: "warning",
   company_admin: "info",
+  firm_admin: "info",
   student: "success",
 };
 
