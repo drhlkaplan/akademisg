@@ -21,6 +21,7 @@ import ExamReports from "./pages/admin/ExamReports";
 import ExamTaking from "./pages/exam/ExamTaking";
 import CourseLearning from "./pages/course/CourseLearning";
 import CertificateVerify from "./pages/CertificateVerify";
+import MyCertificates from "./pages/dashboard/MyCertificates";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -104,6 +105,16 @@ const App = () => (
               }
             />
             
+            {/* Student Certificates */}
+            <Route
+              path="/dashboard/certificates"
+              element={
+                <ProtectedRoute>
+                  <MyCertificates />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Protected Course Learning */}
             <Route
               path="/learn/:courseId"
