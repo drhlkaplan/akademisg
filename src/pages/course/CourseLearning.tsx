@@ -1,35 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { ScormPlayer } from "@/components/scorm/ScormPlayer";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { LessonSidebar, type LessonItem, type LessonProgressItem } from "@/components/course/LessonSidebar";
+import { LessonContent } from "@/components/course/LessonContent";
 import { Badge } from "@/components/ui/badge-custom";
+import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
-  BookOpen,
-  Clock,
-  CheckCircle,
   Loader2,
   AlertTriangle,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { cn } from "@/lib/utils";
 
 type DangerClass = Database["public"]["Enums"]["danger_class"];
-
-const dangerClassBadge: Record<DangerClass, "dangerLow" | "dangerMedium" | "dangerHigh"> = {
-  low: "dangerLow",
-  medium: "dangerMedium",
-  high: "dangerHigh",
-};
-const dangerClassLabel: Record<DangerClass, string> = {
-  low: "Az Tehlikeli",
-  medium: "Tehlikeli",
-  high: "Çok Tehlikeli",
-};
 
 interface CourseData {
   id: string;
@@ -39,11 +27,12 @@ interface CourseData {
   category: { danger_class: DangerClass; name: string } | null;
 }
 
-interface ScormPackage {
+interface ScormPackageData {
   id: string;
   package_url: string;
   entry_point: string | null;
   scorm_version: string | null;
+  course_id: string;
 }
 
 interface EnrollmentData {
@@ -59,8 +48,12 @@ export default function CourseLearning() {
   const navigate = useNavigate();
 
   const [course, setCourse] = useState<CourseData | null>(null);
-  const [scormPackage, setScormPackage] = useState<ScormPackage | null>(null);
+  const [lessons, setLessons] = useState<LessonItem[]>([]);
+  const [lessonProgress, setLessonProgress] = useState<LessonProgressItem[]>([]);
+  const [scormPackages, setScormPackages] = useState<Record<string, ScormPackageData>>({});
   const [enrollment, setEnrollment] = useState<EnrollmentData | null>(null);
+  const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,28 +64,35 @@ export default function CourseLearning() {
   const fetchCourseData = async () => {
     setIsLoading(true);
     try {
-      // Fetch course
-      const { data: courseData, error: courseError } = await supabase
-        .from("courses")
-        .select(`
-          id, title, description, duration_minutes,
-          category:course_categories(danger_class, name)
-        `)
-        .eq("id", courseId!)
-        .single();
+      // Parallel fetches
+      const [courseRes, lessonsRes, scormRes] = await Promise.all([
+        supabase
+          .from("courses")
+          .select("id, title, description, duration_minutes, category:course_categories(danger_class, name)")
+          .eq("id", courseId!)
+          .single(),
+        supabase
+          .from("lessons")
+          .select("id, title, type, sort_order, duration_minutes, is_active, scorm_package_id, exam_id, content_url")
+          .eq("course_id", courseId!)
+          .eq("is_active", true)
+          .order("sort_order"),
+        supabase
+          .from("scorm_packages")
+          .select("id, package_url, entry_point, scorm_version, course_id")
+          .eq("course_id", courseId!),
+      ]);
 
-      if (courseError) throw courseError;
-      setCourse(courseData as CourseData);
+      if (courseRes.error) throw courseRes.error;
+      setCourse(courseRes.data as CourseData);
+      setLessons((lessonsRes.data as LessonItem[]) || []);
 
-      // Fetch SCORM package
-      const { data: scormData } = await supabase
-        .from("scorm_packages")
-        .select("id, package_url, entry_point, scorm_version")
-        .eq("course_id", courseId!)
-        .limit(1)
-        .maybeSingle();
-
-      setScormPackage(scormData);
+      // Index scorm packages by id
+      const pkgMap: Record<string, ScormPackageData> = {};
+      scormRes.data?.forEach((p) => {
+        pkgMap[p.id] = p as ScormPackageData;
+      });
+      setScormPackages(pkgMap);
 
       // Fetch or create enrollment
       let { data: enrollData } = await supabase
@@ -114,7 +114,6 @@ export default function CourseLearning() {
           })
           .select("id, progress_percent, status, started_at")
           .single();
-
         if (enrollError) throw enrollError;
         enrollData = newEnroll;
       } else if (enrollData.status === "pending") {
@@ -123,10 +122,38 @@ export default function CourseLearning() {
           .update({ status: "active", started_at: new Date().toISOString() })
           .eq("id", enrollData.id);
         enrollData.status = "active";
-        enrollData.started_at = new Date().toISOString();
       }
 
       setEnrollment(enrollData);
+
+      // Fetch lesson progress
+      if (enrollData) {
+        const { data: progressData } = await supabase
+          .from("lesson_progress")
+          .select("lesson_id, lesson_status")
+          .eq("enrollment_id", enrollData.id);
+        setLessonProgress((progressData as LessonProgressItem[]) || []);
+      }
+
+      // Auto-select first incomplete lesson
+      const sortedLessons = (lessonsRes.data as LessonItem[] || []).sort(
+        (a, b) => a.sort_order - b.sort_order
+      );
+      if (sortedLessons.length > 0) {
+        const progressData = await supabase
+          .from("lesson_progress")
+          .select("lesson_id, lesson_status")
+          .eq("enrollment_id", enrollData!.id);
+
+        const completedIds = new Set(
+          progressData.data
+            ?.filter((p) => p.lesson_status === "completed" || p.lesson_status === "passed")
+            .map((p) => p.lesson_id) || []
+        );
+
+        const firstIncomplete = sortedLessons.find((l) => !completedIds.has(l.id));
+        setActiveLessonId(firstIncomplete?.id || sortedLessons[0].id);
+      }
     } catch (err: any) {
       console.error("Error loading course:", err);
       setError("Eğitim yüklenirken bir hata oluştu.");
@@ -135,11 +162,23 @@ export default function CourseLearning() {
     }
   };
 
-  const handleScormComplete = () => {
+  const handleScormComplete = useCallback(() => {
     setEnrollment((prev) =>
       prev ? { ...prev, progress_percent: 100, status: "completed" } : prev
     );
-  };
+    // Refresh lesson progress
+    if (enrollment) {
+      supabase
+        .from("lesson_progress")
+        .select("lesson_id, lesson_status")
+        .eq("enrollment_id", enrollment.id)
+        .then(({ data }) => {
+          if (data) setLessonProgress(data as LessonProgressItem[]);
+        });
+    }
+  }, [enrollment]);
+
+  const activeLesson = lessons.find((l) => l.id === activeLessonId) || null;
 
   if (isLoading) {
     return (
@@ -166,71 +205,74 @@ export default function CourseLearning() {
   }
 
   const progress = enrollment?.progress_percent || 0;
-  const dangerClass = course.category?.danger_class || "low";
-  const isCompleted = enrollment?.status === "completed";
 
   return (
     <DashboardLayout userRole="student">
-      <div className="space-y-4">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Badge variant={dangerClassBadge[dangerClass]}>
-                  {dangerClassLabel[dangerClass]}
-                </Badge>
-                {isCompleted && (
-                  <Badge variant="active">
-                    <CheckCircle className="h-3 w-3 mr-1" /> Tamamlandı
-                  </Badge>
-                )}
-              </div>
-              <h1 className="text-xl font-bold text-foreground">{course.title}</h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock className="h-4 w-4" />
-              {Math.round(course.duration_minutes / 60)} Saat
-            </div>
-            <div className="w-32">
-              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                <span>İlerleme</span>
-                <span>%{progress}</span>
-              </div>
-              <Progress value={progress} className="h-2" />
-            </div>
+      <div className="h-[calc(100vh-130px)] flex rounded-lg border border-border overflow-hidden bg-background">
+        {/* Sidebar toggle for mobile */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-20 left-4 z-20 lg:hidden"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+        >
+          {sidebarOpen ? (
+            <PanelLeftClose className="h-5 w-5" />
+          ) : (
+            <PanelLeftOpen className="h-5 w-5" />
+          )}
+        </Button>
+
+        {/* Lesson Sidebar */}
+        <div
+          className={cn(
+            "transition-all duration-300 flex-shrink-0 overflow-hidden",
+            sidebarOpen ? "w-80" : "w-0",
+            "max-lg:absolute max-lg:z-10 max-lg:h-[calc(100vh-130px)]"
+          )}
+        >
+          <div className="w-80 h-full">
+            <LessonSidebar
+              courseTitle={course.title}
+              lessons={lessons}
+              lessonProgress={lessonProgress}
+              activeLessonId={activeLessonId}
+              overallProgress={progress}
+              onSelectLesson={(id) => {
+                setActiveLessonId(id);
+                // auto-close on mobile
+                if (window.innerWidth < 1024) setSidebarOpen(false);
+              }}
+              onBack={() => navigate("/dashboard")}
+            />
           </div>
         </div>
 
-        {/* Player Area */}
-        <div className="h-[calc(100vh-220px)] min-h-[400px]">
-          {scormPackage ? (
-            <ScormPlayer
-              packageUrl={scormPackage.package_url}
-              entryPoint={scormPackage.entry_point || "index.html"}
-              enrollmentId={enrollment!.id}
-              scormPackageId={scormPackage.id}
-              userId={user!.id}
-              onComplete={handleScormComplete}
-            />
-          ) : (
-            <Card className="h-full">
-              <CardContent className="flex flex-col items-center justify-center h-full gap-4">
-                <BookOpen className="h-16 w-16 text-muted-foreground" />
-                <h3 className="text-lg font-semibold text-foreground">
-                  İçerik Henüz Yüklenmemiş
-                </h3>
-                <p className="text-muted-foreground text-center max-w-md">
-                  Bu eğitim için SCORM içerik paketi henüz yüklenmemiştir. Lütfen yönetici ile iletişime geçin.
-                </p>
-              </CardContent>
-            </Card>
-          )}
+        {/* Desktop toggle */}
+        <div className="hidden lg:flex items-start pt-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-none rounded-r-md"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+          >
+            {sidebarOpen ? (
+              <PanelLeftClose className="h-4 w-4" />
+            ) : (
+              <PanelLeftOpen className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 min-w-0 h-full">
+          <LessonContent
+            lesson={activeLesson}
+            scormPackages={scormPackages}
+            enrollmentId={enrollment!.id}
+            userId={user!.id}
+            onScormComplete={handleScormComplete}
+          />
         </div>
       </div>
     </DashboardLayout>
