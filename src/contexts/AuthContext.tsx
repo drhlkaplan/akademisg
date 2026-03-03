@@ -23,7 +23,7 @@ interface AuthContextType {
   roles: AppRole[];
   isLoading: boolean;
   isAdmin: boolean;
-  signUp: (email: string, password: string, metadata?: { first_name?: string; last_name?: string }) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, metadata?: { first_name?: string; last_name?: string; tc_identity?: string }) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (
     email: string,
     password: string,
-    metadata?: { first_name?: string; last_name?: string }
+    metadata?: { first_name?: string; last_name?: string; tc_identity?: string }
   ) => {
     const { error } = await supabase.auth.signUp({
       email,

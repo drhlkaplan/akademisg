@@ -8,6 +8,8 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
 import Courses from "./pages/Courses";
 import StudentDashboard from "./pages/dashboard/StudentDashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -35,6 +37,8 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/courses" element={<Courses />} />
             <Route path="/verify" element={<CertificateVerify />} />
             
