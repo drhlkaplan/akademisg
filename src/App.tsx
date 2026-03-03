@@ -18,6 +18,7 @@ import CoursesManagement from "./pages/admin/CoursesManagement";
 import FirmsManagement from "./pages/admin/FirmsManagement";
 import ExamsManagement from "./pages/admin/ExamsManagement";
 import ExamReports from "./pages/admin/ExamReports";
+import CertificatesManagement from "./pages/admin/CertificatesManagement";
 import ExamTaking from "./pages/exam/ExamTaking";
 import CourseLearning from "./pages/course/CourseLearning";
 import CertificateVerify from "./pages/CertificateVerify";
@@ -101,6 +102,14 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <ExamReports />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/certificates"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <CertificatesManagement />
                 </ProtectedRoute>
               }
             />

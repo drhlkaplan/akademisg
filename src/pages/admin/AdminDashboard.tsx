@@ -425,6 +425,17 @@ export default function AdminDashboard() {
                       Sınav Yönetimi
                     </Link>
                   </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full justify-start"
+                    asChild
+                  >
+                    <Link to="/admin/certificates">
+                      <Award className="mr-2 h-4 w-4" />
+                      Sertifika Yönetimi
+                    </Link>
+                  </Button>
                 </div>
               </CardContent>
             </Card>
