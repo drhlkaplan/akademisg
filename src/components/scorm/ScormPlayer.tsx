@@ -8,6 +8,7 @@ interface ScormPlayerProps {
   entryPoint: string;
   enrollmentId: string;
   scormPackageId: string;
+  lessonId: string;
   userId: string;
   onComplete?: () => void;
 }
@@ -17,6 +18,7 @@ export function ScormPlayer({
   entryPoint,
   enrollmentId,
   scormPackageId,
+  lessonId,
   userId,
   onComplete,
 }: ScormPlayerProps) {
@@ -29,15 +31,14 @@ export function ScormPlayer({
   const { createApiObject } = useScormApi({
     enrollmentId,
     scormPackageId,
+    lessonId,
     userId,
     onComplete,
   });
 
   useEffect(() => {
-    // Inject SCORM API into iframe's parent window so SCORM content can find it
     const api = createApiObject();
-    (window as any).API = api; // SCORM 1.2 looks for window.API
-
+    (window as any).API = api;
     return () => {
       delete (window as any).API;
     };
@@ -50,11 +51,10 @@ export function ScormPlayer({
     try {
       const iframeWindow = iframeRef.current?.contentWindow;
       if (iframeWindow) {
-        // Also inject API into iframe window for cross-origin fallback
         (iframeWindow as any).API = (window as any).API;
       }
     } catch {
-      // Cross-origin, API must be found on parent window
+      // Cross-origin
     }
   };
 
@@ -90,7 +90,6 @@ export function ScormPlayer({
 
   return (
     <div ref={containerRef} className="relative flex flex-col h-full bg-foreground/5 rounded-lg overflow-hidden border border-border">
-      {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
         <span className="text-sm text-muted-foreground">SCORM İçerik Oynatıcı</span>
         <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="h-8 w-8">
@@ -98,7 +97,6 @@ export function ScormPlayer({
         </Button>
       </div>
 
-      {/* Loading */}
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-card/80 z-10 mt-10">
           <div className="flex flex-col items-center gap-3">
@@ -108,7 +106,6 @@ export function ScormPlayer({
         </div>
       )}
 
-      {/* SCORM Content */}
       <iframe
         ref={iframeRef}
         src={contentUrl}

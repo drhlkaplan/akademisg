@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
     expiryDate.setFullYear(expiryDate.getFullYear() + 1);
 
     // Generate QR verification URL
-    const qrCode = `${supabaseUrl.replace('.supabase.co', '.lovable.app')}/verify?code=${certificateNumber}`;
+    const qrCode = `https://isg-guvenli-akademi.lovable.app/verify?code=${certificateNumber}`;
 
     // Insert certificate
     const { data: cert, error: certErr } = await adminClient
