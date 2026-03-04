@@ -11,7 +11,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -21,6 +21,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import {
   Plus, Edit, Trash2, GripVertical, BookOpen, FileQuestion, Video,
   FileText, Loader2, Upload, ArrowLeft, Package,
@@ -50,12 +51,20 @@ const lessonTypeIcons: Record<LessonType, typeof BookOpen> = {
   content: FileText,
 };
 
+/** Sanitize filename: replace non-ASCII and special chars */
+function sanitizeFileName(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .replace(/_+/g, "_");
+}
+
 export function LessonManagement({ courseId, courseTitle, onBack }: LessonManagementProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [scormUploadDialogOpen, setScormUploadDialogOpen] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -67,6 +76,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     duration_minutes: 0,
     is_active: true,
     content_url: "",
+    content_html: "",
     exam_id: "",
     scorm_package_id: "",
   });
@@ -122,7 +132,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
         sort_order: data.sort_order,
         duration_minutes: data.duration_minutes,
         is_active: data.is_active,
-        content_url: data.content_url || null,
+        content_url: data.type === "content" ? (data.content_html || data.content_url || null) : (data.content_url || null),
         exam_id: data.exam_id || null,
         scorm_package_id: data.scorm_package_id || null,
       });
@@ -150,7 +160,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
           sort_order: data.sort_order,
           duration_minutes: data.duration_minutes,
           is_active: data.is_active,
-          content_url: data.content_url || null,
+          content_url: data.type === "content" ? (data.content_html || data.content_url || null) : (data.content_url || null),
           exam_id: data.exam_id || null,
           scorm_package_id: data.scorm_package_id || null,
         })
@@ -197,11 +207,12 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     },
   });
 
-  // Upload SCORM package
+  // Upload SCORM package (inline in lesson dialog)
   const handleScormUpload = async (file: File) => {
     setUploading(true);
     try {
-      const fileName = `${courseId}/${Date.now()}-${file.name}`;
+      const safeName = sanitizeFileName(file.name);
+      const fileName = `${courseId}/${Date.now()}-${safeName}`;
       const { error: uploadError } = await supabase.storage
         .from("scorm-packages")
         .upload(fileName, file);
@@ -212,10 +223,8 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
         .from("scorm-packages")
         .getPublicUrl(fileName);
 
-      // Extract base URL (remove file name for directory-based SCORM)
       const packageUrl = publicUrl.substring(0, publicUrl.lastIndexOf("/"));
 
-      // Create scorm_packages record
       const { data: pkg, error: pkgError } = await supabase
         .from("scorm_packages")
         .insert({
@@ -231,12 +240,9 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
 
       queryClient.invalidateQueries({ queryKey: ["course-scorm-packages", courseId] });
       toast({ title: "Başarılı", description: "SCORM paketi yüklendi." });
-      setScormUploadDialogOpen(false);
 
-      // If a lesson dialog is open, auto-select this package
-      if (dialogOpen && formData.type === "scorm") {
-        setFormData((prev) => ({ ...prev, scorm_package_id: pkg.id }));
-      }
+      // Auto-select this package
+      setFormData((prev) => ({ ...prev, scorm_package_id: pkg.id }));
     } catch (err: any) {
       console.error("SCORM upload error:", err);
       toast({ title: "Hata", description: "SCORM paketi yüklenirken hata oluştu.", variant: "destructive" });
@@ -256,6 +262,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       duration_minutes: 0,
       is_active: true,
       content_url: "",
+      content_html: "",
       exam_id: "",
       scorm_package_id: "",
     });
@@ -265,13 +272,15 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
   const handleOpenEdit = (lesson: Lesson) => {
     setIsEditing(true);
     setSelectedLesson(lesson);
+    const isHtml = lesson.content_url?.startsWith("<");
     setFormData({
       title: lesson.title,
       type: lesson.type,
       sort_order: lesson.sort_order,
       duration_minutes: lesson.duration_minutes,
       is_active: lesson.is_active,
-      content_url: lesson.content_url || "",
+      content_url: isHtml ? "" : (lesson.content_url || ""),
+      content_html: isHtml ? (lesson.content_url || "") : "",
       exam_id: lesson.exam_id || "",
       scorm_package_id: lesson.scorm_package_id || "",
     });
@@ -295,8 +304,6 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     }
   };
 
-  const Icon = (type: LessonType) => lessonTypeIcons[type];
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -310,19 +317,13 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
             <p className="text-muted-foreground">{courseTitle}</p>
           </div>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={() => setScormUploadDialogOpen(true)}>
-            <Upload className="mr-2 h-4 w-4" />
-            SCORM Yükle
-          </Button>
-          <Button variant="accent" onClick={handleOpenCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            Yeni Ders
-          </Button>
-        </div>
+        <Button variant="accent" onClick={handleOpenCreate}>
+          <Plus className="mr-2 h-4 w-4" />
+          Yeni Ders
+        </Button>
       </div>
 
-      {/* SCORM Packages */}
+      {/* SCORM Packages overview */}
       {scormPackages && scormPackages.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
@@ -435,9 +436,12 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
 
       {/* Create/Edit Lesson Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isEditing ? "Ders Düzenle" : "Yeni Ders Ekle"}</DialogTitle>
+            <DialogDescription>
+              {isEditing ? "Ders bilgilerini güncelleyin." : "Yeni bir ders ekleyin ve içerik tipini belirleyin."}
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
@@ -497,9 +501,9 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
               </div>
             </div>
 
-            {/* Type-specific fields */}
+            {/* SCORM type: upload + select */}
             {formData.type === "scorm" && (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>SCORM Paketi</Label>
                 <Select
                   value={formData.scorm_package_id}
@@ -516,14 +520,44 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
                     ))}
                   </SelectContent>
                 </Select>
-                {(!scormPackages || scormPackages.length === 0) && (
-                  <p className="text-xs text-muted-foreground">
-                    Henüz SCORM paketi yok. Önce "SCORM Yükle" ile paket yükleyin.
+
+                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+                  <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Yeni SCORM paketi yükleyin (.zip)
                   </p>
-                )}
+                  <input
+                    type="file"
+                    accept=".zip,.html"
+                    className="hidden"
+                    id="scorm-file-input-inline"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleScormUpload(file);
+                    }}
+                  />
+                  <label htmlFor="scorm-file-input-inline" className="cursor-pointer">
+                    <Button variant="outline" size="sm" disabled={uploading} asChild>
+                      <span>
+                        {uploading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Yükleniyor...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Dosya Seç
+                          </>
+                        )}
+                      </span>
+                    </Button>
+                  </label>
+                </div>
               </div>
             )}
 
+            {/* Exam type */}
             {formData.type === "exam" && (
               <div className="space-y-2">
                 <Label>Sınav</Label>
@@ -550,17 +584,40 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
               </div>
             )}
 
+            {/* Content type: rich text editor + URL */}
             {formData.type === "content" && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>İçerik (Zengin Metin Editörü)</Label>
+                  <RichTextEditor
+                    content={formData.content_html}
+                    onChange={(html) => setFormData({ ...formData, content_html: html })}
+                    placeholder="Ders içeriğini buraya yazın..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Veya İçerik URL'si</Label>
+                  <Input
+                    value={formData.content_url}
+                    onChange={(e) => setFormData({ ...formData, content_url: e.target.value })}
+                    placeholder="https://example.com/video.mp4 veya .pdf"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    URL girilirse zengin metin yerine bu kullanılır.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Live type */}
+            {formData.type === "live" && (
               <div className="space-y-2">
-                <Label>İçerik URL'si</Label>
+                <Label>Canlı Oturum URL'si</Label>
                 <Input
                   value={formData.content_url}
                   onChange={(e) => setFormData({ ...formData, content_url: e.target.value })}
-                  placeholder="https://example.com/video.mp4 veya .pdf"
+                  placeholder="https://bbb.example.com/room/..."
                 />
-                <p className="text-xs text-muted-foreground">
-                  Video (.mp4, .webm), PDF (.pdf) veya iframe URL'si girin.
-                </p>
               </div>
             )}
           </div>
@@ -576,53 +633,6 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
               {isEditing ? "Güncelle" : "Ekle"}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* SCORM Upload Dialog */}
-      <Dialog open={scormUploadDialogOpen} onOpenChange={setScormUploadDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>SCORM Paketi Yükle</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <p className="text-sm text-muted-foreground">
-              SCORM 1.2 veya 2004 paketinizi (.zip) seçin. Paket otomatik olarak bu kursa bağlanacaktır.
-            </p>
-            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-              <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <input
-                type="file"
-                accept=".zip,.html"
-                className="hidden"
-                id="scorm-file-input"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleScormUpload(file);
-                }}
-              />
-              <label
-                htmlFor="scorm-file-input"
-                className="cursor-pointer"
-              >
-                <Button variant="accent" disabled={uploading} asChild>
-                  <span>
-                    {uploading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Yükleniyor...
-                      </>
-                    ) : (
-                      "Dosya Seç"
-                    )}
-                  </span>
-                </Button>
-              </label>
-              <p className="text-xs text-muted-foreground mt-2">
-                .zip veya .html dosyası
-              </p>
-            </div>
-          </div>
         </DialogContent>
       </Dialog>
 
