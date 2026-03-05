@@ -379,14 +379,14 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
         await Promise.all(uploadPromises);
       }
 
-      if (!firstUploadedPath) {
+      if (uploadedCount === 0) {
         throw new Error("Zip dosyasında yüklenecek dosya bulunamadı.");
       }
 
-      // Get the base URL for the package
+      // Get the base URL for the package using the folder root
       const {
         data: { publicUrl },
-      } = supabase.storage.from("scorm-packages").getPublicUrl(firstUploadedPath);
+      } = supabase.storage.from("scorm-packages").getPublicUrl(folderName + "/placeholder");
       const packageUrl = publicUrl.substring(0, publicUrl.lastIndexOf("/"));
 
       const { data: pkg, error: pkgError } = await supabase
