@@ -43,8 +43,6 @@ function buildEntryPointCandidates(entryPoint: string): string[] {
   const upperDir = dir ? parentDir(dir) : "";
 
   return uniquePaths([
-    resolved,
-    normalized,
     dir ? `${dir}/index_lms_html5.html` : "",
     dir ? `${dir}/index_lms.html` : "",
     dir ? `${dir}/index.html` : "",
@@ -55,6 +53,8 @@ function buildEntryPointCandidates(entryPoint: string): string[] {
     "index_lms.html",
     "story_html5.html",
     "index.html",
+    resolved,
+    normalized,
   ]);
 }
 
@@ -93,6 +93,7 @@ export function ScormPlayer({
 
   const folderPath = extractScormFolderPath(packageUrl);
   const [resolvedContentUrl, setResolvedContentUrl] = useState<string>("");
+  const [resolvedContentDoc, setResolvedContentDoc] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,7 +104,10 @@ export function ScormPlayer({
 
       if (!folderPath) {
         const fallbackUrl = `${packageUrl}/${entryPoint}`;
-        if (!cancelled) setResolvedContentUrl(fallbackUrl);
+        if (!cancelled) {
+          setResolvedContentDoc(null);
+          setResolvedContentUrl(fallbackUrl);
+        }
         return;
       }
 
@@ -120,8 +124,15 @@ export function ScormPlayer({
         try {
           const response = await fetch(candidateUrl, { method: "GET" });
           if (response.ok) {
+            const html = await response.text();
+            const baseHref = candidateUrl.slice(0, candidateUrl.lastIndexOf("/") + 1);
+            const htmlWithBase = /<head[^>]*>/i.test(html)
+              ? html.replace(/<head([^>]*)>/i, `<head$1><base href="${baseHref}">`)
+              : `<head><base href="${baseHref}"></head>${html}`;
+
             if (!cancelled) {
               setResolvedContentUrl(candidateUrl);
+              setResolvedContentDoc(htmlWithBase);
             }
             return;
           }
@@ -131,6 +142,7 @@ export function ScormPlayer({
       }
 
       if (!cancelled) {
+        setResolvedContentDoc(null);
         setError("SCORM başlangıç dosyası bulunamadı. Lütfen paketi yeniden yükleyin.");
       }
     };
@@ -205,7 +217,8 @@ export function ScormPlayer({
 
       <iframe
         ref={iframeRef}
-        src={resolvedContentUrl}
+        src={resolvedContentDoc ? undefined : resolvedContentUrl}
+        srcDoc={resolvedContentDoc ?? undefined}
         className="flex-1 w-full border-0"
         onLoad={handleIframeLoad}
         onError={handleIframeError}
