@@ -71,6 +71,8 @@ function sanitizeRelativePath(path: string): string {
 
 function detectScormEntryPoint(paths: string[]): string {
   const prioritized = [
+    // Articulate/Storyline HTML5 launchers first
+    "index_lms_html5.html",
     "index_lms.html",
     "index.html",
     "launch.html",
