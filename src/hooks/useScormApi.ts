@@ -1,9 +1,6 @@
 import { useCallback, useRef, useEffect } from "react";
+import { Scorm12API } from "scorm-again";
 import { supabase } from "@/integrations/supabase/client";
-
-interface ScormData {
-  [key: string]: string;
-}
 
 interface UseScormApiOptions {
   enrollmentId: string;
@@ -14,15 +11,50 @@ interface UseScormApiOptions {
 }
 
 export function useScormApi({ enrollmentId, scormPackageId, lessonId, userId, onComplete }: UseScormApiOptions) {
-  const dataRef = useRef<ScormData>({});
-  const isInitialized = useRef(false);
+  const apiRef = useRef<Scorm12API | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Create and configure scorm-again API instance
+  const getOrCreateApi = useCallback(() => {
+    if (apiRef.current) return apiRef.current;
+
+    const api = new Scorm12API({
+      autocommit: true,
+      autocommitSeconds: 30,
+      logLevel: 1, // error only
+    });
+
+    // Listen for commit events to persist to DB
+    api.on("LMSSetValue.cmi.*", () => {
+      debouncedSave(api);
+    });
+
+    api.on("LMSFinish", () => {
+      saveProgress(api);
+    });
+
+    api.on("LMSCommit", () => {
+      saveProgress(api);
+    });
+
+    apiRef.current = api;
+    return api;
+  }, []);
 
   // Load existing progress on mount
   useEffect(() => {
     loadProgress();
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      // Cleanup API
+      if (apiRef.current) {
+        try {
+          apiRef.current.terminate("", true);
+        } catch {
+          // ignore
+        }
+        apiRef.current = null;
+      }
     };
   }, [enrollmentId, lessonId]);
 
@@ -35,111 +67,87 @@ export function useScormApi({ enrollmentId, scormPackageId, lessonId, userId, on
       .maybeSingle();
 
     if (data) {
-      dataRef.current = {
-        "cmi.core.lesson_location": data.lesson_location || "",
-        "cmi.core.lesson_status": data.lesson_status || "not attempted",
-        "cmi.core.score.raw": data.score_raw?.toString() || "",
-        "cmi.core.score.min": data.score_min?.toString() || "0",
-        "cmi.core.score.max": data.score_max?.toString() || "100",
-        "cmi.core.total_time": formatTime(data.total_time || 0),
-        "cmi.suspend_data": data.suspend_data || "",
-      };
+      const api = getOrCreateApi();
+      // Pre-load CMI data before initialization
+      try {
+        api.loadFromJSON({
+          cmi: {
+            core: {
+              lesson_location: data.lesson_location || "",
+              lesson_status: data.lesson_status || "not attempted",
+              score: {
+                raw: data.score_raw?.toString() || "",
+                min: data.score_min?.toString() || "0",
+                max: data.score_max?.toString() || "100",
+              },
+              total_time: formatTime(data.total_time || 0),
+            },
+            suspend_data: data.suspend_data || "",
+          },
+        } as any);
+      } catch {
+        // Pre-load failed, will start fresh
+      }
     }
   };
 
-  const saveProgress = useCallback(async () => {
-    const d = dataRef.current;
-    const lessonStatus = d["cmi.core.lesson_status"] || "not attempted";
-    const scoreRaw = d["cmi.core.score.raw"] ? parseFloat(d["cmi.core.score.raw"]) : null;
-    const totalTimeSeconds = parseTimeToSeconds(d["cmi.core.total_time"] || "0000:00:00");
+  const saveProgress = useCallback(async (api?: Scorm12API) => {
+    const activeApi = api || apiRef.current;
+    if (!activeApi) return;
 
-    // Upsert lesson_progress with lesson_id
-    await supabase
-      .from("lesson_progress")
-      .upsert({
-        enrollment_id: enrollmentId,
-        lesson_id: lessonId,
-        scorm_package_id: scormPackageId,
-        lesson_location: d["cmi.core.lesson_location"] || null,
-        lesson_status: lessonStatus,
-        score_raw: scoreRaw,
-        score_min: d["cmi.core.score.min"] ? parseFloat(d["cmi.core.score.min"]) : null,
-        score_max: d["cmi.core.score.max"] ? parseFloat(d["cmi.core.score.max"]) : null,
-        total_time: totalTimeSeconds,
-        suspend_data: d["cmi.suspend_data"] || null,
-      }, { onConflict: "enrollment_id,lesson_id" })
-      .select();
+    try {
+      const lessonStatus = activeApi.lmsGetValue("cmi.core.lesson_status") || "not attempted";
+      const scoreRawStr = activeApi.lmsGetValue("cmi.core.score.raw");
+      const scoreRaw = scoreRawStr ? parseFloat(scoreRawStr) : null;
+      const scoreMinStr = activeApi.lmsGetValue("cmi.core.score.min");
+      const scoreMaxStr = activeApi.lmsGetValue("cmi.core.score.max");
+      const totalTimeStr = activeApi.lmsGetValue("cmi.core.total_time") || "0000:00:00";
+      const totalTimeSeconds = parseTimeToSeconds(totalTimeStr);
+      const lessonLocation = activeApi.lmsGetValue("cmi.core.lesson_location") || null;
+      const suspendData = activeApi.lmsGetValue("cmi.suspend_data") || null;
 
-    if ((lessonStatus === "completed" || lessonStatus === "passed") && onComplete) {
-      onComplete();
+      await supabase
+        .from("lesson_progress")
+        .upsert({
+          enrollment_id: enrollmentId,
+          lesson_id: lessonId,
+          scorm_package_id: scormPackageId,
+          lesson_location: lessonLocation,
+          lesson_status: lessonStatus,
+          score_raw: scoreRaw,
+          score_min: scoreMinStr ? parseFloat(scoreMinStr) : null,
+          score_max: scoreMaxStr ? parseFloat(scoreMaxStr) : null,
+          total_time: totalTimeSeconds,
+          suspend_data: suspendData,
+        }, { onConflict: "enrollment_id,lesson_id" })
+        .select();
+
+      if ((lessonStatus === "completed" || lessonStatus === "passed") && onComplete) {
+        onComplete();
+      }
+    } catch (err) {
+      console.error("SCORM save error:", err);
     }
   }, [enrollmentId, scormPackageId, lessonId, onComplete]);
 
-  const debouncedSave = useCallback(() => {
+  const debouncedSave = useCallback((api?: Scorm12API) => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(saveProgress, 2000);
+    saveTimeoutRef.current = setTimeout(() => saveProgress(api), 2000);
   }, [saveProgress]);
 
-  // SCORM 1.2 + 2004 API objects to be injected into iframe
+  // Create the API objects to inject into window
   const createApiObject = useCallback(() => {
-    const API = {
-      LMSInitialize: (_param: string) => {
-        isInitialized.current = true;
-        return "true";
-      },
-      LMSFinish: (_param: string) => {
-        saveProgress();
-        isInitialized.current = false;
-        return "true";
-      },
-      LMSGetValue: (key: string) => {
-        return dataRef.current[key] || "";
-      },
-      LMSSetValue: (key: string, value: string) => {
-        dataRef.current[key] = value;
-        debouncedSave();
-        return "true";
-      },
-      LMSCommit: (_param: string) => {
-        saveProgress();
-        return "true";
-      },
-      LMSGetLastError: () => "0",
-      LMSGetErrorString: (_code: string) => "No Error",
-      LMSGetDiagnostic: (_code: string) => "No Diagnostic",
+    const api = getOrCreateApi();
+    
+    // scorm-again Scorm12API is itself the window.API object
+    // It has all LMSInitialize, LMSGetValue, LMSSetValue etc. methods
+    return {
+      API: api,
+      API_1484_11: api, // scorm-again handles both via same interface
     };
+  }, [getOrCreateApi]);
 
-    const API_1484_11 = {
-      Initialize: (_param: string) => {
-        isInitialized.current = true;
-        return "true";
-      },
-      Terminate: (_param: string) => {
-        saveProgress();
-        isInitialized.current = false;
-        return "true";
-      },
-      GetValue: (key: string) => {
-        return dataRef.current[key] || "";
-      },
-      SetValue: (key: string, value: string) => {
-        dataRef.current[key] = value;
-        debouncedSave();
-        return "true";
-      },
-      Commit: (_param: string) => {
-        saveProgress();
-        return "true";
-      },
-      GetLastError: () => "0",
-      GetErrorString: (_code: string) => "No Error",
-      GetDiagnostic: (_code: string) => "No Diagnostic",
-    };
-
-    return { API, API_1484_11 };
-  }, [saveProgress, debouncedSave]);
-
-  return { createApiObject, saveProgress, loadProgress };
+  return { createApiObject, saveProgress: () => saveProgress(), loadProgress, apiRef };
 }
 
 function formatTime(seconds: number): string {
