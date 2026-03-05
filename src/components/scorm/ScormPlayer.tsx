@@ -57,13 +57,16 @@ export function ScormPlayer({
   }, [createApiObject]);
 
   const folderPath = extractScormFolderPath(packageUrl);
-  const encodedEntryPoint = entryPoint
+  const resolvedEntryPoint =
+    entryPoint.toLowerCase() === "index_lms.html" ? "index_lms_html5.html" : entryPoint;
+
+  const encodedEntryPoint = resolvedEntryPoint
     .split("/")
     .map((segment) => encodeURIComponent(segment))
     .join("/");
   const contentUrl = folderPath
     ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scorm-proxy/${folderPath}/${encodedEntryPoint}`
-    : `${packageUrl}/${entryPoint}`;
+    : `${packageUrl}/${resolvedEntryPoint}`;
 
   const handleIframeLoad = () => {
     setIsLoading(false);
@@ -133,7 +136,6 @@ export function ScormPlayer({
         onLoad={handleIframeLoad}
         onError={handleIframeError}
         allow="fullscreen"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
         title="SCORM Eğitim İçeriği"
       />
     </div>
