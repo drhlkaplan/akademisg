@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge-custom";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import {
   BookOpen,
   Award,
@@ -14,11 +15,13 @@ import {
   CheckCircle,
   Loader2,
   FileQuestion,
+  KeyRound,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { useToast } from "@/hooks/use-toast";
 
 type DangerClass = Database["public"]["Enums"]["danger_class"];
 
@@ -69,9 +72,12 @@ const dangerClassLabel: Record<DangerClass, string> = {
 
 export default function StudentDashboard() {
   const { user, profile } = useAuth();
+  const { toast } = useToast();
   const [enrollments, setEnrollments] = useState<EnrollmentWithCourse[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [availableExams, setAvailableExams] = useState<AvailableExam[]>([]);
+  const [groupKey, setGroupKey] = useState("");
+  const [joiningGroup, setJoiningGroup] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -171,6 +177,38 @@ export default function StudentDashboard() {
     }
   };
 
+  const handleJoinGroup = async () => {
+    const normalizedKey = groupKey.trim();
+    if (!normalizedKey) {
+      toast({ title: "Hata", description: "Lütfen bir grup anahtarı girin.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setJoiningGroup(true);
+      const { data, error } = await supabase.functions.invoke("join-group-key", {
+        body: { groupKey: normalizedKey },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Başarılı",
+        description: data?.message || "Gruba katıldınız. Eğitimleriniz güncellendi.",
+      });
+      setGroupKey("");
+      await fetchData();
+    } catch (err: any) {
+      toast({
+        title: "Grup anahtarı hatası",
+        description: err.message || "Grup anahtarı doğrulanamadı.",
+        variant: "destructive",
+      });
+    } finally {
+      setJoiningGroup(false);
+    }
+  };
+
   const activeEnrollments = enrollments.filter(
     (e) => e.status === "active" || e.status === "pending"
   );
@@ -245,6 +283,38 @@ export default function StudentDashboard() {
           </Button>
         </div>
 
+        <Card>
+          <CardContent className="p-4 md:p-5">
+            <div className="flex flex-col gap-3 md:flex-row md:items-end">
+              <div className="flex-1 space-y-2">
+                <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <KeyRound className="h-4 w-4 text-accent" />
+                  Grup Anahtarı ile Eğitime Katıl
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Yönetici tarafından verilen anahtarı girin, atanmış eğitimler “Eğitimlerim” alanına otomatik eklensin.
+                </p>
+                <Input
+                  value={groupKey}
+                  onChange={(e) => setGroupKey(e.target.value)}
+                  placeholder="Örn: ISG-2026-ABC123"
+                  className="max-w-md"
+                />
+              </div>
+              <Button variant="accent" onClick={handleJoinGroup} disabled={joiningGroup}>
+                {joiningGroup ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Doğrulanıyor...
+                  </>
+                ) : (
+                  "Gruba Katıl"
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat) => (
@@ -273,7 +343,7 @@ export default function StudentDashboard() {
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground">
-                Devam Eden Eğitimler
+                Eğitimlerim
               </h2>
               <Button variant="ghost" size="sm" asChild>
                 <Link to="/dashboard/courses">Tümünü Gör</Link>

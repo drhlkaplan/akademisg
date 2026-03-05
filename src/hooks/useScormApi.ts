@@ -80,9 +80,9 @@ export function useScormApi({ enrollmentId, scormPackageId, lessonId, userId, on
     saveTimeoutRef.current = setTimeout(saveProgress, 2000);
   }, [saveProgress]);
 
-  // SCORM 1.2 API object to be injected into iframe
+  // SCORM 1.2 + 2004 API objects to be injected into iframe
   const createApiObject = useCallback(() => {
-    return {
+    const API = {
       LMSInitialize: (_param: string) => {
         isInitialized.current = true;
         return "true";
@@ -108,6 +108,35 @@ export function useScormApi({ enrollmentId, scormPackageId, lessonId, userId, on
       LMSGetErrorString: (_code: string) => "No Error",
       LMSGetDiagnostic: (_code: string) => "No Diagnostic",
     };
+
+    const API_1484_11 = {
+      Initialize: (_param: string) => {
+        isInitialized.current = true;
+        return "true";
+      },
+      Terminate: (_param: string) => {
+        saveProgress();
+        isInitialized.current = false;
+        return "true";
+      },
+      GetValue: (key: string) => {
+        return dataRef.current[key] || "";
+      },
+      SetValue: (key: string, value: string) => {
+        dataRef.current[key] = value;
+        debouncedSave();
+        return "true";
+      },
+      Commit: (_param: string) => {
+        saveProgress();
+        return "true";
+      },
+      GetLastError: () => "0",
+      GetErrorString: (_code: string) => "No Error",
+      GetDiagnostic: (_code: string) => "No Diagnostic",
+    };
+
+    return { API, API_1484_11 };
   }, [saveProgress, debouncedSave]);
 
   return { createApiObject, saveProgress, loadProgress };
