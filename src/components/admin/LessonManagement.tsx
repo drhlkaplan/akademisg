@@ -379,7 +379,6 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       setUploading(false);
       setUploadProgress(0);
     }
-    }
   };
 
   const handleOpenCreate = () => {
