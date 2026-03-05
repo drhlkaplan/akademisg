@@ -3,7 +3,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-function getContentTypeByPath(path: string): string {
+function getContentTypeByPath(path: string, upstreamContentType?: string | null): string {
   const extension = path.split(".").pop()?.toLowerCase() ?? "";
   const mimeMap: Record<string, string> = {
     html: "text/html; charset=utf-8",
@@ -31,7 +31,14 @@ function getContentTypeByPath(path: string): string {
     txt: "text/plain; charset=utf-8",
   };
 
-  return mimeMap[extension] ?? "application/octet-stream";
+  const mapped = mimeMap[extension];
+  if (mapped) return mapped;
+
+  if (upstreamContentType && upstreamContentType !== "application/octet-stream") {
+    return upstreamContentType;
+  }
+
+  return "application/octet-stream";
 }
 
 Deno.serve(async (req) => {
@@ -70,15 +77,24 @@ Deno.serve(async (req) => {
       });
     }
 
-    const body = await upstream.arrayBuffer();
-    const contentType = getContentTypeByPath(objectPath);
+    const contentType = getContentTypeByPath(objectPath, upstream.headers.get("Content-Type"));
+    const isTextLike =
+      contentType.startsWith("text/") ||
+      contentType.includes("javascript") ||
+      contentType.includes("json") ||
+      contentType.includes("xml") ||
+      contentType.includes("svg");
+
+    const body = isTextLike ? await upstream.text() : await upstream.arrayBuffer();
 
     return new Response(body, {
       status: 200,
       headers: {
         ...corsHeaders,
         "Content-Type": contentType,
-        "Cache-Control": "public, max-age=3600",
+        "Cache-Control": "no-store, max-age=0",
+        "X-Scorm-Object-Path": objectPath,
+        "X-Scorm-Resolved-Content-Type": contentType,
       },
     });
   } catch (error) {
