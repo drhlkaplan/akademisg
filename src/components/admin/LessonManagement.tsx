@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import {
   Plus, Edit, Trash2, GripVertical, BookOpen, FileQuestion, Video,
-  FileText, Loader2, Upload, ArrowLeft, Package,
+  FileText, Loader2, Upload, ArrowLeft, Package, ExternalLink,
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -426,8 +426,21 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
                     <BookOpen className="h-4 w-4 text-accent" />
                     <span className="font-mono text-xs truncate max-w-[300px]">{pkg.id.slice(0, 8)}...</span>
                     <Badge variant="secondary">{pkg.scorm_version || "1.2"}</Badge>
+                    <span className="text-xs text-muted-foreground">{pkg.entry_point || "index.html"}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground">{pkg.entry_point || "index.html"}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1 text-xs"
+                    onClick={() => {
+                      const entryPoint = pkg.entry_point || "index.html";
+                      const previewUrl = `${pkg.package_url}/${entryPoint}`;
+                      window.open(previewUrl, "_blank");
+                    }}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Önizleme
+                  </Button>
                 </div>
               ))}
             </div>
