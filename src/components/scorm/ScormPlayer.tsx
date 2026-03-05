@@ -23,6 +23,41 @@ function extractScormFolderPath(packageUrl: string): string | null {
   return trimmed || null;
 }
 
+function normalizeLegacyScormPath(path: string): string {
+  return path.replace(/&/g, "_").replace(/ /g, "_");
+}
+
+function uniquePaths(paths: string[]): string[] {
+  return Array.from(new Set(paths.filter(Boolean)));
+}
+
+function parentDir(path: string): string {
+  const idx = path.lastIndexOf("/");
+  return idx > 0 ? path.slice(0, idx) : "";
+}
+
+function buildEntryPointCandidates(entryPoint: string): string[] {
+  const resolved = entryPoint.toLowerCase() === "index_lms.html" ? "index_lms_html5.html" : entryPoint;
+  const normalized = normalizeLegacyScormPath(resolved);
+  const dir = normalized.includes("/") ? parentDir(normalized) : "";
+  const upperDir = dir ? parentDir(dir) : "";
+
+  return uniquePaths([
+    resolved,
+    normalized,
+    dir ? `${dir}/index_lms_html5.html` : "",
+    dir ? `${dir}/index_lms.html` : "",
+    dir ? `${dir}/index.html` : "",
+    upperDir ? `${upperDir}/index_lms_html5.html` : "",
+    upperDir ? `${upperDir}/index_lms.html` : "",
+    upperDir ? `${upperDir}/index.html` : "",
+    "index_lms_html5.html",
+    "index_lms.html",
+    "story_html5.html",
+    "index.html",
+  ]);
+}
+
 export function ScormPlayer({
   packageUrl,
   entryPoint,
@@ -57,16 +92,55 @@ export function ScormPlayer({
   }, [createApiObject]);
 
   const folderPath = extractScormFolderPath(packageUrl);
-  const resolvedEntryPoint =
-    entryPoint.toLowerCase() === "index_lms.html" ? "index_lms_html5.html" : entryPoint;
+  const [resolvedContentUrl, setResolvedContentUrl] = useState<string>("");
 
-  const encodedEntryPoint = resolvedEntryPoint
-    .split("/")
-    .map((segment) => encodeURIComponent(segment))
-    .join("/");
-  const contentUrl = folderPath
-    ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scorm-proxy/${folderPath}/${encodedEntryPoint}`
-    : `${packageUrl}/${resolvedEntryPoint}`;
+  useEffect(() => {
+    let cancelled = false;
+
+    const resolveContentUrl = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      if (!folderPath) {
+        const fallbackUrl = `${packageUrl}/${entryPoint}`;
+        if (!cancelled) setResolvedContentUrl(fallbackUrl);
+        return;
+      }
+
+      const candidates = buildEntryPointCandidates(entryPoint);
+
+      for (const candidate of candidates) {
+        const encodedCandidate = candidate
+          .split("/")
+          .map((segment) => encodeURIComponent(segment))
+          .join("/");
+
+        const candidateUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scorm-proxy/${folderPath}/${encodedCandidate}`;
+
+        try {
+          const response = await fetch(candidateUrl, { method: "GET" });
+          if (response.ok) {
+            if (!cancelled) {
+              setResolvedContentUrl(candidateUrl);
+            }
+            return;
+          }
+        } catch {
+          // Try next candidate
+        }
+      }
+
+      if (!cancelled) {
+        setError("SCORM başlangıç dosyası bulunamadı. Lütfen paketi yeniden yükleyin.");
+      }
+    };
+
+    resolveContentUrl();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [folderPath, packageUrl, entryPoint]);
 
   const handleIframeLoad = () => {
     setIsLoading(false);
@@ -131,7 +205,7 @@ export function ScormPlayer({
 
       <iframe
         ref={iframeRef}
-        src={contentUrl}
+        src={resolvedContentUrl}
         className="flex-1 w-full border-0"
         onLoad={handleIframeLoad}
         onError={handleIframeError}

@@ -335,7 +335,8 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
         .map((filePath) => (rootPrefix && filePath.startsWith(rootPrefix) ? filePath.slice(rootPrefix.length) : filePath))
         .filter(Boolean);
 
-      const entryPoint = detectScormEntryPoint(normalizedPaths);
+      const sanitizedNormalizedPaths = normalizedPaths.map((p) => sanitizeRelativePath(p));
+      const entryPoint = detectScormEntryPoint(sanitizedNormalizedPaths);
       const totalFiles = normalizedPaths.length;
       let uploadedCount = 0;
 
