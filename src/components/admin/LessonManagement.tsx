@@ -98,6 +98,9 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [deleteScormDialogOpen, setDeleteScormDialogOpen] = useState(false);
+  const [selectedScormPkg, setSelectedScormPkg] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -237,9 +240,46 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     },
   });
 
+  // Delete SCORM package
+  const deleteScormMutation = useMutation({
+    mutationFn: async (pkgId: string) => {
+      const pkg = scormPackages?.find((p) => p.id === pkgId);
+      const { error } = await supabase.from("scorm_packages").delete().eq("id", pkgId);
+      if (error) throw error;
+      await supabase.from("lessons").update({ scorm_package_id: null }).eq("scorm_package_id", pkgId);
+      if (pkg?.package_url) {
+        try {
+          const url = new URL(pkg.package_url);
+          const pathParts = url.pathname.split("/storage/v1/object/public/scorm-packages/");
+          if (pathParts[1]) {
+            const folderPath = pathParts[1];
+            const { data: files } = await supabase.storage.from("scorm-packages").list(folderPath);
+            if (files && files.length > 0) {
+              await supabase.storage.from("scorm-packages").remove(files.map((f) => `${folderPath}/${f.name}`));
+            }
+          }
+        } catch (e) {
+          console.warn("Storage cleanup failed:", e);
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["course-scorm-packages", courseId] });
+      queryClient.invalidateQueries({ queryKey: ["admin-lessons", courseId] });
+      toast({ title: "Başarılı", description: "SCORM paketi silindi." });
+      setDeleteScormDialogOpen(false);
+      setSelectedScormPkg(null);
+    },
+    onError: (err) => {
+      toast({ title: "Hata", description: "SCORM paketi silinirken hata oluştu.", variant: "destructive" });
+      console.error(err);
+    },
+  });
+
   // Upload SCORM package - extract zip and upload individual files
   const handleScormUpload = async (file: File) => {
     setUploading(true);
+    setUploadProgress(0);
     try {
       const zip = await JSZip.loadAsync(file);
       const folderName = `${courseId}/${Date.now()}`;
@@ -263,6 +303,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
 
       const entryPoint = detectScormEntryPoint(normalizedPaths);
       const totalFiles = normalizedPaths.length;
+      let uploadedCount = 0;
 
       // Upload each file from the zip
       const uploadPromises: Promise<void>[] = [];
@@ -286,6 +327,8 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
             .upload(storagePath, blob, { upsert: true })
             .then(({ error }) => {
               if (error) throw new Error(`Failed to upload ${relativePath}: ${error.message}`);
+              uploadedCount++;
+              setUploadProgress(Math.round((uploadedCount / totalFiles) * 100));
             })
         );
 
@@ -334,6 +377,8 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       toast({ title: "Hata", description: err.message || "SCORM paketi yüklenirken hata oluştu.", variant: "destructive" });
     } finally {
       setUploading(false);
+      setUploadProgress(0);
+    }
     }
   };
 
@@ -409,6 +454,29 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
         </Button>
       </div>
 
+      {/* Upload Progress */}
+      {uploading && (
+        <Card>
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-4 w-4 animate-spin text-accent" />
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium">SCORM paketi yükleniyor...</span>
+                  <span className="text-sm text-muted-foreground">{uploadProgress}%</span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div
+                    className="bg-accent h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* SCORM Packages overview */}
       {scormPackages && scormPackages.length > 0 && (
         <Card>
@@ -428,19 +496,31 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
                     <Badge variant="secondary">{pkg.scorm_version || "1.2"}</Badge>
                     <span className="text-xs text-muted-foreground">{pkg.entry_point || "index.html"}</span>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 gap-1 text-xs"
-                    onClick={() => {
-                      const entryPoint = pkg.entry_point || "index.html";
-                      const previewUrl = `${pkg.package_url}/${entryPoint}`;
-                      window.open(previewUrl, "_blank");
-                    }}
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                    Önizleme
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1 text-xs"
+                      onClick={() => {
+                        const entryPoint = pkg.entry_point || "index.html";
+                        window.open(`${pkg.package_url}/${entryPoint}`, "_blank");
+                      }}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Önizleme
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1 text-xs text-destructive hover:text-destructive"
+                      onClick={() => {
+                        setSelectedScormPkg(pkg.id);
+                        setDeleteScormDialogOpen(true);
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -751,6 +831,28 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Sil
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete SCORM Package Dialog */}
+      <AlertDialog open={deleteScormDialogOpen} onOpenChange={setDeleteScormDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>SCORM Paketini Sil</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bu SCORM paketini silmek istediğinize emin misiniz? Bu paketi kullanan dersler etkilenecektir.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>İptal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => selectedScormPkg && deleteScormMutation.mutate(selectedScormPkg)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteScormMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Sil
             </AlertDialogAction>
           </AlertDialogFooter>
