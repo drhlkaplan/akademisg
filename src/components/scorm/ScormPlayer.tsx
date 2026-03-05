@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useRef, useState, type MutableRefObject } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useScormApi } from "@/hooks/useScormApi";
 import { Loader2, Maximize2, Minimize2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -60,7 +60,7 @@ function buildEntryPointCandidates(entryPoint: string): string[] {
   ]);
 }
 
-export const ScormPlayer = forwardRef<HTMLIFrameElement, ScormPlayerProps>(function ScormPlayer({
+export function ScormPlayer({
   packageUrl,
   entryPoint,
   enrollmentId,
@@ -68,7 +68,7 @@ export const ScormPlayer = forwardRef<HTMLIFrameElement, ScormPlayerProps>(funct
   lessonId,
   userId,
   onComplete,
-}: ScormPlayerProps, forwardedRef) {
+}: ScormPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -144,15 +144,6 @@ export const ScormPlayer = forwardRef<HTMLIFrameElement, ScormPlayerProps>(funct
     };
   }, [folderPath, packageUrl, entryPoint]);
 
-  const setIframeRef = (node: HTMLIFrameElement | null) => {
-    iframeRef.current = node;
-    if (typeof forwardedRef === "function") {
-      forwardedRef(node);
-    } else if (forwardedRef) {
-      (forwardedRef as MutableRefObject<HTMLIFrameElement | null>).current = node;
-    }
-  };
-
   const handleIframeLoad = () => {
     setIsLoading(false);
     try {
@@ -215,7 +206,7 @@ export const ScormPlayer = forwardRef<HTMLIFrameElement, ScormPlayerProps>(funct
       )}
 
       <iframe
-        ref={setIframeRef}
+        ref={iframeRef}
         src={resolvedContentUrl || undefined}
         className="flex-1 w-full border-0"
         onLoad={handleIframeLoad}
@@ -225,4 +216,4 @@ export const ScormPlayer = forwardRef<HTMLIFrameElement, ScormPlayerProps>(funct
       />
     </div>
   );
-});
+}
