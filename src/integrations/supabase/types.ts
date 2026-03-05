@@ -867,7 +867,41 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      questions_for_students: {
+        Row: {
+          exam_id: string | null
+          id: string | null
+          options: Json | null
+          points: number | null
+          question_text: string | null
+          question_type: Database["public"]["Enums"]["question_type"] | null
+        }
+        Insert: {
+          exam_id?: string | null
+          id?: string | null
+          options?: Json | null
+          points?: number | null
+          question_text?: string | null
+          question_type?: Database["public"]["Enums"]["question_type"] | null
+        }
+        Update: {
+          exam_id?: string | null
+          id?: string | null
+          options?: Json | null
+          points?: number | null
+          question_text?: string | null
+          question_type?: Database["public"]["Enums"]["question_type"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       has_role: {
