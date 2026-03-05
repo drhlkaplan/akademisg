@@ -90,6 +90,38 @@ function detectScormEntryPoint(paths: string[]): string {
   return htmlFallback || "index.html";
 }
 
+function getContentTypeByPath(path: string): string {
+  const extension = path.split(".").pop()?.toLowerCase() ?? "";
+
+  const mimeMap: Record<string, string> = {
+    html: "text/html",
+    htm: "text/html",
+    js: "application/javascript",
+    mjs: "application/javascript",
+    css: "text/css",
+    json: "application/json",
+    xml: "application/xml",
+    svg: "image/svg+xml",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    gif: "image/gif",
+    webp: "image/webp",
+    ico: "image/x-icon",
+    woff: "font/woff",
+    woff2: "font/woff2",
+    ttf: "font/ttf",
+    otf: "font/otf",
+    mp4: "video/mp4",
+    mp3: "audio/mpeg",
+    wav: "audio/wav",
+    pdf: "application/pdf",
+    txt: "text/plain",
+  };
+
+  return mimeMap[extension] ?? "application/octet-stream";
+}
+
 export function LessonManagement({ courseId, courseTitle, onBack }: LessonManagementProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -324,7 +356,10 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
         uploadPromises.push(
           supabase.storage
             .from("scorm-packages")
-            .upload(storagePath, blob, { upsert: true })
+            .upload(storagePath, blob, {
+              upsert: true,
+              contentType: getContentTypeByPath(cleanPath),
+            })
             .then(({ error }) => {
               if (error) throw new Error(`Failed to upload ${relativePath}: ${error.message}`);
               uploadedCount++;
