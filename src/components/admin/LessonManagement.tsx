@@ -345,10 +345,12 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
         const zipEntry = zip.files[relativePath];
         if (!zipEntry || zipEntry.dir) continue;
 
-        const blob = await zipEntry.async("blob");
+        const rawBlob = await zipEntry.async("blob");
         const cleanPath = rootPrefix && relativePath.startsWith(rootPrefix)
           ? relativePath.slice(rootPrefix.length)
           : relativePath;
+        const mimeType = getContentTypeByPath(cleanPath);
+        const blob = new Blob([rawBlob], { type: mimeType });
         const storagePath = `${folderName}/${sanitizeRelativePath(cleanPath)}`;
 
         if (!firstUploadedPath) firstUploadedPath = storagePath;
@@ -358,7 +360,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
             .from("scorm-packages")
             .upload(storagePath, blob, {
               upsert: true,
-              contentType: getContentTypeByPath(cleanPath),
+              contentType: mimeType,
             })
             .then(({ error }) => {
               if (error) throw new Error(`Failed to upload ${relativePath}: ${error.message}`);
