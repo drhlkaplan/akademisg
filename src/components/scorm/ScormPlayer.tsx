@@ -93,7 +93,6 @@ export function ScormPlayer({
 
   const folderPath = extractScormFolderPath(packageUrl);
   const [resolvedContentUrl, setResolvedContentUrl] = useState<string>("");
-  const [resolvedContentDoc, setResolvedContentDoc] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,13 +103,11 @@ export function ScormPlayer({
 
       if (!folderPath) {
         const fallbackUrl = `${packageUrl}/${entryPoint}`;
-        if (!cancelled) {
-          setResolvedContentDoc(null);
-          setResolvedContentUrl(fallbackUrl);
-        }
+        if (!cancelled) setResolvedContentUrl(fallbackUrl);
         return;
       }
 
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const candidates = buildEntryPointCandidates(entryPoint);
 
       for (const candidate of candidates) {
@@ -119,21 +116,13 @@ export function ScormPlayer({
           .map((segment) => encodeURIComponent(segment))
           .join("/");
 
-        const candidateUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scorm-proxy/${folderPath}/${encodedCandidate}`;
+        // Use direct storage URL (public bucket) instead of proxy
+        const candidateUrl = `${supabaseUrl}/storage/v1/object/public/scorm-packages/${folderPath}/${encodedCandidate}`;
 
         try {
-          const response = await fetch(candidateUrl, { method: "GET" });
+          const response = await fetch(candidateUrl, { method: "HEAD" });
           if (response.ok) {
-            const html = await response.text();
-            const baseHref = candidateUrl.slice(0, candidateUrl.lastIndexOf("/") + 1);
-            const htmlWithBase = /<head[^>]*>/i.test(html)
-              ? html.replace(/<head([^>]*)>/i, `<head$1><base href="${baseHref}">`)
-              : `<head><base href="${baseHref}"></head>${html}`;
-
-            if (!cancelled) {
-              setResolvedContentUrl(candidateUrl);
-              setResolvedContentDoc(htmlWithBase);
-            }
+            if (!cancelled) setResolvedContentUrl(candidateUrl);
             return;
           }
         } catch {
@@ -142,7 +131,6 @@ export function ScormPlayer({
       }
 
       if (!cancelled) {
-        setResolvedContentDoc(null);
         setError("SCORM başlangıç dosyası bulunamadı. Lütfen paketi yeniden yükleyin.");
       }
     };
@@ -217,8 +205,7 @@ export function ScormPlayer({
 
       <iframe
         ref={iframeRef}
-        src={resolvedContentDoc ? undefined : resolvedContentUrl}
-        srcDoc={resolvedContentDoc ?? undefined}
+        src={resolvedContentUrl || undefined}
         className="flex-1 w-full border-0"
         onLoad={handleIframeLoad}
         onError={handleIframeError}
