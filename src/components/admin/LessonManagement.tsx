@@ -52,13 +52,42 @@ const lessonTypeIcons: Record<LessonType, typeof BookOpen> = {
   content: FileText,
 };
 
-/** Sanitize filename: replace non-ASCII and special chars */
-function sanitizeFileName(name: string): string {
+/** Sanitize filename/path segment for storage compatibility */
+function sanitizePathSegment(name: string): string {
   return name
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-zA-Z0-9._-]/g, "_")
     .replace(/_+/g, "_");
+}
+
+function sanitizeRelativePath(path: string): string {
+  return path
+    .split("/")
+    .filter(Boolean)
+    .map(sanitizePathSegment)
+    .join("/");
+}
+
+function detectScormEntryPoint(paths: string[]): string {
+  const prioritized = [
+    "index_lms.html",
+    "index.html",
+    "launch.html",
+    "story.html",
+    "start.html",
+    "default.html",
+  ];
+
+  const lowerMap = new Map(paths.map((p) => [p.toLowerCase(), p]));
+
+  for (const candidate of prioritized) {
+    const found = lowerMap.get(candidate);
+    if (found) return found;
+  }
+
+  const htmlFallback = paths.find((p) => /\.html?$/i.test(p));
+  return htmlFallback || "index.html";
 }
 
 export function LessonManagement({ courseId, courseTitle, onBack }: LessonManagementProps) {
@@ -214,54 +243,49 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     try {
       const zip = await JSZip.loadAsync(file);
       const folderName = `${courseId}/${Date.now()}`;
-      let entryPoint = "index.html";
-      
-      // Find the entry point (imsmanifest.xml or index.html)
-      const fileNames = Object.keys(zip.files);
-      
-      // Check for common SCORM entry points
-      const manifestFile = fileNames.find(f => f.toLowerCase().endsWith("imsmanifest.xml"));
-      const indexFile = fileNames.find(f => {
-        const lower = f.toLowerCase();
-        // Find index.html at root or one level deep
-        const parts = f.split("/").filter(Boolean);
-        return parts.length <= 2 && lower.endsWith("index.html");
-      });
-      
-      // Detect if files are inside a subfolder
+
+      const allEntries = Object.keys(zip.files);
+      const fileNames = allEntries.filter((name) => !zip.files[name].dir);
+
+      // Detect if all files are wrapped inside a single root folder
       let rootPrefix = "";
-      const topLevelEntries = new Set(fileNames.map(f => f.split("/")[0]));
+      const topLevelEntries = new Set(fileNames.map((f) => f.split("/")[0]));
       if (topLevelEntries.size === 1) {
-        const singleFolder = [...topLevelEntries][0];
-        if (zip.files[singleFolder + "/"] || fileNames.every(f => f.startsWith(singleFolder + "/"))) {
-          rootPrefix = singleFolder + "/";
+        const [singleFolder] = [...topLevelEntries];
+        if (singleFolder && fileNames.every((f) => f.startsWith(`${singleFolder}/`))) {
+          rootPrefix = `${singleFolder}/`;
         }
       }
 
-      if (indexFile) {
-        entryPoint = rootPrefix ? indexFile.replace(rootPrefix, "") : indexFile;
-      }
+      const normalizedPaths = fileNames
+        .map((filePath) => (rootPrefix && filePath.startsWith(rootPrefix) ? filePath.slice(rootPrefix.length) : filePath))
+        .filter(Boolean);
+
+      const entryPoint = detectScormEntryPoint(normalizedPaths);
+      const totalFiles = normalizedPaths.length;
 
       // Upload each file from the zip
       const uploadPromises: Promise<void>[] = [];
-      let uploadedCount = 0;
-      const totalFiles = fileNames.filter(f => !zip.files[f].dir).length;
+      let firstUploadedPath: string | null = null;
 
-      for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
-        if (zipEntry.dir) continue;
-        
+      for (const relativePath of fileNames) {
+        const zipEntry = zip.files[relativePath];
+        if (!zipEntry || zipEntry.dir) continue;
+
         const blob = await zipEntry.async("blob");
-        // Remove root prefix if all files are in a single folder
-        const cleanPath = rootPrefix ? relativePath.replace(rootPrefix, "") : relativePath;
-        const storagePath = `${folderName}/${sanitizeFileName(cleanPath.replace(/\//g, "__SLASH__")).replace(/__SLASH__/g, "/")}`;
-        
+        const cleanPath = rootPrefix && relativePath.startsWith(rootPrefix)
+          ? relativePath.slice(rootPrefix.length)
+          : relativePath;
+        const storagePath = `${folderName}/${sanitizeRelativePath(cleanPath)}`;
+
+        if (!firstUploadedPath) firstUploadedPath = storagePath;
+
         uploadPromises.push(
           supabase.storage
             .from("scorm-packages")
             .upload(storagePath, blob, { upsert: true })
             .then(({ error }) => {
               if (error) throw new Error(`Failed to upload ${relativePath}: ${error.message}`);
-              uploadedCount++;
             })
         );
 
@@ -271,16 +295,20 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
           uploadPromises.length = 0;
         }
       }
-      
+
       // Upload remaining files
       if (uploadPromises.length > 0) {
         await Promise.all(uploadPromises);
       }
 
+      if (!firstUploadedPath) {
+        throw new Error("Zip dosyasında yüklenecek dosya bulunamadı.");
+      }
+
       // Get the base URL for the package
-      const { data: { publicUrl } } = supabase.storage
-        .from("scorm-packages")
-        .getPublicUrl(`${folderName}/placeholder`);
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("scorm-packages").getPublicUrl(firstUploadedPath);
       const packageUrl = publicUrl.substring(0, publicUrl.lastIndexOf("/"));
 
       const { data: pkg, error: pkgError } = await supabase
