@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
     }
 
     const objectUrl = `${supabaseUrl}/storage/v1/object/public/scorm-packages/${objectPath}`;
-    const upstream = await fetch(objectUrl);
+    const upstream = await fetch(objectUrl, { method: "GET" });
 
     if (!upstream.ok) {
       return new Response(upstream.body, {
