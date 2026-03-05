@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState, type MutableRefObject } from "react";
 import { useScormApi } from "@/hooks/useScormApi";
 import { Loader2, Maximize2, Minimize2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,9 +43,13 @@ function buildEntryPointCandidates(entryPoint: string): string[] {
   const upperDir = dir ? parentDir(dir) : "";
 
   return uniquePaths([
+    resolved,
+    normalized,
+    dir ? `${dir}/AICCComm.html` : "",
     dir ? `${dir}/index_lms_html5.html` : "",
     dir ? `${dir}/index_lms.html` : "",
     dir ? `${dir}/index.html` : "",
+    upperDir ? `${upperDir}/AICCComm.html` : "",
     upperDir ? `${upperDir}/index_lms_html5.html` : "",
     upperDir ? `${upperDir}/index_lms.html` : "",
     upperDir ? `${upperDir}/index.html` : "",
@@ -53,12 +57,10 @@ function buildEntryPointCandidates(entryPoint: string): string[] {
     "index_lms.html",
     "story_html5.html",
     "index.html",
-    resolved,
-    normalized,
   ]);
 }
 
-export function ScormPlayer({
+export const ScormPlayer = forwardRef<HTMLIFrameElement, ScormPlayerProps>(function ScormPlayer({
   packageUrl,
   entryPoint,
   enrollmentId,
@@ -66,7 +68,7 @@ export function ScormPlayer({
   lessonId,
   userId,
   onComplete,
-}: ScormPlayerProps) {
+}: ScormPlayerProps, forwardedRef) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -120,7 +122,7 @@ export function ScormPlayer({
         const candidateUrl = `${supabaseUrl}/storage/v1/object/public/scorm-packages/${folderPath}/${encodedCandidate}`;
 
         try {
-          const response = await fetch(candidateUrl, { method: "HEAD" });
+          const response = await fetch(candidateUrl, { method: "GET" });
           if (response.ok) {
             if (!cancelled) setResolvedContentUrl(candidateUrl);
             return;
@@ -141,6 +143,15 @@ export function ScormPlayer({
       cancelled = true;
     };
   }, [folderPath, packageUrl, entryPoint]);
+
+  const setIframeRef = (node: HTMLIFrameElement | null) => {
+    iframeRef.current = node;
+    if (typeof forwardedRef === "function") {
+      forwardedRef(node);
+    } else if (forwardedRef) {
+      (forwardedRef as MutableRefObject<HTMLIFrameElement | null>).current = node;
+    }
+  };
 
   const handleIframeLoad = () => {
     setIsLoading(false);
@@ -204,7 +215,7 @@ export function ScormPlayer({
       )}
 
       <iframe
-        ref={iframeRef}
+        ref={setIframeRef}
         src={resolvedContentUrl || undefined}
         className="flex-1 w-full border-0"
         onLoad={handleIframeLoad}
@@ -214,4 +225,4 @@ export function ScormPlayer({
       />
     </div>
   );
-}
+});
