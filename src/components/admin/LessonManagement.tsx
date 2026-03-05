@@ -1,4 +1,5 @@
 import { useState } from "react";
+import JSZip from "jszip";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -207,22 +208,79 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     },
   });
 
-  // Upload SCORM package (inline in lesson dialog)
+  // Upload SCORM package - extract zip and upload individual files
   const handleScormUpload = async (file: File) => {
     setUploading(true);
     try {
-      const safeName = sanitizeFileName(file.name);
-      const fileName = `${courseId}/${Date.now()}-${safeName}`;
-      const { error: uploadError } = await supabase.storage
-        .from("scorm-packages")
-        .upload(fileName, file);
+      const zip = await JSZip.loadAsync(file);
+      const folderName = `${courseId}/${Date.now()}`;
+      let entryPoint = "index.html";
+      
+      // Find the entry point (imsmanifest.xml or index.html)
+      const fileNames = Object.keys(zip.files);
+      
+      // Check for common SCORM entry points
+      const manifestFile = fileNames.find(f => f.toLowerCase().endsWith("imsmanifest.xml"));
+      const indexFile = fileNames.find(f => {
+        const lower = f.toLowerCase();
+        // Find index.html at root or one level deep
+        const parts = f.split("/").filter(Boolean);
+        return parts.length <= 2 && lower.endsWith("index.html");
+      });
+      
+      // Detect if files are inside a subfolder
+      let rootPrefix = "";
+      const topLevelEntries = new Set(fileNames.map(f => f.split("/")[0]));
+      if (topLevelEntries.size === 1) {
+        const singleFolder = [...topLevelEntries][0];
+        if (zip.files[singleFolder + "/"] || fileNames.every(f => f.startsWith(singleFolder + "/"))) {
+          rootPrefix = singleFolder + "/";
+        }
+      }
 
-      if (uploadError) throw uploadError;
+      if (indexFile) {
+        entryPoint = rootPrefix ? indexFile.replace(rootPrefix, "") : indexFile;
+      }
 
+      // Upload each file from the zip
+      const uploadPromises: Promise<void>[] = [];
+      let uploadedCount = 0;
+      const totalFiles = fileNames.filter(f => !zip.files[f].dir).length;
+
+      for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
+        if (zipEntry.dir) continue;
+        
+        const blob = await zipEntry.async("blob");
+        // Remove root prefix if all files are in a single folder
+        const cleanPath = rootPrefix ? relativePath.replace(rootPrefix, "") : relativePath;
+        const storagePath = `${folderName}/${sanitizeFileName(cleanPath.replace(/\//g, "__SLASH__")).replace(/__SLASH__/g, "/")}`;
+        
+        uploadPromises.push(
+          supabase.storage
+            .from("scorm-packages")
+            .upload(storagePath, blob, { upsert: true })
+            .then(({ error }) => {
+              if (error) throw new Error(`Failed to upload ${relativePath}: ${error.message}`);
+              uploadedCount++;
+            })
+        );
+
+        // Upload in batches of 5 to avoid overwhelming the server
+        if (uploadPromises.length >= 5) {
+          await Promise.all(uploadPromises);
+          uploadPromises.length = 0;
+        }
+      }
+      
+      // Upload remaining files
+      if (uploadPromises.length > 0) {
+        await Promise.all(uploadPromises);
+      }
+
+      // Get the base URL for the package
       const { data: { publicUrl } } = supabase.storage
         .from("scorm-packages")
-        .getPublicUrl(fileName);
-
+        .getPublicUrl(`${folderName}/placeholder`);
       const packageUrl = publicUrl.substring(0, publicUrl.lastIndexOf("/"));
 
       const { data: pkg, error: pkgError } = await supabase
@@ -230,7 +288,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
         .insert({
           course_id: courseId,
           package_url: packageUrl,
-          entry_point: "index.html",
+          entry_point: entryPoint,
           scorm_version: "1.2",
         })
         .select()
@@ -239,13 +297,13 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       if (pkgError) throw pkgError;
 
       queryClient.invalidateQueries({ queryKey: ["course-scorm-packages", courseId] });
-      toast({ title: "Başarılı", description: "SCORM paketi yüklendi." });
+      toast({ title: "Başarılı", description: `SCORM paketi yüklendi (${totalFiles} dosya).` });
 
       // Auto-select this package
       setFormData((prev) => ({ ...prev, scorm_package_id: pkg.id }));
     } catch (err: any) {
       console.error("SCORM upload error:", err);
-      toast({ title: "Hata", description: "SCORM paketi yüklenirken hata oluştu.", variant: "destructive" });
+      toast({ title: "Hata", description: err.message || "SCORM paketi yüklenirken hata oluştu.", variant: "destructive" });
     } finally {
       setUploading(false);
     }
