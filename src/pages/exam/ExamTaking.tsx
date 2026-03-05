@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -33,11 +33,19 @@ import {
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
-type Question = Database["public"]["Tables"]["questions"]["Row"];
 type Exam = Database["public"]["Tables"]["exams"]["Row"];
 
 interface ExamWithCourse extends Exam {
   courses: { title: string } | null;
+}
+
+interface QuestionForStudent {
+  id: string;
+  exam_id: string;
+  question_text: string;
+  question_type: string | null;
+  options: any;
+  points: number | null;
 }
 
 export default function ExamTaking() {
@@ -74,23 +82,21 @@ export default function ExamTaking() {
     enabled: !!examId,
   });
 
-  // Fetch questions
+  // Fetch questions WITHOUT correct_answer (using the secure view)
   const { data: questions, isLoading: questionsLoading } = useQuery({
     queryKey: ["exam-questions-take", examId],
     queryFn: async () => {
       if (!examId) throw new Error("Exam ID required");
       const { data, error } = await supabase
-        .from("questions")
-        .select("*")
+        .from("questions_for_students" as any)
+        .select("id, exam_id, question_text, question_type, options, points")
         .eq("exam_id", examId);
       if (error) throw error;
 
-      // Randomize if exam setting enabled
-      let questionList = data || [];
+      let questionList = (data || []) as unknown as QuestionForStudent[];
       if (exam?.randomize_questions) {
         questionList = [...questionList].sort(() => Math.random() - 0.5);
       }
-      // Limit to question_count if set
       if (exam?.question_count && questionList.length > exam.question_count) {
         questionList = questionList.slice(0, exam.question_count);
       }
@@ -140,84 +146,40 @@ export default function ExamTaking() {
     return () => clearInterval(timer);
   }, [timeRemaining, examResult]);
 
-  const submitExamMutation = useMutation({
-    mutationFn: async (result: {
-      score: number;
-      correctAnswers: number;
-      totalQuestions: number;
-      answers: Record<string, string>;
-    }) => {
-      if (!examId || !enrollmentId || !user) throw new Error("Missing required data");
+  // Server-side exam submission
+  const handleSubmitExam = useCallback(async () => {
+    if (!questions || !examId || !enrollmentId || isSubmitting) return;
+    setIsSubmitting(true);
+    setShowConfirmSubmit(false);
 
-      const status = result.score >= (exam?.passing_score || 70) ? "passed" : "failed";
-
-      const { error } = await supabase.from("exam_results").insert([
-        {
+    try {
+      const { data, error } = await supabase.functions.invoke("submit-exam", {
+        body: {
           exam_id: examId,
           enrollment_id: enrollmentId,
-          user_id: user.id,
-          score: result.score,
-          correct_answers: result.correctAnswers,
-          total_questions: result.totalQuestions,
-          answers: result.answers,
-          status,
-          attempt_number: (previousAttempts?.length || 0) + 1,
-          started_at: new Date(Date.now() - ((exam?.duration_minutes || 60) * 60 - (timeRemaining || 0)) * 1000).toISOString(),
-          completed_at: new Date().toISOString(),
+          answers,
+          time_remaining: timeRemaining,
         },
-      ]);
+      });
+
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      // Update enrollment status if passed
-      if (status === "passed") {
-        await supabase
-          .from("enrollments")
-          .update({ status: "completed", completed_at: new Date().toISOString() })
-          .eq("id", enrollmentId);
-      }
-
-      return { ...result, passed: status === "passed" };
-    },
-    onSuccess: (data) => {
       setExamResult({
         score: data.score,
         passed: data.passed,
         correctAnswers: data.correctAnswers,
         totalQuestions: data.totalQuestions,
       });
-    },
-    onError: (error) => {
+    } catch (error: any) {
       toast({
         title: "Hata",
-        description: "Sınav sonucu kaydedilemedi: " + error.message,
+        description: "Sınav sonucu kaydedilemedi: " + (error.message || "Bilinmeyen hata"),
         variant: "destructive",
       });
       setIsSubmitting(false);
-    },
-  });
-
-  const handleSubmitExam = useCallback(() => {
-    if (!questions || isSubmitting) return;
-    setIsSubmitting(true);
-    setShowConfirmSubmit(false);
-
-    let correctAnswers = 0;
-    questions.forEach((question) => {
-      const userAnswer = answers[question.id];
-      if (userAnswer && userAnswer === question.correct_answer) {
-        correctAnswers++;
-      }
-    });
-
-    const score = Math.round((correctAnswers / questions.length) * 100);
-
-    submitExamMutation.mutate({
-      score,
-      correctAnswers,
-      totalQuestions: questions.length,
-      answers,
-    });
-  }, [questions, answers, isSubmitting, submitExamMutation]);
+    }
+  }, [questions, examId, enrollmentId, answers, isSubmitting, timeRemaining, toast]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -229,7 +191,6 @@ export default function ExamTaking() {
   const answeredCount = Object.keys(answers).length;
   const progress = questions ? (answeredCount / questions.length) * 100 : 0;
 
-  // Check if max attempts reached
   const maxAttemptsReached =
     exam?.max_attempts && previousAttempts && previousAttempts.length >= exam.max_attempts;
 
@@ -408,7 +369,7 @@ export default function ExamTaking() {
                   }
                   className="space-y-3"
                 >
-                  {(currentQuestion.options as string[] | null)?.map((option, index) => (
+                  {(currentQuestion.options as string[] | null)?.map((option: string, index: number) => (
                     <div
                       key={index}
                       className={`flex items-center space-x-3 p-4 rounded-lg border transition-colors ${
@@ -496,7 +457,7 @@ export default function ExamTaking() {
 
           {currentQuestionIndex === questions.length - 1 ? (
             <Button variant="accent" onClick={() => setShowConfirmSubmit(true)} disabled={isSubmitting}>
-              <CheckCircle className="h-4 w-4 mr-1" />
+              {isSubmitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-1" />}
               Sınavı Bitir
             </Button>
           ) : (
