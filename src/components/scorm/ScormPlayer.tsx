@@ -13,6 +13,16 @@ interface ScormPlayerProps {
   onComplete?: () => void;
 }
 
+function extractScormFolderPath(packageUrl: string): string | null {
+  const marker = "scorm-packages/";
+  const markerIndex = packageUrl.indexOf(marker);
+  if (markerIndex === -1) return null;
+
+  const rawPath = packageUrl.slice(markerIndex + marker.length).split("?")[0].split("#")[0];
+  const trimmed = rawPath.replace(/^\/+|\/+$/g, "");
+  return trimmed || null;
+}
+
 export function ScormPlayer({
   packageUrl,
   entryPoint,
@@ -38,13 +48,22 @@ export function ScormPlayer({
 
   useEffect(() => {
     const api = createApiObject();
-    (window as any).API = api;
+    (window as any).API = api.API;
+    (window as any).API_1484_11 = api.API_1484_11;
     return () => {
       delete (window as any).API;
+      delete (window as any).API_1484_11;
     };
   }, [createApiObject]);
 
-  const contentUrl = `${packageUrl}/${entryPoint}`;
+  const folderPath = extractScormFolderPath(packageUrl);
+  const encodedEntryPoint = entryPoint
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  const contentUrl = folderPath
+    ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scorm-proxy/${folderPath}/${encodedEntryPoint}`
+    : `${packageUrl}/${entryPoint}`;
 
   const handleIframeLoad = () => {
     setIsLoading(false);
@@ -52,9 +71,10 @@ export function ScormPlayer({
       const iframeWindow = iframeRef.current?.contentWindow;
       if (iframeWindow) {
         (iframeWindow as any).API = (window as any).API;
+        (iframeWindow as any).API_1484_11 = (window as any).API_1484_11;
       }
     } catch {
-      // Cross-origin
+      // Cross-origin iframe - API is served through proxy URL
     }
   };
 
@@ -113,7 +133,7 @@ export function ScormPlayer({
         onLoad={handleIframeLoad}
         onError={handleIframeError}
         allow="fullscreen"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
         title="SCORM Eğitim İçeriği"
       />
     </div>

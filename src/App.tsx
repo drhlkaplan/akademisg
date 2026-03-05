@@ -123,6 +123,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/dashboard/courses"
+              element={
+                <ProtectedRoute>
+                  <StudentDashboard />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Protected Course Learning */}
             <Route
