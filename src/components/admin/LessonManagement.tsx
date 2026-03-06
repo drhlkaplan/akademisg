@@ -71,12 +71,15 @@ function sanitizeRelativePath(path: string): string {
 
 function detectScormEntryPoint(paths: string[]): string {
   const prioritized = [
-    // Articulate/Storyline HTML5 launchers first
+    // Articulate/Storyline direct content files first
+    "story.html",
+    "story_html5.html",
     "index_lms_html5.html",
+    "scormcontent/index.html",
+    // Router/redirect pages as fallback
     "index_lms.html",
     "index.html",
     "launch.html",
-    "story.html",
     "start.html",
     "default.html",
   ];
