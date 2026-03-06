@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,28 +7,29 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
-import Login from "./pages/auth/Login";
-import Register from "./pages/auth/Register";
-import ForgotPassword from "./pages/auth/ForgotPassword";
-import ResetPassword from "./pages/auth/ResetPassword";
-import Courses from "./pages/Courses";
-import StudentDashboard from "./pages/dashboard/StudentDashboard";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import UsersManagement from "./pages/admin/UsersManagement";
-import CoursesManagement from "./pages/admin/CoursesManagement";
-import FirmsManagement from "./pages/admin/FirmsManagement";
-import ExamsManagement from "./pages/admin/ExamsManagement";
-import ExamReports from "./pages/admin/ExamReports";
-import CertificatesManagement from "./pages/admin/CertificatesManagement";
-import ExamTaking from "./pages/exam/ExamTaking";
-import CourseLearning from "./pages/course/CourseLearning";
-import CertificateVerify from "./pages/CertificateVerify";
-import MyCertificates from "./pages/dashboard/MyCertificates";
-import MyCourses from "./pages/dashboard/MyCourses";
-import MyExams from "./pages/dashboard/MyExams";
-import Help from "./pages/dashboard/Help";
-import GroupsManagement from "./pages/admin/GroupsManagement";
-import NotFound from "./pages/NotFound";
+
+const Login = lazy(() => import("./pages/auth/Login"));
+const Register = lazy(() => import("./pages/auth/Register"));
+const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/auth/ResetPassword"));
+const Courses = lazy(() => import("./pages/Courses"));
+const StudentDashboard = lazy(() => import("./pages/dashboard/StudentDashboard"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const UsersManagement = lazy(() => import("./pages/admin/UsersManagement"));
+const CoursesManagement = lazy(() => import("./pages/admin/CoursesManagement"));
+const FirmsManagement = lazy(() => import("./pages/admin/FirmsManagement"));
+const ExamsManagement = lazy(() => import("./pages/admin/ExamsManagement"));
+const ExamReports = lazy(() => import("./pages/admin/ExamReports"));
+const CertificatesManagement = lazy(() => import("./pages/admin/CertificatesManagement"));
+const ExamTaking = lazy(() => import("./pages/exam/ExamTaking"));
+const CourseLearning = lazy(() => import("./pages/course/CourseLearning"));
+const CertificateVerify = lazy(() => import("./pages/CertificateVerify"));
+const MyCertificates = lazy(() => import("./pages/dashboard/MyCertificates"));
+const MyCourses = lazy(() => import("./pages/dashboard/MyCourses"));
+const MyExams = lazy(() => import("./pages/dashboard/MyExams"));
+const Help = lazy(() => import("./pages/dashboard/Help"));
+const GroupsManagement = lazy(() => import("./pages/admin/GroupsManagement"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
 
@@ -38,6 +40,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Index />} />
@@ -183,6 +186,7 @@ const App = () => (
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
