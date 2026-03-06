@@ -61,10 +61,42 @@ function sanitizePath(path: string): string {
  * 2. Trying common Articulate Storyline entry points
  * 3. Falling back to the stored entry_point
  */
+/**
+ * Router pages that just redirect – skip these in favor of actual content.
+ */
+const ROUTER_FILENAMES = new Set(["index_lms.html", "index.html", "launch.html"]);
+
 async function resolveEntryPoint(baseUrl: string, entryPoint: string): Promise<string | null> {
   const sanitizedEntry = sanitizePath(entryPoint);
-  
-  // Step 1: Try to parse imsmanifest.xml
+
+  // Step 1: Try stored entry point if it's a real content file (not a router)
+  const entryFileName = sanitizedEntry.split("/").pop()?.toLowerCase() || "";
+  if (!ROUTER_FILENAMES.has(entryFileName)) {
+    const directUrl = `${baseUrl}/${sanitizedEntry}`;
+    try {
+      const res = await fetch(directUrl, { method: "HEAD" });
+      if (res.ok) return directUrl;
+    } catch { /* continue */ }
+  }
+
+  // Step 2: Try common HTML5 content files first (skip router pages)
+  const directContentFiles = [
+    "index_lms_html5.html",
+    "story_html5.html",
+    "story.html",
+    "scormcontent/index.html",
+    "SCORMContent/index.html",
+  ];
+
+  for (const file of directContentFiles) {
+    const url = `${baseUrl}/${file}`;
+    try {
+      const res = await fetch(url, { method: "HEAD" });
+      if (res.ok) return url;
+    } catch { continue; }
+  }
+
+  // Step 3: Parse imsmanifest.xml, but handle router pages
   const manifestUrl = `${baseUrl}/imsmanifest.xml`;
   try {
     const manifestRes = await fetch(manifestUrl);
@@ -73,72 +105,51 @@ async function resolveEntryPoint(baseUrl: string, entryPoint: string): Promise<s
       const launchFile = parseLaunchFromManifest(xml);
       if (launchFile) {
         const sanitizedLaunch = sanitizePath(launchFile);
-        // Test if the file exists
+        const launchFileName = sanitizedLaunch.split("/").pop()?.toLowerCase() || "";
+
+        // If manifest points to a router page, try the html5 variant
+        if (ROUTER_FILENAMES.has(launchFileName)) {
+          const html5Variant = sanitizedLaunch.replace(/\.html$/i, "_html5.html");
+          const html5Url = `${baseUrl}/${html5Variant}`;
+          try {
+            const res = await fetch(html5Url, { method: "HEAD" });
+            if (res.ok) return html5Url;
+          } catch { /* continue */ }
+        }
+
         const testUrl = `${baseUrl}/${sanitizedLaunch}`;
-        const testRes = await fetch(testUrl, { method: "HEAD" });
-        if (testRes.ok) return testUrl;
-        
-        // Try without subdir
+        try {
+          const testRes = await fetch(testUrl, { method: "HEAD" });
+          if (testRes.ok) return testUrl;
+        } catch { /* continue */ }
+
         const fileName = sanitizedLaunch.split("/").pop() || "";
         if (fileName) {
           const altUrl = `${baseUrl}/${fileName}`;
-          const altRes = await fetch(altUrl, { method: "HEAD" });
-          if (altRes.ok) return altUrl;
+          try {
+            const altRes = await fetch(altUrl, { method: "HEAD" });
+            if (altRes.ok) return altUrl;
+          } catch { /* continue */ }
         }
       }
     }
-  } catch {
-    // Manifest not found or parse error, continue
+  } catch { /* continue */ }
+
+  // Step 4: Try router pages as last resort
+  for (const file of ["index_lms.html", "index.html"]) {
+    const url = `${baseUrl}/${file}`;
+    try {
+      const res = await fetch(url, { method: "HEAD" });
+      if (res.ok) return url;
+    } catch { continue; }
   }
 
-  // Step 2: Try common Articulate Storyline / Captivate entry points
-  // These are the actual launchable files (NOT AICCComm.html which is just the comm handler)
-  const dir = sanitizedEntry.includes("/") ? sanitizedEntry.slice(0, sanitizedEntry.lastIndexOf("/")) : "";
-  const parentDirPath = dir.includes("/") ? dir.slice(0, dir.lastIndexOf("/")) : "";
-  
-  const commonEntryFiles = [
-    "index_lms_html5.html",
-    "index_lms.html",
-    "story_html5.html",
-    "story.html",
-    "index.html",
-    "scormcontent/index.html",
-    "SCORMContent/index.html",
-  ];
-
-  // Build candidate list: try parent dirs first, then root
-  const candidateDirs = [parentDirPath, dir, ""].filter((d, i, arr) => arr.indexOf(d) === i);
-  
-  for (const candidateDir of candidateDirs) {
-    for (const file of commonEntryFiles) {
-      const fullPath = candidateDir ? `${candidateDir}/${file}` : file;
-      const url = `${baseUrl}/${fullPath}`;
-      try {
-        const res = await fetch(url, { method: "HEAD" });
-        if (res.ok) return url;
-      } catch {
-        continue;
-      }
-    }
-  }
-
-  // Step 3: Try the original entry point directly
-  const directUrl = `${baseUrl}/${sanitizedEntry}`;
-  try {
-    const res = await fetch(directUrl, { method: "HEAD" });
-    if (res.ok) return directUrl;
-  } catch {
-    // continue
-  }
-
-  // Step 4: Try the entry point unsanitized (as stored)
+  // Step 5: Try the entry point unsanitized
   const rawUrl = `${baseUrl}/${entryPoint}`;
   try {
     const res = await fetch(rawUrl, { method: "HEAD" });
     if (res.ok) return rawUrl;
-  } catch {
-    // continue
-  }
+  } catch { /* continue */ }
 
   return null;
 }
