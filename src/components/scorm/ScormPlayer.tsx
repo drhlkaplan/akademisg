@@ -27,11 +27,25 @@ function extractFolderPath(packageUrl: string): string | null {
 }
 
 /**
- * Build the base storage URL for a given folder path.
+ * Build the base storage URL for a given folder path (used for HEAD checks during resolution).
  */
 function buildStorageBase(folderPath: string): string {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   return `${supabaseUrl}/storage/v1/object/public/scorm-packages/${folderPath}`;
+}
+
+/**
+ * Convert a direct storage URL to a scorm-proxy URL for correct MIME types.
+ */
+function toProxyUrl(storageUrl: string): string {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const marker = "scorm-packages/";
+  const idx = storageUrl.indexOf(marker);
+  if (idx === -1) return storageUrl;
+  const objectPath = storageUrl.slice(idx + marker.length);
+  // Encode each path segment individually to preserve /
+  const encodedPath = objectPath.split("/").map(encodeURIComponent).join("/");
+  return `${supabaseUrl}/functions/v1/scorm-proxy/${encodedPath}`;
 }
 
 /**
@@ -222,8 +236,9 @@ export function ScormPlayer({
       if (cancelled) return;
 
       if (url) {
-        setDebugInfo(prev => `${prev}\nResolved: ${url}`);
-        setResolvedUrl(url);
+        const proxyUrl = toProxyUrl(url);
+        setDebugInfo(prev => `${prev}\nResolved: ${url}\nProxy: ${proxyUrl}`);
+        setResolvedUrl(proxyUrl);
       } else {
         setDebugInfo(prev => `${prev}\n❌ No launchable file found`);
         setError(
@@ -266,7 +281,7 @@ export function ScormPlayer({
       const baseUrl = buildStorageBase(folderPath);
       resolveEntryPoint(baseUrl, entryPoint).then(url => {
         if (url) {
-          setResolvedUrl(url);
+          setResolvedUrl(toProxyUrl(url));
         } else {
           setError("SCORM başlangıç dosyası bulunamadı.");
         }
@@ -338,7 +353,7 @@ export function ScormPlayer({
           onLoad={handleIframeLoad}
           onError={handleIframeError}
           allow="fullscreen"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation"
           title="SCORM Eğitim İçeriği"
         />
       )}
