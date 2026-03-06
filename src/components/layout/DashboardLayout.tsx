@@ -28,6 +28,7 @@ import {
   BarChart3,
   FileText,
   HelpCircle,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +51,7 @@ const adminNavItems = [
   { icon: Building2, label: "Firmalar", href: "/admin/companies" },
   { icon: GraduationCap, label: "Eğitimler", href: "/admin/courses" },
   { icon: FileCheck, label: "Sınavlar", href: "/admin/exams" },
+  { icon: KeyRound, label: "Gruplar", href: "/admin/groups" },
   { icon: Award, label: "Sertifikalar", href: "/admin/certificates" },
   { icon: BarChart3, label: "Raporlar", href: "/admin/reports" },
   { icon: FileText, label: "Loglar", href: "/admin/logs" },
