@@ -81,9 +81,9 @@ async function resolveEntryPoint(baseUrl: string, entryPoint: string): Promise<s
 
   // Step 2: Try common HTML5 content files first (skip router pages)
   const directContentFiles = [
-    "index_lms_html5.html",
-    "story_html5.html",
     "story.html",
+    "story_html5.html",
+    "index_lms_html5.html",
     "scormcontent/index.html",
     "SCORMContent/index.html",
   ];
