@@ -23,6 +23,10 @@ import ExamTaking from "./pages/exam/ExamTaking";
 import CourseLearning from "./pages/course/CourseLearning";
 import CertificateVerify from "./pages/CertificateVerify";
 import MyCertificates from "./pages/dashboard/MyCertificates";
+import MyCourses from "./pages/dashboard/MyCourses";
+import MyExams from "./pages/dashboard/MyExams";
+import Help from "./pages/dashboard/Help";
+import GroupsManagement from "./pages/admin/GroupsManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -113,6 +117,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/admin/groups"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <GroupsManagement />
+                </ProtectedRoute>
+              }
+            />
             
             {/* Student Certificates */}
             <Route
@@ -127,7 +139,23 @@ const App = () => (
               path="/dashboard/courses"
               element={
                 <ProtectedRoute>
-                  <StudentDashboard />
+                  <MyCourses />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/exams"
+              element={
+                <ProtectedRoute>
+                  <MyExams />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/help"
+              element={
+                <ProtectedRoute>
+                  <Help />
                 </ProtectedRoute>
               }
             />
