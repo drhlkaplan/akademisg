@@ -350,10 +350,10 @@ export default function GroupsManagement() {
             </div>
             <div>
               <Label>Firma (Opsiyonel)</Label>
-              <Select value={formData.firm_id} onValueChange={(v) => setFormData({ ...formData, firm_id: v })}>
+              <Select value={formData.firm_id || "none"} onValueChange={(v) => setFormData({ ...formData, firm_id: v === "none" ? "" : v })}>
                 <SelectTrigger><SelectValue placeholder="Firma seçin" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Firma yok</SelectItem>
+                  <SelectItem value="none">Firma yok</SelectItem>
                   {firms?.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
                 </SelectContent>
               </Select>
