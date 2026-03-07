@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     // Verify enrollment belongs to user and is active
     const { data: enrollment, error: enrollErr } = await adminClient
       .from("enrollments")
-      .select("id, user_id, status")
+      .select("id, user_id, status, course_id")
       .eq("id", enrollment_id)
       .eq("user_id", user.id)
       .single();
