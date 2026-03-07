@@ -50,8 +50,8 @@ export default function CertificateVerify() {
 
     try {
       const { data, error } = await supabase
-        .from("certificates")
-        .select("holder_name, holder_tc, course_title, danger_class, duration_hours, issue_date, certificate_number")
+        .from("public_certificates" as any)
+        .select("holder_name_short, holder_tc_masked, course_title, danger_class, duration_hours, issue_date, certificate_number")
         .eq("certificate_number", certificateCode.trim().toUpperCase())
         .eq("is_valid", true)
         .maybeSingle();
@@ -61,10 +61,7 @@ export default function CertificateVerify() {
       if (data) {
         setSearchResult({
           found: true,
-          data: {
-            ...data,
-            holder_tc: data.holder_tc ? maskTcNo(data.holder_tc) : null,
-          },
+          data: data as unknown as CertificateData,
         });
       } else {
         setSearchResult({ found: false });
