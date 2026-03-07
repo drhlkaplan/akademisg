@@ -11,8 +11,8 @@ import type { Database } from "@/integrations/supabase/types";
 type DangerClass = Database["public"]["Enums"]["danger_class"];
 
 interface CertificateData {
-  holder_name: string;
-  holder_tc: string | null;
+  holder_name_short: string;
+  holder_tc_masked: string | null;
   course_title: string;
   danger_class: DangerClass | null;
   duration_hours: number | null;
