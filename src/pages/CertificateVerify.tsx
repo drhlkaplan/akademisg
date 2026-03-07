@@ -11,8 +11,8 @@ import type { Database } from "@/integrations/supabase/types";
 type DangerClass = Database["public"]["Enums"]["danger_class"];
 
 interface CertificateData {
-  holder_name: string;
-  holder_tc: string | null;
+  holder_name_short: string;
+  holder_tc_masked: string | null;
   course_title: string;
   danger_class: DangerClass | null;
   duration_hours: number | null;
@@ -50,8 +50,8 @@ export default function CertificateVerify() {
 
     try {
       const { data, error } = await supabase
-        .from("certificates")
-        .select("holder_name, holder_tc, course_title, danger_class, duration_hours, issue_date, certificate_number")
+        .from("public_certificates" as any)
+        .select("holder_name_short, holder_tc_masked, course_title, danger_class, duration_hours, issue_date, certificate_number")
         .eq("certificate_number", certificateCode.trim().toUpperCase())
         .eq("is_valid", true)
         .maybeSingle();
@@ -61,10 +61,7 @@ export default function CertificateVerify() {
       if (data) {
         setSearchResult({
           found: true,
-          data: {
-            ...data,
-            holder_tc: data.holder_tc ? maskTcNo(data.holder_tc) : null,
-          },
+          data: data as unknown as CertificateData,
         });
       } else {
         setSearchResult({ found: false });
@@ -77,10 +74,7 @@ export default function CertificateVerify() {
     }
   };
 
-  const maskTcNo = (tc: string) => {
-    if (tc.length < 6) return tc;
-    return tc.substring(0, 3) + "*****" + tc.substring(tc.length - 2);
-  };
+    return null; // TC masking now handled server-side
 
   return (
     <MainLayout>
@@ -164,14 +158,14 @@ export default function CertificateVerify() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Ad Soyad</span>
                       <span className="font-medium text-foreground">
-                        {searchResult.data.holder_name}
+                        {searchResult.data.holder_name_short}
                       </span>
                     </div>
-                    {searchResult.data.holder_tc && (
+                    {searchResult.data.holder_tc_masked && (
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">TC Kimlik No</span>
                         <span className="font-medium text-foreground">
-                          {searchResult.data.holder_tc}
+                          {searchResult.data.holder_tc_masked}
                         </span>
                       </div>
                     )}

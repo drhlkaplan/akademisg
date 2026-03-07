@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     // Verify enrollment belongs to user and is active
     const { data: enrollment, error: enrollErr } = await adminClient
       .from("enrollments")
-      .select("id, user_id, status")
+      .select("id, user_id, status, course_id")
       .eq("id", enrollment_id)
       .eq("user_id", user.id)
       .single();
@@ -74,6 +74,14 @@ Deno.serve(async (req) => {
     if (examErr || !exam) {
       return new Response(JSON.stringify({ error: "Exam not found" }), {
         status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Verify exam belongs to the same course as the enrollment
+    if (exam.course_id !== enrollment.course_id) {
+      return new Response(JSON.stringify({ error: "Exam does not belong to this enrollment" }), {
+        status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
