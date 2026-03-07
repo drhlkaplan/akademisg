@@ -78,6 +78,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Verify exam belongs to the same course as the enrollment
+    if (exam.course_id !== enrollment.course_id) {
+      return new Response(JSON.stringify({ error: "Exam does not belong to this enrollment" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Check max attempts
     const { data: previousAttempts } = await adminClient
       .from("exam_results")

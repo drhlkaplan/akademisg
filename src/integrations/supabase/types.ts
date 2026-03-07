@@ -867,6 +867,39 @@ export type Database = {
       }
     }
     Views: {
+      public_certificates: {
+        Row: {
+          certificate_number: string | null
+          course_title: string | null
+          danger_class: Database["public"]["Enums"]["danger_class"] | null
+          duration_hours: number | null
+          holder_name_short: string | null
+          holder_tc_masked: string | null
+          is_valid: boolean | null
+          issue_date: string | null
+        }
+        Insert: {
+          certificate_number?: string | null
+          course_title?: string | null
+          danger_class?: Database["public"]["Enums"]["danger_class"] | null
+          duration_hours?: number | null
+          holder_name_short?: never
+          holder_tc_masked?: never
+          is_valid?: boolean | null
+          issue_date?: string | null
+        }
+        Update: {
+          certificate_number?: string | null
+          course_title?: string | null
+          danger_class?: Database["public"]["Enums"]["danger_class"] | null
+          duration_hours?: number | null
+          holder_name_short?: never
+          holder_tc_masked?: never
+          is_valid?: boolean | null
+          issue_date?: string | null
+        }
+        Relationships: []
+      }
       questions_for_students: {
         Row: {
           exam_id: string | null
