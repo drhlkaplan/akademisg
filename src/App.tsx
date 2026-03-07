@@ -8,28 +8,47 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 
-const Login = lazy(() => import("./pages/auth/Login"));
-const Register = lazy(() => import("./pages/auth/Register"));
-const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
-const ResetPassword = lazy(() => import("./pages/auth/ResetPassword"));
-const Courses = lazy(() => import("./pages/Courses"));
-const StudentDashboard = lazy(() => import("./pages/dashboard/StudentDashboard"));
-const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
-const UsersManagement = lazy(() => import("./pages/admin/UsersManagement"));
-const CoursesManagement = lazy(() => import("./pages/admin/CoursesManagement"));
-const FirmsManagement = lazy(() => import("./pages/admin/FirmsManagement"));
-const ExamsManagement = lazy(() => import("./pages/admin/ExamsManagement"));
-const ExamReports = lazy(() => import("./pages/admin/ExamReports"));
-const CertificatesManagement = lazy(() => import("./pages/admin/CertificatesManagement"));
-const ExamTaking = lazy(() => import("./pages/exam/ExamTaking"));
-const CourseLearning = lazy(() => import("./pages/course/CourseLearning"));
-const CertificateVerify = lazy(() => import("./pages/CertificateVerify"));
-const MyCertificates = lazy(() => import("./pages/dashboard/MyCertificates"));
-const MyCourses = lazy(() => import("./pages/dashboard/MyCourses"));
-const MyExams = lazy(() => import("./pages/dashboard/MyExams"));
-const Help = lazy(() => import("./pages/dashboard/Help"));
-const GroupsManagement = lazy(() => import("./pages/admin/GroupsManagement"));
-const NotFound = lazy(() => import("./pages/NotFound"));
+// Retry wrapper for lazy imports to handle chunk loading failures
+function lazyRetry<T extends React.ComponentType<any>>(
+  factory: () => Promise<{ default: T }>,
+  retries = 2
+): React.LazyExoticComponent<T> {
+  return lazy(() =>
+    factory().catch((err) => {
+      if (retries > 0) {
+        return new Promise<{ default: T }>((resolve) =>
+          setTimeout(() => resolve(lazyRetry(factory, retries - 1) as any), 1000)
+        );
+      }
+      // Last resort: reload the page to get fresh chunks
+      window.location.reload();
+      throw err;
+    })
+  );
+}
+
+const Login = lazyRetry(() => import("./pages/auth/Login"));
+const Register = lazyRetry(() => import("./pages/auth/Register"));
+const ForgotPassword = lazyRetry(() => import("./pages/auth/ForgotPassword"));
+const ResetPassword = lazyRetry(() => import("./pages/auth/ResetPassword"));
+const Courses = lazyRetry(() => import("./pages/Courses"));
+const StudentDashboard = lazyRetry(() => import("./pages/dashboard/StudentDashboard"));
+const AdminDashboard = lazyRetry(() => import("./pages/admin/AdminDashboard"));
+const UsersManagement = lazyRetry(() => import("./pages/admin/UsersManagement"));
+const CoursesManagement = lazyRetry(() => import("./pages/admin/CoursesManagement"));
+const FirmsManagement = lazyRetry(() => import("./pages/admin/FirmsManagement"));
+const ExamsManagement = lazyRetry(() => import("./pages/admin/ExamsManagement"));
+const ExamReports = lazyRetry(() => import("./pages/admin/ExamReports"));
+const CertificatesManagement = lazyRetry(() => import("./pages/admin/CertificatesManagement"));
+const ExamTaking = lazyRetry(() => import("./pages/exam/ExamTaking"));
+const CourseLearning = lazyRetry(() => import("./pages/course/CourseLearning"));
+const CertificateVerify = lazyRetry(() => import("./pages/CertificateVerify"));
+const MyCertificates = lazyRetry(() => import("./pages/dashboard/MyCertificates"));
+const MyCourses = lazyRetry(() => import("./pages/dashboard/MyCourses"));
+const MyExams = lazyRetry(() => import("./pages/dashboard/MyExams"));
+const Help = lazyRetry(() => import("./pages/dashboard/Help"));
+const GroupsManagement = lazyRetry(() => import("./pages/admin/GroupsManagement"));
+const NotFound = lazyRetry(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
 
