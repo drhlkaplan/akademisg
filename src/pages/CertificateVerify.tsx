@@ -74,10 +74,7 @@ export default function CertificateVerify() {
     }
   };
 
-  const maskTcNo = (tc: string) => {
-    if (tc.length < 6) return tc;
-    return tc.substring(0, 3) + "*****" + tc.substring(tc.length - 2);
-  };
+    return null; // TC masking now handled server-side
 
   return (
     <MainLayout>
@@ -161,14 +158,14 @@ export default function CertificateVerify() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Ad Soyad</span>
                       <span className="font-medium text-foreground">
-                        {searchResult.data.holder_name}
+                        {searchResult.data.holder_name_short}
                       </span>
                     </div>
-                    {searchResult.data.holder_tc && (
+                    {searchResult.data.holder_tc_masked && (
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">TC Kimlik No</span>
                         <span className="font-medium text-foreground">
-                          {searchResult.data.holder_tc}
+                          {searchResult.data.holder_tc_masked}
                         </span>
                       </div>
                     )}
