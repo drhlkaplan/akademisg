@@ -95,6 +95,8 @@ const trustPoints = [
 ];
 
 const Index = () => {
+  const [videoOpen, setVideoOpen] = useState(false);
+
   return (
     <MainLayout>
       {/* Hero Section */}
