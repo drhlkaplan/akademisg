@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.submit-exam]
 verify_jwt = false
+
+[functions.scorm-proxy]
+verify_jwt = false
+
+[functions.join-group-key]
+verify_jwt = false
