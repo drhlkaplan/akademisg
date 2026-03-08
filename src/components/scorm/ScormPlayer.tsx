@@ -51,21 +51,34 @@ const ROUTER_FILENAMES = new Set([
   "index_lms.html", "index.html", "launch.html", "story.html",
 ]);
 
+// Use GET with signal abort to check file existence (HEAD blocked by CORS on storage)
+async function checkFileExists(url: string): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const res = await fetch(url, { method: "GET", signal: controller.signal });
+    controller.abort(); // Don't download the whole file
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 async function resolveEntryPoint(baseUrl: string, entryPoint: string): Promise<string | null> {
   const sanitizedEntry = sanitizePath(entryPoint);
-  // Priority: direct HTML5 content files
+  // Priority: direct HTML5 content files (skip routers)
   const directContentFiles = [
     "story_html5.html", "index_lms_html5.html",
     "scormcontent/index.html", "SCORMContent/index.html",
   ];
   for (const file of directContentFiles) {
     const url = `${baseUrl}/${file}`;
-    try { const res = await fetch(url, { method: "HEAD" }); if (res.ok) return url; } catch { continue; }
+    if (await checkFileExists(url)) return url;
   }
   // If entry point is not a router, try it directly
   const entryFileName = sanitizedEntry.split("/").pop()?.toLowerCase() || "";
   if (!ROUTER_FILENAMES.has(entryFileName)) {
-    try { const res = await fetch(`${baseUrl}/${sanitizedEntry}`, { method: "HEAD" }); if (res.ok) return `${baseUrl}/${sanitizedEntry}`; } catch {}
+    const url = `${baseUrl}/${sanitizedEntry}`;
+    if (await checkFileExists(url)) return url;
   }
   // Parse manifest for launch file
   try {
@@ -78,17 +91,20 @@ async function resolveEntryPoint(baseUrl: string, entryPoint: string): Promise<s
         const launchFileName = sanitizedLaunch.split("/").pop()?.toLowerCase() || "";
         if (ROUTER_FILENAMES.has(launchFileName)) {
           const html5Url = `${baseUrl}/${sanitizedLaunch.replace(/\.html$/i, "_html5.html")}`;
-          try { const res = await fetch(html5Url, { method: "HEAD" }); if (res.ok) return html5Url; } catch {}
+          if (await checkFileExists(html5Url)) return html5Url;
         }
-        try { const res = await fetch(`${baseUrl}/${sanitizedLaunch}`, { method: "HEAD" }); if (res.ok) return `${baseUrl}/${sanitizedLaunch}`; } catch {}
+        const launchUrl = `${baseUrl}/${sanitizedLaunch}`;
+        if (await checkFileExists(launchUrl)) return launchUrl;
       }
     }
   } catch {}
   // Fallback: common files
   for (const file of ["story.html", "index_lms.html", "index.html"]) {
-    try { const res = await fetch(`${baseUrl}/${file}`, { method: "HEAD" }); if (res.ok) return `${baseUrl}/${file}`; } catch { continue; }
+    const url = `${baseUrl}/${file}`;
+    if (await checkFileExists(url)) return url;
   }
-  try { const res = await fetch(`${baseUrl}/${entryPoint}`, { method: "HEAD" }); if (res.ok) return `${baseUrl}/${entryPoint}`; } catch {}
+  const fallbackUrl = `${baseUrl}/${entryPoint}`;
+  if (await checkFileExists(fallbackUrl)) return fallbackUrl;
   return null;
 }
 
