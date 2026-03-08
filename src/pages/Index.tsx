@@ -1,6 +1,13 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge-custom";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Shield,
   GraduationCap,
@@ -14,6 +21,7 @@ import {
   Building2,
   Zap,
   Globe,
+  X,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import heroImage from "@/assets/hero-bg.jpg";
@@ -87,6 +95,8 @@ const trustPoints = [
 ];
 
 const Index = () => {
+  const [videoOpen, setVideoOpen] = useState(false);
+
   return (
     <MainLayout>
       {/* Hero Section */}
@@ -131,9 +141,10 @@ const Index = () => {
                 </Link>
               </Button>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="xl"
-                className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 backdrop-blur-sm"
+                className="border border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 backdrop-blur-sm bg-transparent"
+                onClick={() => setVideoOpen(true)}
               >
                 <Play className="mr-2 h-5 w-5" />
                 Tanıtım Videosu
@@ -325,6 +336,26 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Video Dialog */}
+      <Dialog open={videoOpen} onOpenChange={setVideoOpen}>
+        <DialogContent className="sm:max-w-3xl p-0 overflow-hidden bg-black border-none">
+          <DialogHeader className="absolute top-2 right-2 z-20 p-0 m-0">
+            <DialogTitle className="sr-only">Tanıtım Videosu</DialogTitle>
+          </DialogHeader>
+          <div className="relative w-full aspect-video">
+            <video
+              className="w-full h-full"
+              controls
+              autoPlay
+              src="https://www.w3schools.com/html/mov_bbb.mp4"
+              poster={heroImage}
+            >
+              Tarayıcınız video etiketini desteklemiyor.
+            </video>
+          </div>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 };

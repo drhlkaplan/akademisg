@@ -780,34 +780,151 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
 
             {/* Exam type */}
             {formData.type === "exam" && (
-              <div className="space-y-2">
-                <Label>Sınav</Label>
-                <Select
-                  value={formData.exam_id}
-                  onValueChange={(val) => setFormData({ ...formData, exam_id: val })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sınav seçin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {exams?.map((exam) => (
-                      <SelectItem key={exam.id} value={exam.id}>
-                        {exam.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {(!exams || exams.length === 0) && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Platform Sınavı Seçin</Label>
+                  <Select
+                    value={formData.exam_id}
+                    onValueChange={(val) => setFormData({ ...formData, exam_id: val })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sınav seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {exams?.map((exam) => (
+                        <SelectItem key={exam.id} value={exam.id}>
+                          {exam.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {(!exams || exams.length === 0) && (
+                    <p className="text-xs text-muted-foreground">
+                      Bu kursa ait sınav yok. Sınav Yönetimi'nden oluşturun.
+                    </p>
+                  )}
+                </div>
+
+                {/* SCORM Exam Option */}
+                <div className="border-t pt-4 space-y-2">
+                  <Label className="text-sm font-medium">Veya SCORM Sınav Paketi Ekle</Label>
                   <p className="text-xs text-muted-foreground">
-                    Bu kursa ait sınav yok. Sınav Yönetimi'nden oluşturun.
+                    SCORM formatında hazırlanmış bir sınav paketini de ders olarak bağlayabilirsiniz.
                   </p>
-                )}
+                  <Select
+                    value={formData.scorm_package_id}
+                    onValueChange={(val) => setFormData({ ...formData, scorm_package_id: val })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="SCORM sınav paketi seçin (opsiyonel)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {scormPackages?.map((pkg) => (
+                        <SelectItem key={pkg.id} value={pkg.id}>
+                          {pkg.id.slice(0, 8)}... ({pkg.scorm_version || "1.2"})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
+                    <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Yeni SCORM sınav paketi yükleyin (.zip)
+                    </p>
+                    <input
+                      type="file"
+                      accept=".zip"
+                      className="hidden"
+                      id="scorm-exam-file-input"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleScormUpload(file);
+                      }}
+                    />
+                    <label htmlFor="scorm-exam-file-input" className="cursor-pointer">
+                      <Button variant="outline" size="sm" disabled={uploading} asChild>
+                        <span>
+                          {uploading ? (
+                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Yükleniyor...</>
+                          ) : (
+                            <><Upload className="mr-2 h-4 w-4" />SCORM Dosya Seç</>
+                          )}
+                        </span>
+                      </Button>
+                    </label>
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* Content type: rich text editor + URL */}
+            {/* Content type: rich text editor + file upload + URL */}
             {formData.type === "content" && (
               <div className="space-y-4">
+                {/* File Upload Section */}
+                <div className="space-y-2">
+                  <Label>Dosya Yükle (PDF, PPT, MP4, AVI)</Label>
+                  <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+                    <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground mb-2">
+                      PDF, PPT, MP4 veya AVI dosyası yükleyin
+                    </p>
+                    <input
+                      type="file"
+                      accept=".pdf,.ppt,.pptx,.mp4,.avi,.mov,.webm"
+                      className="hidden"
+                      id="content-file-input"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setUploading(true);
+                        try {
+                          const ext = file.name.split('.').pop()?.toLowerCase() || '';
+                          const fileName = `${courseId}/${Date.now()}_${sanitizePathSegment(file.name)}`;
+                          const { error } = await supabase.storage
+                            .from("lesson-content")
+                            .upload(fileName, file, { upsert: true });
+                          if (error) throw error;
+                          const { data: { publicUrl } } = supabase.storage
+                            .from("lesson-content")
+                            .getPublicUrl(fileName);
+                          setFormData(prev => ({ ...prev, content_url: publicUrl }));
+                          toast({ title: "Başarılı", description: "Dosya yüklendi." });
+                        } catch (err: any) {
+                          toast({ title: "Hata", description: err.message || "Dosya yüklenemedi.", variant: "destructive" });
+                        } finally {
+                          setUploading(false);
+                        }
+                      }}
+                    />
+                    <label htmlFor="content-file-input" className="cursor-pointer">
+                      <Button variant="outline" size="sm" disabled={uploading} asChild>
+                        <span>
+                          {uploading ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Yükleniyor...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="mr-2 h-4 w-4" />
+                              Dosya Seç
+                            </>
+                          )}
+                        </span>
+                      </Button>
+                    </label>
+                  </div>
+                  {formData.content_url && !formData.content_url.startsWith("<") && (
+                    <div className="flex items-center gap-2 text-sm p-2 rounded bg-muted/50">
+                      <FileText className="h-4 w-4 text-accent" />
+                      <span className="truncate flex-1">{formData.content_url.split('/').pop()}</span>
+                      <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => window.open(formData.content_url, '_blank')}>
+                        <ExternalLink className="h-3 w-3 mr-1" /> Önizle
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
                 <div className="space-y-2">
                   <Label>İçerik (Zengin Metin Editörü)</Label>
                   <RichTextEditor
@@ -817,7 +934,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Veya İçerik URL'si</Label>
+                  <Label>Veya İçerik URL'si (Manuel)</Label>
                   <Input
                     value={formData.content_url}
                     onChange={(e) => setFormData({ ...formData, content_url: e.target.value })}
