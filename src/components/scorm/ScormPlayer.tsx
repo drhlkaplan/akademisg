@@ -247,9 +247,10 @@ export const ScormPlayer = ({
           const htmlText = await response.text();
           const lastSlash = url.lastIndexOf("/");
           const baseTag = `<base href="${url.substring(0, lastSlash)}/">`;
+          const apiBridgeScript = `<script>try{if(window.parent&&window.parent.API){window.API=window.parent.API;window.API_1484_11=window.parent.API_1484_11||window.parent.API;}}catch(e){}</script>`;
           const modifiedHtml = htmlText.match(/<head[^>]*>/i)
-            ? htmlText.replace(/<head[^>]*>/i, `$&\n${baseTag}`)
-            : `${baseTag}\n${htmlText}`;
+            ? htmlText.replace(/<head[^>]*>/i, `$&\n${baseTag}\n${apiBridgeScript}`)
+            : `${baseTag}\n${apiBridgeScript}\n${htmlText}`;
           setSrcdocContent(modifiedHtml);
         } catch { setError("İçerik yüklenemedi."); setIsLoading(false); }
       });
