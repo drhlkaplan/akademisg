@@ -178,6 +178,24 @@ const App = () => (
               }
             />
             
+            {/* Firm Admin Dashboard */}
+            <Route
+              path="/firm"
+              element={
+                <ProtectedRoute requireFirmAdmin>
+                  <FirmDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/firm/*"
+              element={
+                <ProtectedRoute requireFirmAdmin>
+                  <FirmDashboard />
+                </ProtectedRoute>
+              }
+            />
+            
             {/* Student Certificates */}
             <Route
               path="/dashboard/certificates"
