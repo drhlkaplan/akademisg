@@ -285,10 +285,10 @@ export function DashboardLayout({
           <header className="hidden lg:flex sticky top-0 z-40 h-14 items-center gap-4 border-b border-border bg-card/95 backdrop-blur-sm px-6">
             {/* Breadcrumb */}
             <div className="flex-1 flex items-center gap-2 text-sm">
-              <Link to={userRole === "student" ? "/dashboard" : "/admin"} className="text-muted-foreground hover:text-foreground transition-colors">
-                {userRole === "student" ? "Panel" : "Yönetim"}
+              <Link to={userRole === "student" ? "/dashboard" : userRole === "company" ? "/firm" : "/admin"} className="text-muted-foreground hover:text-foreground transition-colors">
+                {userRole === "student" ? "Panel" : userRole === "company" ? "Firma Paneli" : "Yönetim"}
               </Link>
-              {location.pathname !== "/dashboard" && location.pathname !== "/admin" && (
+              {location.pathname !== "/dashboard" && location.pathname !== "/admin" && location.pathname !== "/firm" && (
                 <>
                   <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
                   <span className="font-medium text-foreground">{currentPageTitle}</span>
