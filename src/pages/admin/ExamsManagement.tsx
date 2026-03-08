@@ -87,12 +87,15 @@ export default function ExamsManagement() {
   const [courseFilter, setCourseFilter] = useState<string>("all");
   const [isExamDialogOpen, setIsExamDialogOpen] = useState(false);
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
+  const [isQuestionBankOpen, setIsQuestionBankOpen] = useState(false);
   const [deleteExamId, setDeleteExamId] = useState<string | null>(null);
   const [deleteQuestionId, setDeleteQuestionId] = useState<string | null>(null);
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
   const [expandedExamId, setExpandedExamId] = useState<string | null>(null);
+  const [bankSourceExamId, setBankSourceExamId] = useState<string>("");
+  const [selectedBankQuestions, setSelectedBankQuestions] = useState<Set<string>>(new Set());
   
   const [examForm, setExamForm] = useState({
     title: "",
