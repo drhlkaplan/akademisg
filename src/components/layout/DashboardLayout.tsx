@@ -148,7 +148,7 @@ export function DashboardLayout({
       {/* Logo */}
       <div className="p-5 border-b border-sidebar-border/50">
         <Link to="/" className="flex items-center gap-3">
-          {branding?.logo_url && userRole === "student" ? (
+          {branding?.logo_url && showFirmBranding ? (
             <img src={branding.logo_url} alt={branding.name} className="h-10 max-w-[180px] object-contain" />
           ) : (
             <>
