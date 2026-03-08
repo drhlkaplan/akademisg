@@ -941,7 +941,7 @@ export default function FirmsManagement() {
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="" disabled>
+                    <SelectItem value="__none__" disabled>
                       Atanabilir kullanıcı yok
                     </SelectItem>
                   )}
