@@ -111,10 +111,16 @@ export function DashboardLayout({
   const { branding } = useFirmBranding();
   const { user, profile, signOut } = useAuth();
 
-  const navItems = userRole === "student" ? studentNavItems : adminNavItems;
+  const navItems = userRole === "student" ? studentNavItems
+    : userRole === "company" ? companyNavItems
+    : adminNavItems;
   const dashboardTitle = userRole === "student"
     ? (branding?.name ? `${branding.name}` : "Öğrenci Paneli")
+    : userRole === "company"
+    ? (branding?.name ? `${branding.name}` : "Firma Paneli")
     : "Yönetim Paneli";
+  
+  const showFirmBranding = userRole === "student" || userRole === "company";
 
   const getInitials = () => {
     if (profile?.first_name && profile?.last_name) {
