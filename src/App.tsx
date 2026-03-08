@@ -33,6 +33,14 @@ const Register = lazyRetry(() => import("./pages/auth/Register"));
 const ForgotPassword = lazyRetry(() => import("./pages/auth/ForgotPassword"));
 const ResetPassword = lazyRetry(() => import("./pages/auth/ResetPassword"));
 const Courses = lazyRetry(() => import("./pages/Courses"));
+const About = lazyRetry(() => import("./pages/About"));
+const Services = lazyRetry(() => import("./pages/Services"));
+const CourseDetail = lazyRetry(() => import("./pages/CourseDetail"));
+const Pricing = lazyRetry(() => import("./pages/Pricing"));
+const CorporateSolutions = lazyRetry(() => import("./pages/CorporateSolutions"));
+const Contact = lazyRetry(() => import("./pages/Contact"));
+const Blog = lazyRetry(() => import("./pages/Blog"));
+const BlogPost = lazyRetry(() => import("./pages/BlogPost"));
 const StudentDashboard = lazyRetry(() => import("./pages/dashboard/StudentDashboard"));
 const AdminDashboard = lazyRetry(() => import("./pages/admin/AdminDashboard"));
 const UsersManagement = lazyRetry(() => import("./pages/admin/UsersManagement"));
@@ -78,6 +86,14 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/courses" element={<Courses />} />
+            <Route path="/course/:courseId" element={<CourseDetail />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/services" element={<Services />} />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/corporate" element={<CorporateSolutions />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/blog" element={<Blog />} />
+            <Route path="/blog/:slug" element={<BlogPost />} />
             <Route path="/verify" element={<CertificateVerify />} />
             
             {/* Protected Student Dashboard */}
