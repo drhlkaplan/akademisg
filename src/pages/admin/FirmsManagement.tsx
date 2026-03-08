@@ -393,6 +393,16 @@ export default function FirmsManagement() {
       phone: firm.phone || "",
       email: firm.email || "",
       is_active: firm.is_active ?? true,
+      firm_code: (firm as any).firm_code || "",
+      logo_url: (firm as any).logo_url || "",
+      primary_color: (firm as any).primary_color || "#f97316",
+      secondary_color: (firm as any).secondary_color || "#1a2744",
+      bg_color: (firm as any).bg_color || "#f8fafc",
+      welcome_message: (firm as any).welcome_message || "Eğitimlerinize hoş geldiniz",
+      login_bg_url: (firm as any).login_bg_url || "",
+      footer_text: (firm as any).footer_text || "",
+      custom_css: (firm as any).custom_css || "",
+      favicon_url: (firm as any).favicon_url || "",
     });
     setDialogOpen(true);
   };
