@@ -86,6 +86,14 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/courses" element={<Courses />} />
+            <Route path="/course/:courseId" element={<CourseDetail />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/services" element={<Services />} />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/corporate" element={<CorporateSolutions />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/blog" element={<Blog />} />
+            <Route path="/blog/:slug" element={<BlogPost />} />
             <Route path="/verify" element={<CertificateVerify />} />
             
             {/* Protected Student Dashboard */}
