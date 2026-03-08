@@ -72,7 +72,8 @@ const dangerClassLabel: Record<DangerClass, string> = {
 };
 
 export default function StudentDashboard() {
-  const { user, profile } = useAuth();
+  const { user, profile, isFirmAdmin } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [enrollments, setEnrollments] = useState<EnrollmentWithCourse[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
