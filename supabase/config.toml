@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.join-group-key]
 verify_jwt = false
+
+[functions.manage-firm-employees]
+verify_jwt = false
