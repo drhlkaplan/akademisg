@@ -89,6 +89,7 @@ export default function StudentDashboard() {
     }
   }, [isFirmAdmin, navigate]);
 
+  useEffect(() => {
     if (user) {
       fetchData();
     }
