@@ -53,6 +53,10 @@ const MyExams = lazyRetry(() => import("./pages/dashboard/MyExams"));
 const Help = lazyRetry(() => import("./pages/dashboard/Help"));
 const GroupsManagement = lazyRetry(() => import("./pages/admin/GroupsManagement"));
 const FirmDashboard = lazyRetry(() => import("./pages/firm/FirmDashboard"));
+const FirmEmployees = lazyRetry(() => import("./pages/firm/FirmEmployees"));
+const FirmCourses = lazyRetry(() => import("./pages/firm/FirmCourses"));
+const FirmReports = lazyRetry(() => import("./pages/firm/FirmReports"));
+const FirmCertificates = lazyRetry(() => import("./pages/firm/FirmCertificates"));
 const NotFound = lazyRetry(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
