@@ -39,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const isAdmin = roles.includes("admin") || roles.includes("super_admin");
+  const isFirmAdmin = roles.includes("firm_admin");
 
   const fetchProfile = async (userId: string) => {
     try {
