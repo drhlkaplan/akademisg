@@ -30,32 +30,14 @@ function sanitizePath(path: string): string {
   return path.replace(/&/g, "_").replace(/ /g, "_");
 }
 
-function getMimeType(path: string): string {
-  const ext = path.split(".").pop()?.split("?")[0]?.toLowerCase() ?? "";
-  const map: Record<string, string> = {
-    html: "text/html", htm: "text/html",
-    js: "application/javascript", mjs: "application/javascript",
-    css: "text/css", json: "application/json",
-    xml: "application/xml", svg: "image/svg+xml",
-    png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
-    gif: "image/gif", webp: "image/webp",
-    woff: "font/woff", woff2: "font/woff2", ttf: "font/ttf",
-    mp4: "video/mp4", mp3: "audio/mpeg", wav: "audio/wav",
-    pdf: "application/pdf", txt: "text/plain",
-    swf: "application/x-shockwave-flash",
-  };
-  return map[ext] || "application/octet-stream";
-}
-
 const ROUTER_FILENAMES = new Set([
   "index_lms.html", "index.html", "launch.html", "story.html",
 ]);
 
-// Use GET to check file existence (HEAD blocked by CORS on storage)
+// Use GET to check file existence (HEAD blocked by CORS on some storage configs)
 async function checkFileExists(url: string): Promise<boolean> {
   try {
     const res = await fetch(url, { method: "GET" });
-    // Consume body to avoid resource leak, but don't wait for full download
     res.body?.cancel();
     return res.ok;
   } catch {
@@ -123,50 +105,6 @@ function parseLaunchFromManifest(xml: string): string | null {
   return null;
 }
 
-/**
- * Rewrites HTML so that relative resource URLs go through storage directly,
- * and injects the SCORM API bridge into the page.
- */
-function rewriteHtml(html: string, storageBaseUrl: string): string {
-  // Inject a <base> tag so all relative URLs resolve to storage
-  const baseTag = `<base href="${storageBaseUrl}/">`;
-  
-  // Inject SCORM API bridge script
-  const scormBridge = `
-<script>
-(function() {
-  // Walk up to find API on parent/opener
-  function findAPI(win) {
-    try { if (win.API) return win.API; } catch(e) {}
-    try { if (win.parent && win.parent !== win) return findAPI(win.parent); } catch(e) {}
-    try { if (win.opener) return findAPI(win.opener); } catch(e) {}
-    return null;
-  }
-  function findAPI2004(win) {
-    try { if (win.API_1484_11) return win.API_1484_11; } catch(e) {}
-    try { if (win.parent && win.parent !== win) return findAPI2004(win.parent); } catch(e) {}
-    try { if (win.opener) return findAPI2004(win.opener); } catch(e) {}
-    return null;
-  }
-  // Make API available on this window
-  var api12 = findAPI(window);
-  var api2004 = findAPI2004(window);
-  if (api12) window.API = api12;
-  if (api2004) window.API_1484_11 = api2004;
-})();
-</script>`;
-
-  // Insert base tag and bridge after <head>
-  if (html.includes("<head>")) {
-    return html.replace("<head>", `<head>${baseTag}${scormBridge}`);
-  }
-  if (html.includes("<HEAD>")) {
-    return html.replace("<HEAD>", `<HEAD>${baseTag}${scormBridge}`);
-  }
-  // If no head tag, prepend
-  return `${baseTag}${scormBridge}${html}`;
-}
-
 export const ScormPlayer = ({
   packageUrl, entryPoint, enrollmentId, scormPackageId, lessonId, userId, onComplete,
 }: ScormPlayerProps) => {
@@ -174,10 +112,9 @@ export const ScormPlayer = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [blobUrl, setBlobUrl] = useState<string>("");
+  const [resolvedUrl, setResolvedUrl] = useState<string>("");
   const [debugInfo, setDebugInfo] = useState<string>("");
   const containerRef = useRef<HTMLDivElement>(null);
-  const blobUrlRef = useRef<string>("");
 
   const { createApiObject } = useScormApi({ enrollmentId, scormPackageId, lessonId, userId, onComplete });
 
@@ -189,75 +126,33 @@ export const ScormPlayer = ({
     return () => { delete (window as any).API; delete (window as any).API_1484_11; };
   }, [createApiObject]);
 
-  // Resolve entry point and create blob URL
+  // Resolve entry point - use direct storage URL
   useEffect(() => {
     let cancelled = false;
     const resolve = async () => {
       setIsLoading(true); setError(null); setDebugInfo("");
-      
       const folderPath = extractFolderPath(packageUrl);
       if (!folderPath) {
         setError("Paket yolu çözümlenemedi.");
         setIsLoading(false);
         return;
       }
-      
       const baseUrl = buildStorageBase(folderPath);
       setDebugInfo(`Base: ${baseUrl}\nEntry: ${entryPoint}`);
-      
-      const resolvedStorageUrl = await resolveEntryPoint(baseUrl, entryPoint);
+      const url = await resolveEntryPoint(baseUrl, entryPoint);
       if (cancelled) return;
-      
-      if (!resolvedStorageUrl) {
+      if (url) {
+        setDebugInfo(prev => `${prev}\nResolved: ${url}`);
+        // Use direct storage URL - files were uploaded with correct MIME types
+        setResolvedUrl(url);
+      } else {
         setDebugInfo(prev => `${prev}\n❌ No launchable file found`);
         setError("SCORM başlangıç dosyası bulunamadı. Lütfen paketi silip yeniden yükleyin.");
         setIsLoading(false);
-        return;
-      }
-
-      setDebugInfo(prev => `${prev}\nResolved: ${resolvedStorageUrl}`);
-
-      try {
-        // Fetch HTML content from storage (text/plain is fine, we just need the bytes)
-        const response = await fetch(resolvedStorageUrl);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
-        const htmlText = await response.text();
-        
-        // Determine the storage base for this file (directory of the resolved URL)
-        const lastSlash = resolvedStorageUrl.lastIndexOf("/");
-        const storageDir = resolvedStorageUrl.substring(0, lastSlash);
-        
-        // Rewrite HTML with <base> tag pointing to storage and inject SCORM bridge
-        const rewrittenHtml = rewriteHtml(htmlText, storageDir);
-        
-        // Create blob URL with correct MIME type
-        const blob = new Blob([rewrittenHtml], { type: "text/html" });
-        const url = URL.createObjectURL(blob);
-        
-        // Cleanup previous blob
-        if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = url;
-        
-        if (!cancelled) {
-          setBlobUrl(url);
-          setDebugInfo(prev => `${prev}\n✅ Blob URL created`);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(`İçerik yüklenemedi: ${err instanceof Error ? err.message : "Bilinmeyen hata"}`);
-          setIsLoading(false);
-        }
       }
     };
     resolve();
-    return () => { 
-      cancelled = true;
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = "";
-      }
-    };
+    return () => { cancelled = true; };
   }, [packageUrl, entryPoint]);
 
   const handleIframeLoad = useCallback(() => {
@@ -272,26 +167,14 @@ export const ScormPlayer = ({
   }, []);
 
   const handleRetry = useCallback(() => {
-    setError(null); setBlobUrl("");
+    setError(null); setResolvedUrl("");
+    setIsLoading(true);
     const folderPath = extractFolderPath(packageUrl);
     if (folderPath) {
       const baseUrl = buildStorageBase(folderPath);
-      setIsLoading(true);
-      resolveEntryPoint(baseUrl, entryPoint).then(async url => {
-        if (!url) { setError("SCORM başlangıç dosyası bulunamadı."); setIsLoading(false); return; }
-        try {
-          const response = await fetch(url);
-          const htmlText = await response.text();
-          const lastSlash = url.lastIndexOf("/");
-          const rewrittenHtml = rewriteHtml(htmlText, url.substring(0, lastSlash));
-          const blob = new Blob([rewrittenHtml], { type: "text/html" });
-          const bUrl = URL.createObjectURL(blob);
-          if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
-          blobUrlRef.current = bUrl;
-          setBlobUrl(bUrl);
-        } catch {
-          setError("İçerik yüklenemedi."); setIsLoading(false);
-        }
+      resolveEntryPoint(baseUrl, entryPoint).then(url => {
+        if (url) setResolvedUrl(url);
+        else { setError("SCORM başlangıç dosyası bulunamadı."); setIsLoading(false); }
       });
     }
   }, [packageUrl, entryPoint]);
@@ -341,10 +224,10 @@ export const ScormPlayer = ({
           </div>
         </div>
       )}
-      {blobUrl && (
+      {resolvedUrl && (
         <iframe
           ref={iframeRef}
-          src={blobUrl}
+          src={resolvedUrl}
           className="flex-1 w-full border-0"
           style={{ minHeight: "500px" }}
           onLoad={handleIframeLoad}
