@@ -69,9 +69,12 @@ export function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { branding } = useFirmBranding();
 
   const navItems = userRole === "student" ? studentNavItems : adminNavItems;
-  const dashboardTitle = userRole === "student" ? "Öğrenci Paneli" : "Yönetim Paneli";
+  const dashboardTitle = userRole === "student"
+    ? (branding?.name ? `${branding.name}` : "Öğrenci Paneli")
+    : "Yönetim Paneli";
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
