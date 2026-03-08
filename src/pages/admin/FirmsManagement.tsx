@@ -224,6 +224,16 @@ export default function FirmsManagement() {
           phone: data.phone || null,
           email: data.email || null,
           is_active: data.is_active,
+          firm_code: data.firm_code || null,
+          logo_url: data.logo_url || null,
+          primary_color: data.primary_color || "#f97316",
+          secondary_color: data.secondary_color || "#1a2744",
+          bg_color: data.bg_color || "#f8fafc",
+          welcome_message: data.welcome_message || null,
+          login_bg_url: data.login_bg_url || null,
+          footer_text: data.footer_text || null,
+          custom_css: data.custom_css || null,
+          favicon_url: data.favicon_url || null,
         })
         .eq("id", data.id);
       if (error) throw error;
