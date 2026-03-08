@@ -805,9 +805,74 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
               </div>
             )}
 
-            {/* Content type: rich text editor + URL */}
+            {/* Content type: rich text editor + file upload + URL */}
             {formData.type === "content" && (
               <div className="space-y-4">
+                {/* File Upload Section */}
+                <div className="space-y-2">
+                  <Label>Dosya Yükle (PDF, PPT, MP4, AVI)</Label>
+                  <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+                    <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground mb-2">
+                      PDF, PPT, MP4 veya AVI dosyası yükleyin
+                    </p>
+                    <input
+                      type="file"
+                      accept=".pdf,.ppt,.pptx,.mp4,.avi,.mov,.webm"
+                      className="hidden"
+                      id="content-file-input"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setUploading(true);
+                        try {
+                          const ext = file.name.split('.').pop()?.toLowerCase() || '';
+                          const fileName = `${courseId}/${Date.now()}_${sanitizePathSegment(file.name)}`;
+                          const { error } = await supabase.storage
+                            .from("lesson-content")
+                            .upload(fileName, file, { upsert: true });
+                          if (error) throw error;
+                          const { data: { publicUrl } } = supabase.storage
+                            .from("lesson-content")
+                            .getPublicUrl(fileName);
+                          setFormData(prev => ({ ...prev, content_url: publicUrl }));
+                          toast({ title: "Başarılı", description: "Dosya yüklendi." });
+                        } catch (err: any) {
+                          toast({ title: "Hata", description: err.message || "Dosya yüklenemedi.", variant: "destructive" });
+                        } finally {
+                          setUploading(false);
+                        }
+                      }}
+                    />
+                    <label htmlFor="content-file-input" className="cursor-pointer">
+                      <Button variant="outline" size="sm" disabled={uploading} asChild>
+                        <span>
+                          {uploading ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Yükleniyor...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="mr-2 h-4 w-4" />
+                              Dosya Seç
+                            </>
+                          )}
+                        </span>
+                      </Button>
+                    </label>
+                  </div>
+                  {formData.content_url && !formData.content_url.startsWith("<") && (
+                    <div className="flex items-center gap-2 text-sm p-2 rounded bg-muted/50">
+                      <FileText className="h-4 w-4 text-accent" />
+                      <span className="truncate flex-1">{formData.content_url.split('/').pop()}</span>
+                      <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => window.open(formData.content_url, '_blank')}>
+                        <ExternalLink className="h-3 w-3 mr-1" /> Önizle
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
                 <div className="space-y-2">
                   <Label>İçerik (Zengin Metin Editörü)</Label>
                   <RichTextEditor
@@ -817,7 +882,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Veya İçerik URL'si</Label>
+                  <Label>Veya İçerik URL'si (Manuel)</Label>
                   <Input
                     value={formData.content_url}
                     onChange={(e) => setFormData({ ...formData, content_url: e.target.value })}
