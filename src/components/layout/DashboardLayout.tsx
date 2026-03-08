@@ -29,9 +29,12 @@ import {
   FileText,
   HelpCircle,
   KeyRound,
+  Search,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFirmBranding } from "@/contexts/FirmBrandingContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -46,21 +49,49 @@ const studentNavItems = [
   { icon: HelpCircle, label: "Yardım", href: "/dashboard/help" },
 ];
 
-const adminNavItems = [
-  { icon: LayoutDashboard, label: "Gösterge Paneli", href: "/admin" },
-  { icon: Users, label: "Kullanıcılar", href: "/admin/users" },
-  { icon: Building2, label: "Firmalar", href: "/admin/companies" },
-  { icon: GraduationCap, label: "Eğitimler", href: "/admin/courses" },
-  { icon: FileCheck, label: "Sınavlar", href: "/admin/exams" },
-  { icon: KeyRound, label: "Gruplar", href: "/admin/groups" },
-  { icon: Award, label: "Sertifikalar", href: "/admin/certificates" },
-  { icon: FileText, label: "Şablonlar", href: "/admin/certificate-templates" },
-  { icon: BarChart3, label: "Sınav Raporları", href: "/admin/reports" },
-  { icon: BarChart3, label: "Analiz", href: "/admin/analytics" },
-  { icon: FileText, label: "Rapor Merkezi", href: "/admin/report-center" },
-  { icon: FileText, label: "Loglar", href: "/admin/logs" },
-  { icon: Settings, label: "Ayarlar", href: "/admin/settings" },
+const adminNavGroups = [
+  {
+    label: "Genel",
+    items: [
+      { icon: LayoutDashboard, label: "Gösterge Paneli", href: "/admin" },
+    ],
+  },
+  {
+    label: "Yönetim",
+    items: [
+      { icon: Users, label: "Kullanıcılar", href: "/admin/users" },
+      { icon: Building2, label: "Firmalar", href: "/admin/companies" },
+      { icon: KeyRound, label: "Gruplar", href: "/admin/groups" },
+    ],
+  },
+  {
+    label: "Eğitim",
+    items: [
+      { icon: GraduationCap, label: "Eğitimler", href: "/admin/courses" },
+      { icon: FileCheck, label: "Sınavlar", href: "/admin/exams" },
+      { icon: Award, label: "Sertifikalar", href: "/admin/certificates" },
+      { icon: FileText, label: "Şablonlar", href: "/admin/certificate-templates" },
+    ],
+  },
+  {
+    label: "Raporlama",
+    items: [
+      { icon: BarChart3, label: "Sınav Raporları", href: "/admin/reports" },
+      { icon: BarChart3, label: "Analiz", href: "/admin/analytics" },
+      { icon: FileText, label: "Rapor Merkezi", href: "/admin/report-center" },
+      { icon: FileText, label: "Loglar", href: "/admin/logs" },
+    ],
+  },
+  {
+    label: "Sistem",
+    items: [
+      { icon: Settings, label: "Ayarlar", href: "/admin/settings" },
+    ],
+  },
 ];
+
+// Flatten for backward compat
+const adminNavItems = adminNavGroups.flatMap((g) => g.items);
 
 export function DashboardLayout({
   children,
@@ -70,29 +101,51 @@ export function DashboardLayout({
   const location = useLocation();
   const navigate = useNavigate();
   const { branding } = useFirmBranding();
+  const { user, profile, signOut } = useAuth();
 
   const navItems = userRole === "student" ? studentNavItems : adminNavItems;
   const dashboardTitle = userRole === "student"
     ? (branding?.name ? `${branding.name}` : "Öğrenci Paneli")
     : "Yönetim Paneli";
 
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full">
+  const getInitials = () => {
+    if (profile?.first_name && profile?.last_name) {
+      return `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase();
+    }
+    if (user?.email) {
+      return user.email[0].toUpperCase();
+    }
+    return "U";
+  };
+
+  const userName = profile ? `${profile.first_name} ${profile.last_name}` : user?.email || "Kullanıcı";
+  const userEmail = user?.email || "";
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
+  };
+
+  // Get current page title from nav items
+  const currentPageTitle = navItems.find((item) => item.href === location.pathname)?.label || dashboardTitle;
+
+  const SidebarNav = () => (
+    <div className="flex flex-col h-full bg-gradient-sidebar">
       {/* Logo */}
-      <div className="p-4 border-b border-sidebar-border">
-        <Link to="/" className="flex items-center gap-2">
+      <div className="p-5 border-b border-sidebar-border/50">
+        <Link to="/" className="flex items-center gap-3">
           {branding?.logo_url && userRole === "student" ? (
             <img src={branding.logo_url} alt={branding.name} className="h-10 max-w-[180px] object-contain" />
           ) : (
             <>
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary shadow-md">
-                <Shield className="h-6 w-6 text-sidebar-primary-foreground" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sidebar-primary shadow-lg">
+                <Shield className="h-5 w-5 text-sidebar-primary-foreground" />
               </div>
               <div className="flex flex-col">
-                <span className="text-lg font-bold text-sidebar-foreground leading-tight">
+                <span className="text-base font-bold text-sidebar-foreground leading-tight tracking-tight">
                   İSG<span className="text-sidebar-primary">Akademi</span>
                 </span>
-                <span className="text-[10px] text-sidebar-foreground/60 leading-none">
+                <span className="text-[10px] text-sidebar-foreground/50 leading-none font-medium">
                   {dashboardTitle}
                 </span>
               </div>
@@ -102,36 +155,77 @@ export function DashboardLayout({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
-          const isActive = location.pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              to={item.href}
-              onClick={() => setSidebarOpen(false)}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              )}
-            >
-              <item.icon className="h-5 w-5" />
-              {item.label}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        {userRole === "student" ? (
+          studentNavItems.map((item) => {
+            const isActive = location.pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                onClick={() => setSidebarOpen(false)}
+                className={cn(
+                  "sidebar-nav-item",
+                  isActive ? "sidebar-nav-item-active" : "sidebar-nav-item-inactive"
+                )}
+              >
+                <item.icon className="h-[18px] w-[18px]" />
+                {item.label}
+              </Link>
+            );
+          })
+        ) : (
+          adminNavGroups.map((group) => (
+            <div key={group.label} className="mb-3">
+              <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/30">
+                {group.label}
+              </p>
+              {group.items.map((item) => {
+                const isActive = location.pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    onClick={() => setSidebarOpen(false)}
+                    className={cn(
+                      "sidebar-nav-item",
+                      isActive ? "sidebar-nav-item-active" : "sidebar-nav-item-inactive"
+                    )}
+                  >
+                    <item.icon className="h-[18px] w-[18px]" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          ))
+        )}
       </nav>
 
-      {/* Bottom Section */}
-      <div className="p-4 border-t border-sidebar-border">
+      {/* User Section */}
+      <div className="p-3 border-t border-sidebar-border/50">
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-sidebar-accent/50">
+          <Avatar className="h-9 w-9 border-2 border-sidebar-primary/30">
+            <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs font-semibold">
+              {getInitials()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-sidebar-foreground truncate">
+              {userName}
+            </p>
+            <p className="text-[11px] text-sidebar-foreground/40 truncate">
+              {userEmail}
+            </p>
+          </div>
+        </div>
         <Button
           variant="ghost"
-          className="w-full justify-start text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-          onClick={() => navigate("/login")}
+          size="sm"
+          className="w-full mt-2 justify-start text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 text-xs"
+          onClick={handleSignOut}
         >
-          <LogOut className="h-5 w-5 mr-3" />
+          <LogOut className="h-4 w-4 mr-2" />
           Çıkış Yap
         </Button>
       </div>
@@ -141,25 +235,25 @@ export function DashboardLayout({
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile Header */}
-      <header className="lg:hidden sticky top-0 z-50 flex h-16 items-center gap-4 border-b border-border bg-card px-4">
+      <header className="lg:hidden sticky top-0 z-50 flex h-14 items-center gap-3 border-b border-border bg-card/95 backdrop-blur-sm px-4">
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="h-9 w-9">
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-[280px] p-0 bg-sidebar">
-            <SidebarContent />
+            <SidebarNav />
           </SheetContent>
         </Sheet>
 
-        <div className="flex-1">
-          <span className="font-semibold text-foreground">{dashboardTitle}</span>
+        <div className="flex-1 min-w-0">
+          <span className="font-semibold text-foreground text-sm truncate block">{currentPageTitle}</span>
         </div>
 
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-accent text-[10px] font-bold text-accent-foreground flex items-center justify-center">
+        <Button variant="ghost" size="icon" className="relative h-9 w-9">
+          <Bell className="h-4 w-4" />
+          <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-accent text-[9px] font-bold text-accent-foreground flex items-center justify-center">
             3
           </span>
         </Button>
@@ -167,61 +261,82 @@ export function DashboardLayout({
 
       <div className="flex">
         {/* Desktop Sidebar */}
-        <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 bg-sidebar border-r border-sidebar-border">
-          <SidebarContent />
+        <aside className="hidden lg:flex lg:w-[260px] lg:flex-col lg:fixed lg:inset-y-0 bg-sidebar">
+          <SidebarNav />
         </aside>
 
         {/* Main Content */}
-        <div className="flex-1 lg:pl-64">
+        <div className="flex-1 lg:pl-[260px]">
           {/* Desktop Header */}
-          <header className="hidden lg:flex sticky top-0 z-40 h-16 items-center gap-4 border-b border-border bg-card/95 backdrop-blur px-6">
-            <div className="flex-1">
-              <h1 className="text-lg font-semibold text-foreground">
-                {dashboardTitle}
-              </h1>
+          <header className="hidden lg:flex sticky top-0 z-40 h-14 items-center gap-4 border-b border-border bg-card/95 backdrop-blur-sm px-6">
+            {/* Breadcrumb */}
+            <div className="flex-1 flex items-center gap-2 text-sm">
+              <Link to={userRole === "student" ? "/dashboard" : "/admin"} className="text-muted-foreground hover:text-foreground transition-colors">
+                {userRole === "student" ? "Panel" : "Yönetim"}
+              </Link>
+              {location.pathname !== "/dashboard" && location.pathname !== "/admin" && (
+                <>
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+                  <span className="font-medium text-foreground">{currentPageTitle}</span>
+                </>
+              )}
             </div>
 
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-accent text-[10px] font-bold text-accent-foreground flex items-center justify-center">
-                3
-              </span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="relative h-9 w-9">
+                <Bell className="h-4 w-4 text-muted-foreground" />
+                <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-accent text-[9px] font-bold text-accent-foreground flex items-center justify-center">
+                  3
+                </span>
+              </Button>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="gap-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src="/placeholder.svg" />
-                    <AvatarFallback className="bg-accent text-accent-foreground">
-                      AK
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="hidden md:inline-block">Ahmet Kaya</span>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Hesabım</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Profil Ayarları
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <HelpCircle className="mr-2 h-4 w-4" />
-                  Yardım
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={() => navigate("/login")}
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Çıkış Yap
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              <div className="h-6 w-px bg-border mx-1" />
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="gap-2 h-9 pl-2 pr-3">
+                    <Avatar className="h-7 w-7">
+                      <AvatarFallback className="bg-accent text-accent-foreground text-xs font-semibold">
+                        {getInitials()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="hidden md:inline-block text-sm font-medium">{profile?.first_name || "Kullanıcı"}</span>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium">{userName}</p>
+                      <p className="text-xs text-muted-foreground">{userEmail}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard" className="cursor-pointer">
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      Panelim
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Settings className="mr-2 h-4 w-4" />
+                    Profil Ayarları
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <HelpCircle className="mr-2 h-4 w-4" />
+                    Yardım
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Çıkış Yap
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </header>
 
           {/* Page Content */}
