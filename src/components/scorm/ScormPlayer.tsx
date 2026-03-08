@@ -146,11 +146,67 @@ export const ScormPlayer = ({
         const storageDir = resolvedStorageUrl.substring(0, lastSlash);
         // Inject <base> tag so all relative resources load from storage
         const baseTag = `<base href="${storageDir}/">`;
+        // Inject SCORM API bridge so iframe content can find the API
+        const apiBridge = `<script>
+(function() {
+  // Walk up window hierarchy to find SCORM API (standard algorithm)
+  function findAPI(win) {
+    try {
+      if (win.API) return win.API;
+      if (win.API_1484_11) return win.API_1484_11;
+    } catch(e) {}
+    return null;
+  }
+  function scanForAPI(win) {
+    var api = findAPI(win);
+    if (api) return api;
+    try {
+      if (win.parent && win.parent !== win) {
+        api = findAPI(win.parent);
+        if (api) return api;
+      }
+    } catch(e) {}
+    try {
+      if (win.opener) {
+        api = findAPI(win.opener);
+        if (api) return api;
+      }
+    } catch(e) {}
+    try {
+      if (win.top && win.top !== win) {
+        api = findAPI(win.top);
+        if (api) return api;
+      }
+    } catch(e) {}
+    return null;
+  }
+  // Poll until API is available from parent
+  var attempts = 0;
+  var interval = setInterval(function() {
+    var api = scanForAPI(window);
+    if (api) {
+      window.API = api;
+      window.API_1484_11 = api;
+      clearInterval(interval);
+    } else if (++attempts > 50) {
+      clearInterval(interval);
+      console.warn('SCORM API not found after polling');
+    }
+  }, 100);
+  // Also try immediate assignment from parent
+  try {
+    if (window.parent && window.parent.API) {
+      window.API = window.parent.API;
+      window.API_1484_11 = window.parent.API_1484_11 || window.parent.API;
+    }
+  } catch(e) {}
+})();
+</script>`;
         let modifiedHtml: string;
         if (htmlText.match(/<head[^>]*>/i)) {
-          modifiedHtml = htmlText.replace(/<head[^>]*>/i, `$&\n${baseTag}`);
+          modifiedHtml = htmlText.replace(/<head[^>]*>/i, `$&\n${baseTag}\n${apiBridge}`);
         } else {
-          modifiedHtml = `${baseTag}\n${htmlText}`;
+          modifiedHtml = `${baseTag}\n${apiBridge}\n${htmlText}`;
         }
         if (!cancelled) {
           setSrcdocContent(modifiedHtml);
@@ -191,9 +247,10 @@ export const ScormPlayer = ({
           const htmlText = await response.text();
           const lastSlash = url.lastIndexOf("/");
           const baseTag = `<base href="${url.substring(0, lastSlash)}/">`;
+          const apiBridgeScript = `<script>try{if(window.parent&&window.parent.API){window.API=window.parent.API;window.API_1484_11=window.parent.API_1484_11||window.parent.API;}}catch(e){}</script>`;
           const modifiedHtml = htmlText.match(/<head[^>]*>/i)
-            ? htmlText.replace(/<head[^>]*>/i, `$&\n${baseTag}`)
-            : `${baseTag}\n${htmlText}`;
+            ? htmlText.replace(/<head[^>]*>/i, `$&\n${baseTag}\n${apiBridgeScript}`)
+            : `${baseTag}\n${apiBridgeScript}\n${htmlText}`;
           setSrcdocContent(modifiedHtml);
         } catch { setError("İçerik yüklenemedi."); setIsLoading(false); }
       });

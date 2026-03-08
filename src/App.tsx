@@ -40,6 +40,8 @@ const FirmsManagement = lazyRetry(() => import("./pages/admin/FirmsManagement"))
 const ExamsManagement = lazyRetry(() => import("./pages/admin/ExamsManagement"));
 const ExamReports = lazyRetry(() => import("./pages/admin/ExamReports"));
 const CertificatesManagement = lazyRetry(() => import("./pages/admin/CertificatesManagement"));
+const CertificateTemplates = lazyRetry(() => import("./pages/admin/CertificateTemplates"));
+const AnalyticsDashboard = lazyRetry(() => import("./pages/admin/AnalyticsDashboard"));
 const ExamTaking = lazyRetry(() => import("./pages/exam/ExamTaking"));
 const CourseLearning = lazyRetry(() => import("./pages/course/CourseLearning"));
 const CertificateVerify = lazyRetry(() => import("./pages/CertificateVerify"));
@@ -144,6 +146,22 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <GroupsManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/certificate-templates"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <CertificateTemplates />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/analytics"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AnalyticsDashboard />
                 </ProtectedRoute>
               }
             />

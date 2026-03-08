@@ -49,9 +49,13 @@ export function useScormApi({ enrollmentId, scormPackageId, lessonId, userId, on
       // Cleanup API
       if (apiRef.current) {
         try {
-          apiRef.current.terminate("", true);
+          // Only terminate if API was actually initialized
+          const status = apiRef.current.lmsGetValue?.("cmi.core.lesson_status");
+          if (status && status !== "" && status !== "not attempted") {
+            apiRef.current.terminate("", true);
+          }
         } catch {
-          // ignore
+          // ignore terminate errors
         }
         apiRef.current = null;
       }

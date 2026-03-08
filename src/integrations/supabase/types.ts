@@ -50,6 +50,51 @@ export type Database = {
         }
         Relationships: []
       }
+      certificate_templates: {
+        Row: {
+          accent_color: string | null
+          background_color: string | null
+          body_text: string | null
+          created_at: string | null
+          description: string | null
+          footer_text: string | null
+          header_text: string | null
+          id: string
+          is_default: boolean | null
+          logo_url: string | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          accent_color?: string | null
+          background_color?: string | null
+          body_text?: string | null
+          created_at?: string | null
+          description?: string | null
+          footer_text?: string | null
+          header_text?: string | null
+          id?: string
+          is_default?: boolean | null
+          logo_url?: string | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          accent_color?: string | null
+          background_color?: string | null
+          body_text?: string | null
+          created_at?: string | null
+          description?: string | null
+          footer_text?: string | null
+          header_text?: string | null
+          id?: string
+          is_default?: boolean | null
+          logo_url?: string | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       certificates: {
         Row: {
           certificate_number: string
@@ -67,6 +112,7 @@ export type Database = {
           issue_date: string | null
           pdf_url: string | null
           qr_code: string | null
+          template_id: string | null
           user_id: string
         }
         Insert: {
@@ -85,6 +131,7 @@ export type Database = {
           issue_date?: string | null
           pdf_url?: string | null
           qr_code?: string | null
+          template_id?: string | null
           user_id: string
         }
         Update: {
@@ -103,6 +150,7 @@ export type Database = {
           issue_date?: string | null
           pdf_url?: string | null
           qr_code?: string | null
+          template_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -118,6 +166,13 @@ export type Database = {
             columns: ["enrollment_id"]
             isOneToOne: false
             referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certificates_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "certificate_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -151,7 +206,9 @@ export type Database = {
       }
       courses: {
         Row: {
+          auto_certificate: boolean | null
           category_id: string | null
+          certificate_template_id: string | null
           created_at: string | null
           description: string | null
           duration_minutes: number
@@ -162,7 +219,9 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          auto_certificate?: boolean | null
           category_id?: string | null
+          certificate_template_id?: string | null
           created_at?: string | null
           description?: string | null
           duration_minutes?: number
@@ -173,7 +232,9 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          auto_certificate?: boolean | null
           category_id?: string | null
+          certificate_template_id?: string | null
           created_at?: string | null
           description?: string | null
           duration_minutes?: number
@@ -189,6 +250,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "course_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courses_certificate_template_id_fkey"
+            columns: ["certificate_template_id"]
+            isOneToOne: false
+            referencedRelation: "certificate_templates"
             referencedColumns: ["id"]
           },
         ]
