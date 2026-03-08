@@ -15,8 +15,8 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import {
-  FileText, FileSpreadsheet, Download, Users, BookOpen, Search,
-  CheckCircle, RefreshCw,
+  FileText, FileSpreadsheet, Users, BookOpen, Search,
+  CheckCircle,
 } from "lucide-react";
 import { exportToPDF, exportToExcel, formatDuration, formatDateTR } from "@/lib/reportExport";
 import { ManualCompletionDialog } from "@/components/admin/ManualCompletionDialog";
