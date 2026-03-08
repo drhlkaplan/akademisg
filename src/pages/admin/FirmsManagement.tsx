@@ -368,6 +368,16 @@ export default function FirmsManagement() {
       phone: "",
       email: "",
       is_active: true,
+      firm_code: "",
+      logo_url: "",
+      primary_color: "#f97316",
+      secondary_color: "#1a2744",
+      bg_color: "#f8fafc",
+      welcome_message: "Eğitimlerinize hoş geldiniz",
+      login_bg_url: "",
+      footer_text: "",
+      custom_css: "",
+      favicon_url: "",
     });
     setDialogOpen(true);
   };
