@@ -27,25 +27,11 @@ function extractFolderPath(packageUrl: string): string | null {
 }
 
 /**
- * Build the base storage URL for a given folder path (used for HEAD checks during resolution).
+ * Build the base storage URL for a given folder path.
  */
 function buildStorageBase(folderPath: string): string {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   return `${supabaseUrl}/storage/v1/object/public/scorm-packages/${folderPath}`;
-}
-
-/**
- * Convert a direct storage URL to a scorm-proxy URL for correct MIME types.
- */
-function toProxyUrl(storageUrl: string): string {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const marker = "scorm-packages/";
-  const idx = storageUrl.indexOf(marker);
-  if (idx === -1) return storageUrl;
-  const objectPath = storageUrl.slice(idx + marker.length);
-  // Encode each path segment individually to preserve /
-  const encodedPath = objectPath.split("/").map(encodeURIComponent).join("/");
-  return `${supabaseUrl}/functions/v1/scorm-proxy/${encodedPath}`;
 }
 
 /**
@@ -56,32 +42,27 @@ function sanitizePath(path: string): string {
 }
 
 /**
- * Try to find the launchable HTML file by:
- * 1. Parsing imsmanifest.xml for the real launch resource
- * 2. Trying common Articulate Storyline entry points
- * 3. Falling back to the stored entry_point
- */
-/**
  * Router pages that just redirect – skip these in favor of actual content.
+ * story.html is an Articulate Storyline router that redirects to story_html5.html
  */
-const ROUTER_FILENAMES = new Set(["index_lms.html", "index.html", "launch.html"]);
+const ROUTER_FILENAMES = new Set([
+  "index_lms.html",
+  "index.html",
+  "launch.html",
+  "story.html",
+]);
 
+/**
+ * Try to find the launchable HTML file by:
+ * 1. Trying common direct HTML5 content files
+ * 2. Parsing imsmanifest.xml for the real launch resource
+ * 3. Falling back to stored entry_point or router pages
+ */
 async function resolveEntryPoint(baseUrl: string, entryPoint: string): Promise<string | null> {
   const sanitizedEntry = sanitizePath(entryPoint);
 
-  // Step 1: Try stored entry point if it's a real content file (not a router)
-  const entryFileName = sanitizedEntry.split("/").pop()?.toLowerCase() || "";
-  if (!ROUTER_FILENAMES.has(entryFileName)) {
-    const directUrl = `${baseUrl}/${sanitizedEntry}`;
-    try {
-      const res = await fetch(directUrl, { method: "HEAD" });
-      if (res.ok) return directUrl;
-    } catch { /* continue */ }
-  }
-
-  // Step 2: Try common HTML5 content files first (skip router pages)
+  // Step 1: Try HTML5 content files first (these are actual content, not routers)
   const directContentFiles = [
-    "story.html",
     "story_html5.html",
     "index_lms_html5.html",
     "scormcontent/index.html",
@@ -96,7 +77,17 @@ async function resolveEntryPoint(baseUrl: string, entryPoint: string): Promise<s
     } catch { continue; }
   }
 
-  // Step 3: Parse imsmanifest.xml, but handle router pages
+  // Step 2: Try stored entry point if it's not a router
+  const entryFileName = sanitizedEntry.split("/").pop()?.toLowerCase() || "";
+  if (!ROUTER_FILENAMES.has(entryFileName)) {
+    const directUrl = `${baseUrl}/${sanitizedEntry}`;
+    try {
+      const res = await fetch(directUrl, { method: "HEAD" });
+      if (res.ok) return directUrl;
+    } catch { /* continue */ }
+  }
+
+  // Step 3: Parse imsmanifest.xml
   const manifestUrl = `${baseUrl}/imsmanifest.xml`;
   try {
     const manifestRes = await fetch(manifestUrl);
@@ -135,8 +126,8 @@ async function resolveEntryPoint(baseUrl: string, entryPoint: string): Promise<s
     }
   } catch { /* continue */ }
 
-  // Step 4: Try router pages as last resort
-  for (const file of ["index_lms.html", "index.html"]) {
+  // Step 4: Try router pages as last resort (they might work in some cases)
+  for (const file of ["story.html", "index_lms.html", "index.html"]) {
     const url = `${baseUrl}/${file}`;
     try {
       const res = await fetch(url, { method: "HEAD" });
@@ -144,7 +135,7 @@ async function resolveEntryPoint(baseUrl: string, entryPoint: string): Promise<s
     } catch { continue; }
   }
 
-  // Step 5: Try the entry point unsanitized
+  // Step 5: Try the stored entry point as-is
   const rawUrl = `${baseUrl}/${entryPoint}`;
   try {
     const res = await fetch(rawUrl, { method: "HEAD" });
@@ -162,8 +153,6 @@ function parseLaunchFromManifest(xml: string): string | null {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xml, "text/xml");
     
-    // Try standard SCORM manifest structure
-    // <resource ... href="index_lms.html"> or <resource><file href="..."/>
     const resources = doc.querySelectorAll("resource");
     for (const resource of resources) {
       const href = resource.getAttribute("href");
@@ -172,7 +161,6 @@ function parseLaunchFromManifest(xml: string): string | null {
       }
     }
 
-    // Try file elements
     const files = doc.querySelectorAll("resource file");
     for (const file of files) {
       const href = file.getAttribute("href");
@@ -186,7 +174,7 @@ function parseLaunchFromManifest(xml: string): string | null {
   return null;
 }
 
-export function ScormPlayer({
+export const ScormPlayer = ({
   packageUrl,
   entryPoint,
   enrollmentId,
@@ -194,7 +182,7 @@ export function ScormPlayer({
   lessonId,
   userId,
   onComplete,
-}: ScormPlayerProps) {
+}: ScormPlayerProps) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -223,7 +211,7 @@ export function ScormPlayer({
     };
   }, [createApiObject]);
 
-  // Resolve the actual launchable URL
+  // Resolve the actual launchable URL - use direct storage URLs (bucket is public)
   useEffect(() => {
     let cancelled = false;
 
@@ -234,7 +222,6 @@ export function ScormPlayer({
 
       const folderPath = extractFolderPath(packageUrl);
       if (!folderPath) {
-        // Fallback: just append entry point to package URL
         setResolvedUrl(`${packageUrl}/${entryPoint}`);
         return;
       }
@@ -247,9 +234,10 @@ export function ScormPlayer({
       if (cancelled) return;
 
       if (url) {
-        const proxyUrl = toProxyUrl(url);
-        setDebugInfo(prev => `${prev}\nResolved: ${url}\nProxy: ${proxyUrl}`);
-        setResolvedUrl(proxyUrl);
+        // Use direct storage URL (public bucket) instead of proxy
+        // Proxy has CSP issues (default-src 'none'; sandbox) that block SCORM content
+        setDebugInfo(prev => `${prev}\nResolved: ${url}`);
+        setResolvedUrl(url);
       } else {
         setDebugInfo(prev => `${prev}\n❌ No launchable file found`);
         setError(
@@ -273,8 +261,7 @@ export function ScormPlayer({
         (iframeWindow as any).API_1484_11 = (window as any).API_1484_11;
       }
     } catch {
-      // Cross-origin: content runs on storage domain, SCORM API lookup
-      // will traverse parent frames automatically
+      // Cross-origin: SCORM API lookup will traverse parent frames automatically
     }
   }, []);
 
@@ -286,13 +273,12 @@ export function ScormPlayer({
   const handleRetry = useCallback(() => {
     setError(null);
     setResolvedUrl("");
-    // Re-trigger resolution by toggling a dummy state
     const folderPath = extractFolderPath(packageUrl);
     if (folderPath) {
       const baseUrl = buildStorageBase(folderPath);
       resolveEntryPoint(baseUrl, entryPoint).then(url => {
         if (url) {
-          setResolvedUrl(toProxyUrl(url));
+          setResolvedUrl(url);
         } else {
           setError("SCORM başlangıç dosyası bulunamadı.");
         }
@@ -370,4 +356,4 @@ export function ScormPlayer({
       )}
     </div>
   );
-}
+};
