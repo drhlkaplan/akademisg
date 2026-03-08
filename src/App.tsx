@@ -166,6 +166,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/admin/report-center"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <ReportCenter />
+                </ProtectedRoute>
+              }
+            />
             
             {/* Student Certificates */}
             <Route

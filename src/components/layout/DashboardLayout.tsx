@@ -54,8 +54,9 @@ const adminNavItems = [
   { icon: KeyRound, label: "Gruplar", href: "/admin/groups" },
   { icon: Award, label: "Sertifikalar", href: "/admin/certificates" },
   { icon: FileText, label: "Şablonlar", href: "/admin/certificate-templates" },
-  { icon: BarChart3, label: "Raporlar", href: "/admin/reports" },
+  { icon: BarChart3, label: "Sınav Raporları", href: "/admin/reports" },
   { icon: BarChart3, label: "Analiz", href: "/admin/analytics" },
+  { icon: FileText, label: "Rapor Merkezi", href: "/admin/report-center" },
   { icon: FileText, label: "Loglar", href: "/admin/logs" },
   { icon: Settings, label: "Ayarlar", href: "/admin/settings" },
 ];
