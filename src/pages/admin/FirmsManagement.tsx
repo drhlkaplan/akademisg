@@ -553,19 +553,30 @@ export default function FirmsManagement() {
                   {filteredFirms.map((firm) => (
                     <TableRow key={firm.id}>
                       <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                            <Building2 className="h-5 w-5 text-accent" />
+                       <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center overflow-hidden">
+                            {(firm as any).logo_url ? (
+                              <img src={(firm as any).logo_url} alt={firm.name} className="h-full w-full object-contain" />
+                            ) : (
+                              <Building2 className="h-5 w-5 text-accent" />
+                            )}
                           </div>
                           <div>
                             <p className="font-medium text-foreground">
                               {firm.name}
                             </p>
-                            {firm.tax_number && (
-                              <p className="text-xs text-muted-foreground">
-                                VN: {firm.tax_number}
-                              </p>
-                            )}
+                            <div className="flex items-center gap-2">
+                              {firm.tax_number && (
+                                <p className="text-xs text-muted-foreground">
+                                  VN: {firm.tax_number}
+                                </p>
+                              )}
+                              {(firm as any).firm_code && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                  {(firm as any).firm_code}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </TableCell>
