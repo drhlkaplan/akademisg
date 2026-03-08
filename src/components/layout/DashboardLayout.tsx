@@ -143,13 +143,32 @@ export function DashboardLayout({
   // Get current page title from nav items
   const currentPageTitle = navItems.find((item) => item.href === location.pathname)?.label || dashboardTitle;
 
+  // Apply dynamic firm branding colors to CSS variables
+  const firmStyle = showFirmBranding && branding ? {
+    '--sidebar-background': branding.secondary_color,
+    '--sidebar-primary': branding.primary_color,
+  } as React.CSSProperties : {};
+
   const SidebarNav = () => (
-    <div className="flex flex-col h-full bg-gradient-sidebar">
+    <div className="flex flex-col h-full bg-gradient-sidebar" style={showFirmBranding && branding ? {
+      background: `linear-gradient(180deg, ${branding.secondary_color} 0%, ${adjustColor(branding.secondary_color, -20)} 100%)`,
+    } : {}}>
       {/* Logo */}
       <div className="p-5 border-b border-sidebar-border/50">
         <Link to="/" className="flex items-center gap-3">
           {branding?.logo_url && showFirmBranding ? (
-            <img src={branding.logo_url} alt={branding.name} className="h-10 max-w-[180px] object-contain" />
+            <div className="flex items-center gap-3">
+              <img
+                src={branding.logo_url}
+                alt={branding.name}
+                className="h-10 max-w-[180px] object-contain"
+                onError={(e) => {
+                  // Fallback if logo fails to load
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+              <span className="text-sm font-semibold text-sidebar-foreground opacity-70">{dashboardTitle === branding.name ? "" : ""}</span>
+            </div>
           ) : (
             <>
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sidebar-primary shadow-lg">
