@@ -41,6 +41,14 @@ interface DashboardLayoutProps {
   userRole?: "student" | "admin" | "company" | "superadmin";
 }
 
+const companyNavItems = [
+  { icon: LayoutDashboard, label: "Gösterge Paneli", href: "/firm" },
+  { icon: Users, label: "Çalışanlar", href: "/firm/employees" },
+  { icon: BookOpen, label: "Eğitimler", href: "/firm/courses" },
+  { icon: BarChart3, label: "Raporlar", href: "/firm/reports" },
+  { icon: Award, label: "Sertifikalar", href: "/firm/certificates" },
+];
+
 const studentNavItems = [
   { icon: LayoutDashboard, label: "Gösterge Paneli", href: "/dashboard" },
   { icon: BookOpen, label: "Eğitimlerim", href: "/dashboard/courses" },
@@ -103,10 +111,16 @@ export function DashboardLayout({
   const { branding } = useFirmBranding();
   const { user, profile, signOut } = useAuth();
 
-  const navItems = userRole === "student" ? studentNavItems : adminNavItems;
+  const navItems = userRole === "student" ? studentNavItems
+    : userRole === "company" ? companyNavItems
+    : adminNavItems;
   const dashboardTitle = userRole === "student"
     ? (branding?.name ? `${branding.name}` : "Öğrenci Paneli")
+    : userRole === "company"
+    ? (branding?.name ? `${branding.name}` : "Firma Paneli")
     : "Yönetim Paneli";
+  
+  const showFirmBranding = userRole === "student" || userRole === "company";
 
   const getInitials = () => {
     if (profile?.first_name && profile?.last_name) {
@@ -134,7 +148,7 @@ export function DashboardLayout({
       {/* Logo */}
       <div className="p-5 border-b border-sidebar-border/50">
         <Link to="/" className="flex items-center gap-3">
-          {branding?.logo_url && userRole === "student" ? (
+          {branding?.logo_url && showFirmBranding ? (
             <img src={branding.logo_url} alt={branding.name} className="h-10 max-w-[180px] object-contain" />
           ) : (
             <>
@@ -156,8 +170,8 @@ export function DashboardLayout({
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {userRole === "student" ? (
-          studentNavItems.map((item) => {
+        {userRole === "student" || userRole === "company" ? (
+          (userRole === "student" ? studentNavItems : companyNavItems).map((item) => {
             const isActive = location.pathname === item.href;
             return (
               <Link
@@ -271,10 +285,10 @@ export function DashboardLayout({
           <header className="hidden lg:flex sticky top-0 z-40 h-14 items-center gap-4 border-b border-border bg-card/95 backdrop-blur-sm px-6">
             {/* Breadcrumb */}
             <div className="flex-1 flex items-center gap-2 text-sm">
-              <Link to={userRole === "student" ? "/dashboard" : "/admin"} className="text-muted-foreground hover:text-foreground transition-colors">
-                {userRole === "student" ? "Panel" : "Yönetim"}
+              <Link to={userRole === "student" ? "/dashboard" : userRole === "company" ? "/firm" : "/admin"} className="text-muted-foreground hover:text-foreground transition-colors">
+                {userRole === "student" ? "Panel" : userRole === "company" ? "Firma Paneli" : "Yönetim"}
               </Link>
-              {location.pathname !== "/dashboard" && location.pathname !== "/admin" && (
+              {location.pathname !== "/dashboard" && location.pathname !== "/admin" && location.pathname !== "/firm" && (
                 <>
                   <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
                   <span className="font-medium text-foreground">{currentPageTitle}</span>

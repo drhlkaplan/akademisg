@@ -52,6 +52,7 @@ const MyCourses = lazyRetry(() => import("./pages/dashboard/MyCourses"));
 const MyExams = lazyRetry(() => import("./pages/dashboard/MyExams"));
 const Help = lazyRetry(() => import("./pages/dashboard/Help"));
 const GroupsManagement = lazyRetry(() => import("./pages/admin/GroupsManagement"));
+const FirmDashboard = lazyRetry(() => import("./pages/firm/FirmDashboard"));
 const NotFound = lazyRetry(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -173,6 +174,24 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <ReportCenter />
+                </ProtectedRoute>
+              }
+            />
+            
+            {/* Firm Admin Dashboard */}
+            <Route
+              path="/firm"
+              element={
+                <ProtectedRoute requireFirmAdmin>
+                  <FirmDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/firm/*"
+              element={
+                <ProtectedRoute requireFirmAdmin>
+                  <FirmDashboard />
                 </ProtectedRoute>
               }
             />

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge-custom";
@@ -71,7 +72,8 @@ const dangerClassLabel: Record<DangerClass, string> = {
 };
 
 export default function StudentDashboard() {
-  const { user, profile } = useAuth();
+  const { user, profile, isFirmAdmin } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [enrollments, setEnrollments] = useState<EnrollmentWithCourse[]>([]);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
@@ -79,6 +81,13 @@ export default function StudentDashboard() {
   const [groupKey, setGroupKey] = useState("");
   const [joiningGroup, setJoiningGroup] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Redirect firm admins to firm panel
+  useEffect(() => {
+    if (isFirmAdmin) {
+      navigate("/firm", { replace: true });
+    }
+  }, [isFirmAdmin, navigate]);
 
   useEffect(() => {
     if (user) {
