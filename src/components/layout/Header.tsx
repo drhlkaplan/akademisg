@@ -16,8 +16,7 @@ import { Menu, Shield, User, LogOut, LayoutDashboard, Settings } from "lucide-re
 const navigation = [
   { name: "Ana Sayfa", href: "/" },
   { name: "Eğitimler", href: "/courses" },
-  { name: "Hakkımızda", href: "/about" },
-  { name: "İletişim", href: "/contact" },
+  { name: "Sertifika Doğrula", href: "/verify" },
 ];
 
 export function Header() {
@@ -42,62 +41,62 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-card/95 backdrop-blur-md supports-[backdrop-filter]:bg-card/80">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-accent shadow-md group-hover:shadow-glow transition-shadow">
-            <Shield className="h-6 w-6 text-accent-foreground" />
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-accent shadow-md group-hover:shadow-glow transition-shadow">
+            <Shield className="h-5 w-5 text-accent-foreground" />
           </div>
           <div className="flex flex-col">
-            <span className="text-lg font-bold text-foreground leading-tight">
+            <span className="text-base font-bold text-foreground leading-tight tracking-tight">
               İSG<span className="text-accent">Akademi</span>
             </span>
-            <span className="text-[10px] text-muted-foreground leading-none">
+            <span className="text-[9px] text-muted-foreground leading-none font-medium">
               Online Eğitim Platformu
             </span>
           </div>
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="hidden md:flex items-center gap-1">
           {navigation.map((item) => (
             <Link
               key={item.name}
               to={item.href}
-              className={`text-sm font-medium transition-colors hover:text-accent ${
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                 location.pathname === item.href
-                  ? "text-accent"
-                  : "text-muted-foreground"
+                  ? "text-accent bg-accent/5"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               }`}
             >
               {item.name}
             </Link>
           ))}
-          {/* Admin Link - only visible to admins */}
+          {/* Admin Link */}
           {isAdmin && (
             <Link
               to="/admin"
-              className={`text-sm font-medium transition-colors hover:text-accent flex items-center gap-1 ${
-                location.pathname === "/admin"
-                  ? "text-accent"
-                  : "text-muted-foreground"
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1.5 ${
+                location.pathname.startsWith("/admin")
+                  ? "text-accent bg-accent/5"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               }`}
             >
-              <Settings className="h-4 w-4" />
-              Admin
+              <Settings className="h-3.5 w-3.5" />
+              Yönetim
             </Link>
           )}
         </nav>
 
         {/* Desktop Auth Section */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-2">
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                   <Avatar className="h-9 w-9">
-                    <AvatarFallback className="bg-accent text-accent-foreground text-sm">
+                    <AvatarFallback className="bg-accent text-accent-foreground text-xs font-semibold">
                       {getInitials()}
                     </AvatarFallback>
                   </Avatar>
@@ -136,10 +135,10 @@ export function Header() {
             </DropdownMenu>
           ) : (
             <>
-              <Button variant="ghost" size="sm" asChild>
+              <Button variant="ghost" size="sm" asChild className="text-sm">
                 <Link to="/login">Giriş Yap</Link>
               </Button>
-              <Button variant="accent" size="sm" asChild>
+              <Button variant="accent" size="sm" asChild className="text-sm">
                 <Link to="/register">Kayıt Ol</Link>
               </Button>
             </>
@@ -149,18 +148,18 @@ export function Header() {
         {/* Mobile Menu */}
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild className="md:hidden">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="h-9 w-9">
               <Menu className="h-5 w-5" />
               <span className="sr-only">Menüyü aç</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+          <SheetContent side="right" className="w-[300px] sm:w-[360px]">
             <div className="flex flex-col gap-6 mt-6">
               {/* User info in mobile */}
               {user && (
                 <div className="flex items-center gap-3 pb-4 border-b border-border">
                   <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-accent text-accent-foreground">
+                    <AvatarFallback className="bg-accent text-accent-foreground font-semibold">
                       {getInitials()}
                     </AvatarFallback>
                   </Avatar>
@@ -173,16 +172,16 @@ export function Header() {
                 </div>
               )}
 
-              <nav className="flex flex-col gap-4">
+              <nav className="flex flex-col gap-1">
                 {navigation.map((item) => (
                   <Link
                     key={item.name}
                     to={item.href}
                     onClick={() => setIsOpen(false)}
-                    className={`text-lg font-medium transition-colors hover:text-accent ${
+                    className={`px-3 py-2.5 rounded-lg text-base font-medium transition-colors ${
                       location.pathname === item.href
-                        ? "text-accent"
-                        : "text-foreground"
+                        ? "text-accent bg-accent/5"
+                        : "text-foreground hover:bg-muted/50"
                     }`}
                   >
                     {item.name}
@@ -192,10 +191,10 @@ export function Header() {
                   <Link
                     to="/dashboard"
                     onClick={() => setIsOpen(false)}
-                    className={`text-lg font-medium transition-colors hover:text-accent ${
+                    className={`px-3 py-2.5 rounded-lg text-base font-medium transition-colors ${
                       location.pathname === "/dashboard"
-                        ? "text-accent"
-                        : "text-foreground"
+                        ? "text-accent bg-accent/5"
+                        : "text-foreground hover:bg-muted/50"
                     }`}
                   >
                     Panelim
@@ -205,19 +204,19 @@ export function Header() {
                   <Link
                     to="/admin"
                     onClick={() => setIsOpen(false)}
-                    className={`text-lg font-medium transition-colors hover:text-accent flex items-center gap-2 ${
-                      location.pathname === "/admin"
-                        ? "text-accent"
-                        : "text-foreground"
+                    className={`px-3 py-2.5 rounded-lg text-base font-medium transition-colors flex items-center gap-2 ${
+                      location.pathname.startsWith("/admin")
+                        ? "text-accent bg-accent/5"
+                        : "text-foreground hover:bg-muted/50"
                     }`}
                   >
-                    <Settings className="h-5 w-5" />
-                    Admin Paneli
+                    <Settings className="h-4 w-4" />
+                    Yönetim Paneli
                   </Link>
                 )}
               </nav>
 
-              <div className="flex flex-col gap-3 pt-4 border-t border-border">
+              <div className="flex flex-col gap-2 pt-4 border-t border-border">
                 {user ? (
                   <Button
                     variant="outline"

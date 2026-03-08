@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Users,
   Building2,
@@ -23,6 +24,8 @@ import {
   MoreHorizontal,
   Download,
   FileQuestion,
+  ArrowUpRight,
+  Activity,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -31,11 +34,13 @@ export default function AdminDashboard() {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["admin-dashboard-stats"],
     queryFn: async () => {
-      const [profilesRes, firmsRes, coursesRes, certificatesRes] = await Promise.all([
+      const [profilesRes, firmsRes, coursesRes, certificatesRes, enrollmentsActiveRes, enrollmentsCompletedRes] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }),
         supabase.from("firms").select("id", { count: "exact", head: true }).eq("is_active", true),
         supabase.from("courses").select("id", { count: "exact", head: true }).eq("is_active", true),
         supabase.from("certificates").select("id", { count: "exact", head: true }),
+        supabase.from("enrollments").select("id", { count: "exact", head: true }).eq("status", "active"),
+        supabase.from("enrollments").select("id", { count: "exact", head: true }).eq("status", "completed"),
       ]);
 
       return {
@@ -43,6 +48,8 @@ export default function AdminDashboard() {
         activeFirms: firmsRes.count || 0,
         activeCourses: coursesRes.count || 0,
         totalCertificates: certificatesRes.count || 0,
+        activeEnrollments: enrollmentsActiveRes.count || 0,
+        completedEnrollments: enrollmentsCompletedRes.count || 0,
       };
     },
   });
@@ -128,7 +135,7 @@ export default function AdminDashboard() {
           certificates: certificateCounts[firm.id] || 0,
         }))
         .sort((a, b) => b.users - a.users)
-        .slice(0, 4);
+        .slice(0, 5);
     },
   });
 
@@ -139,6 +146,7 @@ export default function AdminDashboard() {
       icon: Users,
       color: "text-info",
       bgColor: "bg-info/10",
+      href: "/admin/users",
     },
     {
       title: "Aktif Firmalar",
@@ -146,6 +154,7 @@ export default function AdminDashboard() {
       icon: Building2,
       color: "text-success",
       bgColor: "bg-success/10",
+      href: "/admin/companies",
     },
     {
       title: "Aktif Eğitimler",
@@ -153,6 +162,7 @@ export default function AdminDashboard() {
       icon: BookOpen,
       color: "text-accent",
       bgColor: "bg-accent/10",
+      href: "/admin/courses",
     },
     {
       title: "Verilen Sertifikalar",
@@ -160,6 +170,7 @@ export default function AdminDashboard() {
       icon: Award,
       color: "text-warning",
       bgColor: "bg-warning/10",
+      href: "/admin/certificates",
     },
   ];
 
@@ -190,23 +201,23 @@ export default function AdminDashboard() {
 
   return (
     <DashboardLayout userRole="admin">
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              Yönetim Paneli
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">
+              Gösterge Paneli
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground mt-1">
               Platform istatistikleri ve son aktiviteler
             </p>
           </div>
-          <div className="flex gap-3">
-            <Button variant="outline">
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm">
               <Download className="mr-2 h-4 w-4" />
               Rapor İndir
             </Button>
-            <Button variant="accent" asChild>
+            <Button variant="accent" size="sm" asChild>
               <Link to="/admin/courses">
                 <Plus className="mr-2 h-4 w-4" />
                 Yeni Eğitim
@@ -218,51 +229,81 @@ export default function AdminDashboard() {
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {statItems.map((stat) => (
-            <Card key={stat.title}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">
-                      {stat.title}
+            <Link key={stat.title} to={stat.href} className="stat-card group cursor-pointer">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                    {stat.title}
+                  </p>
+                  {statsLoading ? (
+                    <Skeleton className="h-8 w-16" />
+                  ) : (
+                    <p className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight">
+                      {stat.value.toLocaleString("tr-TR")}
                     </p>
-                    {statsLoading ? (
-                      <Skeleton className="h-8 w-16" />
-                    ) : (
-                      <p className="text-2xl font-bold text-foreground">
-                        {stat.value.toLocaleString("tr-TR")}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-1 mt-1">
-                      <TrendingUp className="h-4 w-4 text-success" />
-                      <span className="text-xs text-muted-foreground">
-                        güncel veri
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    className={`h-10 w-10 rounded-lg ${stat.bgColor} flex items-center justify-center`}
-                  >
-                    <stat.icon className={`h-5 w-5 ${stat.color}`} />
-                  </div>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
+                <div
+                  className={`h-10 w-10 rounded-xl ${stat.bgColor} flex items-center justify-center transition-transform group-hover:scale-110`}
+                >
+                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                </div>
+              </div>
+              <div className="flex items-center gap-1 mt-3 pt-3 border-t border-border/50">
+                <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-accent transition-colors" />
+                <span className="text-xs text-muted-foreground group-hover:text-accent transition-colors">
+                  Detaylı görüntüle
+                </span>
+              </div>
+            </Link>
           ))}
+        </div>
+
+        {/* Overview Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="stat-card">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-info/10 flex items-center justify-center">
+                <Activity className="h-5 w-5 text-info" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Aktif Kayıtlar</p>
+                {statsLoading ? (
+                  <Skeleton className="h-7 w-12 mt-1" />
+                ) : (
+                  <p className="text-xl font-bold text-foreground">{stats?.activeEnrollments ?? 0}</p>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="stat-card">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-success/10 flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-success" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tamamlanan Kayıtlar</p>
+                {statsLoading ? (
+                  <Skeleton className="h-7 w-12 mt-1" />
+                ) : (
+                  <p className="text-xl font-bold text-foreground">{stats?.completedEnrollments ?? 0}</p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Recent Enrollments */}
           <div className="lg:col-span-2">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg font-semibold">
-                  Son Kayıtlar
-                </CardTitle>
-                <Button variant="ghost" size="sm" asChild>
+            <div className="dashboard-card">
+              <div className="flex items-center justify-between p-5 pb-0">
+                <h3 className="text-base font-semibold text-foreground">Son Kayıtlar</h3>
+                <Button variant="ghost" size="sm" className="text-xs" asChild>
                   <Link to="/admin/users">Tümünü Gör</Link>
                 </Button>
-              </CardHeader>
-              <CardContent>
+              </div>
+              <div className="p-5">
                 {enrollmentsLoading ? (
                   <div className="space-y-4">
                     {[...Array(5)].map((_, i) => (
@@ -272,46 +313,45 @@ export default function AdminDashboard() {
                 ) : recentEnrollments && recentEnrollments.length > 0 ? (
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead>Kullanıcı</TableHead>
-                        <TableHead className="hidden md:table-cell">
-                          Firma
-                        </TableHead>
-                        <TableHead className="hidden lg:table-cell">
-                          Eğitim
-                        </TableHead>
-                        <TableHead>Durum</TableHead>
-                        <TableHead className="text-right"></TableHead>
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Kullanıcı</TableHead>
+                        <TableHead className="hidden md:table-cell text-xs font-semibold uppercase tracking-wide text-muted-foreground">Firma</TableHead>
+                        <TableHead className="hidden lg:table-cell text-xs font-semibold uppercase tracking-wide text-muted-foreground">Eğitim</TableHead>
+                        <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Durum</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {recentEnrollments.map((enrollment) => (
-                        <TableRow key={enrollment.id}>
+                        <TableRow key={enrollment.id} className="group">
                           <TableCell>
-                            <div>
-                              <p className="font-medium text-foreground">
-                                {enrollment.profile
-                                  ? `${enrollment.profile.first_name} ${enrollment.profile.last_name}`
-                                  : "Bilinmiyor"}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {formatDate(enrollment.created_at)}
-                              </p>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback className="bg-muted text-muted-foreground text-xs font-medium">
+                                  {enrollment.profile
+                                    ? `${enrollment.profile.first_name?.[0] || ''}${enrollment.profile.last_name?.[0] || ''}`
+                                    : '?'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium text-foreground text-sm">
+                                  {enrollment.profile
+                                    ? `${enrollment.profile.first_name} ${enrollment.profile.last_name}`
+                                    : "Bilinmiyor"}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground">
+                                  {formatDate(enrollment.created_at)}
+                                </p>
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell className="hidden md:table-cell">
-                            {enrollment.firms?.name || "-"}
+                            <span className="text-sm text-muted-foreground">{enrollment.firms?.name || "-"}</span>
                           </TableCell>
-                          <TableCell className="hidden lg:table-cell max-w-[200px] truncate">
-                            {enrollment.courses?.title || "-"}
+                          <TableCell className="hidden lg:table-cell max-w-[200px]">
+                            <span className="text-sm text-muted-foreground truncate block">{enrollment.courses?.title || "-"}</span>
                           </TableCell>
                           <TableCell>
                             {getStatusBadge(enrollment.status || "pending")}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -322,19 +362,18 @@ export default function AdminDashboard() {
                     Henüz kayıt bulunmuyor
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
 
-          {/* Top Companies */}
+          {/* Right Sidebar */}
           <div className="space-y-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-semibold">
-                  En Aktif Firmalar
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            {/* Top Companies */}
+            <div className="dashboard-card">
+              <div className="p-5 pb-3">
+                <h3 className="text-base font-semibold text-foreground">En Aktif Firmalar</h3>
+              </div>
+              <div className="px-5 pb-5 space-y-3">
                 {companiesLoading ? (
                   <div className="space-y-4">
                     {[...Array(4)].map((_, i) => (
@@ -345,17 +384,17 @@ export default function AdminDashboard() {
                   topCompanies.map((company, index) => (
                     <div
                       key={company.name}
-                      className="flex items-center justify-between"
+                      className="flex items-center justify-between py-2"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center text-sm font-bold text-accent">
+                        <div className="h-8 w-8 rounded-lg bg-accent/10 flex items-center justify-center text-xs font-bold text-accent">
                           {index + 1}
                         </div>
                         <div>
                           <p className="font-medium text-foreground text-sm">
                             {company.name}
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-[11px] text-muted-foreground">
                             {company.users} kullanıcı
                           </p>
                         </div>
@@ -364,7 +403,7 @@ export default function AdminDashboard() {
                         <p className="text-sm font-semibold text-foreground">
                           {company.certificates}
                         </p>
-                        <p className="text-xs text-muted-foreground">sertifika</p>
+                        <p className="text-[11px] text-muted-foreground">sertifika</p>
                       </div>
                     </div>
                   ))
@@ -373,72 +412,37 @@ export default function AdminDashboard() {
                     Firma bulunamadı
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Quick Actions */}
-            <Card className="bg-primary text-primary-foreground">
-              <CardContent className="p-4">
-                <h3 className="font-semibold mb-2">Hızlı İşlemler</h3>
-                <div className="space-y-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="w-full justify-start"
-                    asChild
-                  >
-                    <Link to="/admin/users">
-                      <Users className="mr-2 h-4 w-4" />
-                      Kullanıcı Yönetimi
-                    </Link>
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="w-full justify-start"
-                    asChild
-                  >
-                    <Link to="/admin/courses">
-                      <BookOpen className="mr-2 h-4 w-4" />
-                      Kurs Yönetimi
-                    </Link>
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="w-full justify-start"
-                    asChild
-                  >
-                    <Link to="/admin/companies">
-                      <Building2 className="mr-2 h-4 w-4" />
-                      Firma Yönetimi
-                    </Link>
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="w-full justify-start"
-                    asChild
-                  >
-                    <Link to="/admin/exams">
-                      <FileQuestion className="mr-2 h-4 w-4" />
-                      Sınav Yönetimi
-                    </Link>
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="w-full justify-start"
-                    asChild
-                  >
-                    <Link to="/admin/certificates">
-                      <Award className="mr-2 h-4 w-4" />
-                      Sertifika Yönetimi
-                    </Link>
-                  </Button>
+            <div className="dashboard-card bg-primary text-primary-foreground">
+              <div className="p-5">
+                <h3 className="font-semibold text-sm mb-3">Hızlı İşlemler</h3>
+                <div className="space-y-1.5">
+                  {[
+                    { icon: Users, label: "Kullanıcı Yönetimi", href: "/admin/users" },
+                    { icon: BookOpen, label: "Kurs Yönetimi", href: "/admin/courses" },
+                    { icon: Building2, label: "Firma Yönetimi", href: "/admin/companies" },
+                    { icon: FileQuestion, label: "Sınav Yönetimi", href: "/admin/exams" },
+                    { icon: Award, label: "Sertifika Yönetimi", href: "/admin/certificates" },
+                  ].map((action) => (
+                    <Button
+                      key={action.href}
+                      variant="secondary"
+                      size="sm"
+                      className="w-full justify-start h-9 text-xs"
+                      asChild
+                    >
+                      <Link to={action.href}>
+                        <action.icon className="mr-2 h-3.5 w-3.5" />
+                        {action.label}
+                      </Link>
+                    </Button>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -264,18 +264,18 @@ export default function StudentDashboard() {
 
   return (
     <DashboardLayout userRole="student">
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in">
         {/* Welcome */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">
               Hoş Geldiniz, {userName}! 👋
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground mt-1">
               Eğitimlerinize kaldığınız yerden devam edin.
             </p>
           </div>
-          <Button variant="accent" asChild>
+          <Button variant="accent" size="sm" asChild>
             <Link to="/courses">
               Yeni Eğitim Keşfet
               <ArrowRight className="ml-2 h-4 w-4" />
@@ -283,58 +283,55 @@ export default function StudentDashboard() {
           </Button>
         </div>
 
-        <Card>
-          <CardContent className="p-4 md:p-5">
-            <div className="flex flex-col gap-3 md:flex-row md:items-end">
-              <div className="flex-1 space-y-2">
-                <p className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <KeyRound className="h-4 w-4 text-accent" />
-                  Grup Anahtarı ile Eğitime Katıl
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Yönetici tarafından verilen anahtarı girin, atanmış eğitimler “Eğitimlerim” alanına otomatik eklensin.
-                </p>
-                <Input
-                  value={groupKey}
-                  onChange={(e) => setGroupKey(e.target.value)}
-                  placeholder="Örn: ISG-2026-ABC123"
-                  className="max-w-md"
-                />
-              </div>
-              <Button variant="accent" onClick={handleJoinGroup} disabled={joiningGroup}>
-                {joiningGroup ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Doğrulanıyor...
-                  </>
-                ) : (
-                  "Gruba Katıl"
-                )}
-              </Button>
+        {/* Group Key */}
+        <div className="dashboard-card p-4 md:p-5">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end">
+            <div className="flex-1 space-y-2">
+              <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-accent" />
+                Grup Anahtarı ile Eğitime Katıl
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Yönetici tarafından verilen anahtarı girin, atanmış eğitimler otomatik eklensin.
+              </p>
+              <Input
+                value={groupKey}
+                onChange={(e) => setGroupKey(e.target.value)}
+                placeholder="Örn: ISG-2026-ABC123"
+                className="max-w-md"
+              />
             </div>
-          </CardContent>
-        </Card>
+            <Button variant="accent" size="sm" onClick={handleJoinGroup} disabled={joiningGroup}>
+              {joiningGroup ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Doğrulanıyor...
+                </>
+              ) : (
+                "Gruba Katıl"
+              )}
+            </Button>
+          </div>
+        </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat) => (
-            <Card key={stat.title}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-4">
-                  <div
-                    className={`h-12 w-12 rounded-lg ${stat.bgColor} flex items-center justify-center`}
-                  >
-                    <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">
-                      {stat.value}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{stat.title}</p>
-                  </div>
+            <div key={stat.title} className="stat-card">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`h-11 w-11 rounded-xl ${stat.bgColor} flex items-center justify-center`}
+                >
+                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <p className="text-2xl font-bold text-foreground tracking-tight">
+                    {stat.value}
+                  </p>
+                  <p className="text-xs text-muted-foreground font-medium">{stat.title}</p>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
 
@@ -342,31 +339,29 @@ export default function StudentDashboard() {
           {/* Active Courses */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">
+              <h3 className="text-base font-semibold text-foreground">
                 Eğitimlerim
-              </h2>
-              <Button variant="ghost" size="sm" asChild>
+              </h3>
+              <Button variant="ghost" size="sm" className="text-xs" asChild>
                 <Link to="/dashboard/courses">Tümünü Gör</Link>
               </Button>
             </div>
 
             {activeEnrollments.length === 0 ? (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="font-semibold text-foreground mb-2">
-                    Henüz kayıtlı eğitiminiz yok
-                  </h3>
-                  <p className="text-muted-foreground mb-4">
-                    İSG eğitimlerinize hemen başlayın
-                  </p>
-                  <Button variant="accent" asChild>
-                    <Link to="/courses">Eğitimleri Keşfet</Link>
-                  </Button>
-                </CardContent>
-              </Card>
+              <div className="dashboard-card p-8 text-center">
+                <BookOpen className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+                <h3 className="font-semibold text-foreground mb-2">
+                  Henüz kayıtlı eğitiminiz yok
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  İSG eğitimlerinize hemen başlayın
+                </p>
+                <Button variant="accent" size="sm" asChild>
+                  <Link to="/courses">Eğitimleri Keşfet</Link>
+                </Button>
+              </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {activeEnrollments.slice(0, 3).map((enrollment) => {
                   const course = enrollment.course;
                   if (!course) return null;
@@ -379,47 +374,45 @@ export default function StudentDashboard() {
                   );
 
                   return (
-                    <Card key={enrollment.id}>
-                      <CardContent className="p-4">
-                        <div className="flex flex-col md:flex-row md:items-center gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge variant={dangerClassBadge[dangerClass]}>
-                                {dangerClassLabel[dangerClass]}
-                              </Badge>
-                            </div>
-                            <h3 className="font-semibold text-foreground mb-1">
-                              {course.title}
-                            </h3>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-4 w-4" />
-                                {Math.round(totalMinutes / 60)} Saat
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <TrendingUp className="h-4 w-4" />
-                                %{progress} tamamlandı
-                              </span>
-                            </div>
+                    <div key={enrollment.id} className="dashboard-card p-4">
+                      <div className="flex flex-col md:flex-row md:items-center gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant={dangerClassBadge[dangerClass]}>
+                              {dangerClassLabel[dangerClass]}
+                            </Badge>
                           </div>
-
-                          <div className="flex items-center gap-4">
-                            <div className="w-32">
-                              <Progress value={progress} className="h-2" />
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Kalan: {Math.round(remainingMinutes / 60)} saat
-                              </p>
-                            </div>
-                            <Button variant="accent" size="sm" asChild>
-                              <Link to={`/learn/${course.id}`}>
-                                <Play className="h-4 w-4 mr-1" />
-                                Devam Et
-                              </Link>
-                            </Button>
+                          <h4 className="font-semibold text-foreground text-sm mb-1">
+                            {course.title}
+                          </h4>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3.5 w-3.5" />
+                              {Math.round(totalMinutes / 60)} Saat
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <TrendingUp className="h-3.5 w-3.5" />
+                              %{progress} tamamlandı
+                            </span>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
+
+                        <div className="flex items-center gap-3">
+                          <div className="w-28">
+                            <Progress value={progress} className="h-2" />
+                            <p className="text-[11px] text-muted-foreground mt-1">
+                              Kalan: {Math.round(remainingMinutes / 60)} saat
+                            </p>
+                          </div>
+                          <Button variant="accent" size="sm" asChild>
+                            <Link to={`/learn/${course.id}`}>
+                              <Play className="h-3.5 w-3.5 mr-1" />
+                              Devam Et
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
@@ -431,42 +424,38 @@ export default function StudentDashboard() {
             {/* Available Exams */}
             {availableExams.length > 0 && (
               <>
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-foreground">
-                    Bekleyen Sınavlar
-                  </h2>
-                </div>
+                <h3 className="text-base font-semibold text-foreground">
+                  Bekleyen Sınavlar
+                </h3>
                 <div className="space-y-3">
                   {availableExams.slice(0, 3).map((exam) => (
-                    <Card key={exam.exam_id} className="border-accent/30">
-                      <CardContent className="p-4">
-                        <div className="flex items-start gap-3">
-                          <div className="h-10 w-10 rounded-lg bg-warning/10 flex items-center justify-center">
-                            <FileQuestion className="h-5 w-5 text-warning" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-foreground text-sm">
-                              {exam.exam_title}
-                            </h4>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {exam.course_title}
-                            </p>
-                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                              <span>{exam.duration_minutes} dk</span>
-                              <span>•</span>
-                              <span>%{exam.passing_score} geçme</span>
-                              <span>•</span>
-                              <span>{exam.attempts_used}/{exam.max_attempts} deneme</span>
-                            </div>
-                          </div>
-                          <Button variant="accent" size="sm" asChild>
-                            <Link to={`/exam/${exam.exam_id}/${exam.enrollment_id}`}>
-                              Başla
-                            </Link>
-                          </Button>
+                    <div key={exam.exam_id} className="dashboard-card border-accent/20 p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-warning/10 flex items-center justify-center">
+                          <FileQuestion className="h-5 w-5 text-warning" />
                         </div>
-                      </CardContent>
-                    </Card>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-foreground text-sm">
+                            {exam.exam_title}
+                          </h4>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {exam.course_title}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground">
+                            <span>{exam.duration_minutes} dk</span>
+                            <span>•</span>
+                            <span>%{exam.passing_score} geçme</span>
+                            <span>•</span>
+                            <span>{exam.attempts_used}/{exam.max_attempts}</span>
+                          </div>
+                        </div>
+                        <Button variant="accent" size="sm" asChild>
+                          <Link to={`/exam/${exam.exam_id}/${exam.enrollment_id}`}>
+                            Başla
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </>
@@ -474,74 +463,68 @@ export default function StudentDashboard() {
 
             {/* Recent Certificates */}
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">
+              <h3 className="text-base font-semibold text-foreground">
                 Son Sertifikalar
-              </h2>
-              <Button variant="ghost" size="sm" asChild>
+              </h3>
+              <Button variant="ghost" size="sm" className="text-xs" asChild>
                 <Link to="/dashboard/certificates">Tümü</Link>
               </Button>
             </div>
 
             {certificates.length === 0 ? (
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <Award className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">
-                    Henüz sertifikanız yok
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="dashboard-card p-6 text-center">
+                <Award className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  Henüz sertifikanız yok
+                </p>
+              </div>
             ) : (
               <div className="space-y-3">
                 {certificates.map((cert) => (
-                  <Card key={cert.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                          <Award className="h-5 w-5 text-accent" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-foreground text-sm truncate">
-                            {cert.course_title}
-                          </h4>
-                          <p className="text-xs text-muted-foreground">
-                            {cert.issue_date
-                              ? new Date(cert.issue_date).toLocaleDateString("tr-TR")
-                              : "-"}
-                          </p>
-                          <p className="text-xs text-accent font-mono mt-1">
-                            {cert.certificate_number}
-                          </p>
-                        </div>
-                        <Button variant="ghost" size="sm">
-                          İndir
-                        </Button>
+                  <div key={cert.id} className="dashboard-card p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                        <Award className="h-5 w-5 text-accent" />
                       </div>
-                    </CardContent>
-                  </Card>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-foreground text-sm truncate">
+                          {cert.course_title}
+                        </h4>
+                        <p className="text-[11px] text-muted-foreground">
+                          {cert.issue_date
+                            ? new Date(cert.issue_date).toLocaleDateString("tr-TR")
+                            : "-"}
+                        </p>
+                        <p className="text-[11px] text-accent font-mono mt-0.5">
+                          {cert.certificate_number}
+                        </p>
+                      </div>
+                      <Button variant="ghost" size="sm" className="text-xs">
+                        İndir
+                      </Button>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
 
             {/* Quick Actions */}
-            <Card className="bg-gradient-accent">
-              <CardContent className="p-4">
-                <h3 className="font-semibold text-accent-foreground mb-2">
-                  Sertifika Doğrula
-                </h3>
-                <p className="text-sm text-accent-foreground/80 mb-4">
-                  Sertifika numarası ile doğrulama yapın.
-                </p>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="w-full"
-                  asChild
-                >
-                  <Link to="/verify">Doğrula</Link>
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="dashboard-card bg-gradient-accent p-5">
+              <h3 className="font-semibold text-accent-foreground text-sm mb-2">
+                Sertifika Doğrula
+              </h3>
+              <p className="text-xs text-accent-foreground/80 mb-3">
+                Sertifika numarası ile doğrulama yapın.
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-full text-xs"
+                asChild
+              >
+                <Link to="/verify">Doğrula</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </div>
