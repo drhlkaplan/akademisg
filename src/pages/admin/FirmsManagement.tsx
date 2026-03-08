@@ -65,6 +65,7 @@ import {
   Phone,
   Mail,
   MapPin,
+  Palette,
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
