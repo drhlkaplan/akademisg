@@ -830,6 +830,100 @@ export default function ExamsManagement() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Question Bank Dialog */}
+        <Dialog open={isQuestionBankOpen} onOpenChange={(open) => {
+          setIsQuestionBankOpen(open);
+          if (!open) {
+            setBankSourceExamId("");
+            setSelectedBankQuestions(new Set());
+          }
+        }}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Soru Bankasından Ekle</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Kaynak Sınav Seçin</Label>
+                <Select value={bankSourceExamId} onValueChange={(v) => { setBankSourceExamId(v); setSelectedBankQuestions(new Set()); }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Soru alınacak sınavı seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {exams?.filter(e => e.id !== selectedExamId).map((exam) => (
+                      <SelectItem key={exam.id} value={exam.id}>
+                        {exam.title} ({exam.courses?.title})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {bankQuestions && bankQuestions.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Soruları seçin ({selectedBankQuestions.size} seçili)</Label>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        if (selectedBankQuestions.size === bankQuestions.length) {
+                          setSelectedBankQuestions(new Set());
+                        } else {
+                          setSelectedBankQuestions(new Set(bankQuestions.map(q => q.id)));
+                        }
+                      }}
+                    >
+                      {selectedBankQuestions.size === bankQuestions.length ? "Tümünü Kaldır" : "Tümünü Seç"}
+                    </Button>
+                  </div>
+                  <div className="border rounded-lg divide-y max-h-[40vh] overflow-y-auto">
+                    {bankQuestions.map((q, i) => (
+                      <label key={q.id} className="flex items-start gap-3 p-3 hover:bg-muted/50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="mt-1 h-4 w-4 rounded border-input"
+                          checked={selectedBankQuestions.has(q.id)}
+                          onChange={(e) => {
+                            const next = new Set(selectedBankQuestions);
+                            if (e.target.checked) next.add(q.id); else next.delete(q.id);
+                            setSelectedBankQuestions(next);
+                          }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{i + 1}. {q.question_text}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {q.question_type === "multiple_choice" ? "Çoktan Seçmeli" : "Doğru/Yanlış"} • {q.points} puan
+                          </p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ) : bankSourceExamId ? (
+                <p className="text-center text-muted-foreground py-4">Bu sınavda soru bulunamadı</p>
+              ) : null}
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setIsQuestionBankOpen(false)}>İptal</Button>
+                <Button
+                  disabled={selectedBankQuestions.size === 0 || importQuestionsMutation.isPending}
+                  onClick={() => {
+                    if (selectedExamId) {
+                      importQuestionsMutation.mutate({
+                        targetExamId: selectedExamId,
+                        questionIds: [...selectedBankQuestions],
+                      });
+                    }
+                  }}
+                >
+                  {importQuestionsMutation.isPending ? "Aktarılıyor..." : `${selectedBankQuestions.size} Soru Aktar`}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
