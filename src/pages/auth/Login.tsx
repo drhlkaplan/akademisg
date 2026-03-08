@@ -81,7 +81,11 @@ export default function Login() {
     }
 
     toast.success("Başarıyla giriş yapıldı!");
-    navigate(from, { replace: true });
+    // Wait for auth state to settle, then redirect based on role
+    setTimeout(() => {
+      // Re-check roles from the auth context after login
+      navigate(from, { replace: true });
+    }, 100);
   };
 
   const logoUrl = branding?.logo_url;
