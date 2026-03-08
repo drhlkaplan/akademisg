@@ -277,7 +277,57 @@ export default function ExamsManagement() {
     },
   });
 
-  const resetExamForm = () => {
+  // Question bank: fetch questions from another exam
+  const { data: bankQuestions } = useQuery({
+    queryKey: ["bank-questions", bankSourceExamId],
+    queryFn: async () => {
+      if (!bankSourceExamId) return [];
+      const { data, error } = await supabase
+        .from("questions")
+        .select("*")
+        .eq("exam_id", bankSourceExamId)
+        .order("created_at");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!bankSourceExamId && isQuestionBankOpen,
+  });
+
+  // Import selected questions from bank to target exam
+  const importQuestionsMutation = useMutation({
+    mutationFn: async ({ targetExamId, questionIds }: { targetExamId: string; questionIds: string[] }) => {
+      const sourceQuestions = bankQuestions?.filter(q => questionIds.includes(q.id)) || [];
+      const inserts = sourceQuestions.map(q => ({
+        exam_id: targetExamId,
+        question_text: q.question_text,
+        question_type: q.question_type,
+        options: q.options,
+        correct_answer: q.correct_answer,
+        points: q.points,
+      }));
+      const { error } = await supabase.from("questions").insert(inserts);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["exam-questions", expandedExamId] });
+      setIsQuestionBankOpen(false);
+      setSelectedBankQuestions(new Set());
+      setBankSourceExamId("");
+      toast({ title: "Sorular başarıyla aktarıldı" });
+    },
+    onError: (error) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleOpenQuestionBank = (examId: string) => {
+    setSelectedExamId(examId);
+    setBankSourceExamId("");
+    setSelectedBankQuestions(new Set());
+    setIsQuestionBankOpen(true);
+  };
+
+
     setExamForm({
       title: "",
       course_id: "",
