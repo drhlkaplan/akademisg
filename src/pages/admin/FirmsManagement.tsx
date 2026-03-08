@@ -658,112 +658,144 @@ export default function FirmsManagement() {
 
       {/* Create/Edit Firm Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
               {isEditing ? "Firma Düzenle" : "Yeni Firma Oluştur"}
             </DialogTitle>
             <DialogDescription>
-              {isEditing
-                ? "Firma bilgilerini güncelleyin."
-                : "Yeni bir firma ekleyin."}
+              {isEditing ? "Firma bilgilerini ve branding ayarlarını güncelleyin." : "Yeni bir firma ekleyin."}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
-            <div className="space-y-2">
-              <Label htmlFor="name">Firma Adı *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                placeholder="ABC İnşaat Ltd. Şti."
-              />
+          <div className="grid gap-4 py-4 max-h-[65vh] overflow-y-auto pr-2">
+            {/* Basic Info */}
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Temel Bilgiler</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Firma Adı *</Label>
+                <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="ABC İnşaat Ltd. Şti." />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="firm_code">Firma Kodu</Label>
+                <Input id="firm_code" value={formData.firm_code} onChange={(e) => setFormData({ ...formData, firm_code: e.target.value.toUpperCase() })} placeholder="ABC123" />
+                <p className="text-xs text-muted-foreground">Kullanıcıların giriş/kayıtta kullanacağı benzersiz kod</p>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="tax_number">Vergi No</Label>
-                <Input
-                  id="tax_number"
-                  value={formData.tax_number}
-                  onChange={(e) =>
-                    setFormData({ ...formData, tax_number: e.target.value })
-                  }
-                  placeholder="1234567890"
-                />
+                <Input id="tax_number" value={formData.tax_number} onChange={(e) => setFormData({ ...formData, tax_number: e.target.value })} placeholder="1234567890" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="sector">Sektör</Label>
-                <Input
-                  id="sector"
-                  value={formData.sector}
-                  onChange={(e) =>
-                    setFormData({ ...formData, sector: e.target.value })
-                  }
-                  placeholder="İnşaat"
-                />
+                <Input id="sector" value={formData.sector} onChange={(e) => setFormData({ ...formData, sector: e.target.value })} placeholder="İnşaat" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="phone">Telefon</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
-                  placeholder="0212 123 45 67"
-                />
+                <Input id="phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="0212 123 45 67" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">E-posta</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  placeholder="info@firma.com"
-                />
+                <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="info@firma.com" />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="address">Adres</Label>
-              <Textarea
-                id="address"
-                value={formData.address}
-                onChange={(e) =>
-                  setFormData({ ...formData, address: e.target.value })
-                }
-                placeholder="Firma adresi..."
-                rows={2}
-              />
+              <Textarea id="address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="Firma adresi..." rows={2} />
             </div>
-            <div className="flex items-center justify-between">
+
+            {/* Branding Section */}
+            <div className="border-t pt-4 mt-2">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2 mb-4">
+                <Palette className="h-4 w-4" /> Branding & Görünüm Ayarları
+              </h3>
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="logo_url">Logo URL</Label>
+                    <Input id="logo_url" value={formData.logo_url} onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })} placeholder="https://firma.com/logo.png" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="favicon_url">Favicon URL</Label>
+                    <Input id="favicon_url" value={formData.favicon_url} onChange={(e) => setFormData({ ...formData, favicon_url: e.target.value })} placeholder="https://firma.com/favicon.ico" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="primary_color">Ana Renk</Label>
+                    <div className="flex gap-2">
+                      <input type="color" value={formData.primary_color} onChange={(e) => setFormData({ ...formData, primary_color: e.target.value })} className="h-10 w-12 rounded border cursor-pointer" />
+                      <Input value={formData.primary_color} onChange={(e) => setFormData({ ...formData, primary_color: e.target.value })} className="flex-1" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="secondary_color">İkincil Renk</Label>
+                    <div className="flex gap-2">
+                      <input type="color" value={formData.secondary_color} onChange={(e) => setFormData({ ...formData, secondary_color: e.target.value })} className="h-10 w-12 rounded border cursor-pointer" />
+                      <Input value={formData.secondary_color} onChange={(e) => setFormData({ ...formData, secondary_color: e.target.value })} className="flex-1" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bg_color">Arka Plan Rengi</Label>
+                    <div className="flex gap-2">
+                      <input type="color" value={formData.bg_color} onChange={(e) => setFormData({ ...formData, bg_color: e.target.value })} className="h-10 w-12 rounded border cursor-pointer" />
+                      <Input value={formData.bg_color} onChange={(e) => setFormData({ ...formData, bg_color: e.target.value })} className="flex-1" />
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="welcome_message">Karşılama Mesajı</Label>
+                  <Input id="welcome_message" value={formData.welcome_message} onChange={(e) => setFormData({ ...formData, welcome_message: e.target.value })} placeholder="Eğitimlerinize hoş geldiniz" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="login_bg_url">Login Arka Plan Görseli URL</Label>
+                  <Input id="login_bg_url" value={formData.login_bg_url} onChange={(e) => setFormData({ ...formData, login_bg_url: e.target.value })} placeholder="https://firma.com/bg.jpg" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="footer_text">Footer Metni</Label>
+                  <Input id="footer_text" value={formData.footer_text} onChange={(e) => setFormData({ ...formData, footer_text: e.target.value })} placeholder="© 2026 Firma Adı. Tüm hakları saklıdır." />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="custom_css">Özel CSS</Label>
+                  <Textarea id="custom_css" value={formData.custom_css} onChange={(e) => setFormData({ ...formData, custom_css: e.target.value })} placeholder=":root { --primary: ... }" rows={3} className="font-mono text-xs" />
+                </div>
+              </div>
+            </div>
+
+            {/* Preview */}
+            {(formData.logo_url || formData.primary_color !== "#f97316") && (
+              <div className="border-t pt-4 mt-2">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Önizleme</h3>
+                <div className="rounded-lg border p-4" style={{ backgroundColor: formData.bg_color }}>
+                  <div className="flex items-center gap-3 mb-3">
+                    {formData.logo_url ? (
+                      <img src={formData.logo_url} alt="Logo" className="h-8 max-w-[120px] object-contain" />
+                    ) : (
+                      <div className="h-8 w-8 rounded flex items-center justify-center" style={{ backgroundColor: formData.primary_color }}>
+                        <Building2 className="h-4 w-4 text-white" />
+                      </div>
+                    )}
+                    <span className="font-semibold" style={{ color: formData.secondary_color }}>{formData.name || "Firma Adı"}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="h-6 w-20 rounded" style={{ backgroundColor: formData.primary_color }} />
+                    <div className="h-6 w-20 rounded" style={{ backgroundColor: formData.secondary_color }} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between border-t pt-4">
               <Label htmlFor="is_active">Aktif</Label>
-              <Switch
-                id="is_active"
-                checked={formData.is_active}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, is_active: checked })
-                }
-              />
+              <Switch id="is_active" checked={formData.is_active} onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={handleCloseDialog}>
-              İptal
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={createMutation.isPending || updateMutation.isPending}
-            >
-              {(createMutation.isPending || updateMutation.isPending) && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
+            <Button variant="outline" onClick={handleCloseDialog}>İptal</Button>
+            <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
+              {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isEditing ? "Güncelle" : "Oluştur"}
             </Button>
           </DialogFooter>
