@@ -93,8 +93,9 @@ export function ManualCompletionDialog({ open, onOpenChange, users, courses }: P
       return enrollmentId;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["report-"] });
-      queryClient.invalidateQueries({ queryKey: ["analytics-"] });
+      queryClient.invalidateQueries({ queryKey: ["report-enrollments"] });
+      queryClient.invalidateQueries({ queryKey: ["report-lesson-progress"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics-enrollments"] });
       toast({ title: "Başarılı", description: "Eğitim manuel olarak tamamlandı olarak işaretlendi." });
       onOpenChange(false);
       setUserId("");
