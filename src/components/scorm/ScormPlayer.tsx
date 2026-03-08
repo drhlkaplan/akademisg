@@ -51,12 +51,12 @@ const ROUTER_FILENAMES = new Set([
   "index_lms.html", "index.html", "launch.html", "story.html",
 ]);
 
-// Use GET with signal abort to check file existence (HEAD blocked by CORS on storage)
+// Use GET to check file existence (HEAD blocked by CORS on storage)
 async function checkFileExists(url: string): Promise<boolean> {
   try {
-    const controller = new AbortController();
-    const res = await fetch(url, { method: "GET", signal: controller.signal });
-    controller.abort(); // Don't download the whole file
+    const res = await fetch(url, { method: "GET" });
+    // Consume body to avoid resource leak, but don't wait for full download
+    res.body?.cancel();
     return res.ok;
   } catch {
     return false;
