@@ -17,7 +17,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const { signIn } = useAuth();
+  const { signIn, isAdmin, isFirmAdmin } = useAuth();
   const { setFirmCode, branding } = useFirmBranding();
   const navigate = useNavigate();
   const location = useLocation();
