@@ -336,6 +336,26 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Video Dialog */}
+      <Dialog open={videoOpen} onOpenChange={setVideoOpen}>
+        <DialogContent className="sm:max-w-3xl p-0 overflow-hidden bg-black border-none">
+          <DialogHeader className="absolute top-2 right-2 z-20 p-0 m-0">
+            <DialogTitle className="sr-only">Tanıtım Videosu</DialogTitle>
+          </DialogHeader>
+          <div className="relative w-full aspect-video">
+            <video
+              className="w-full h-full"
+              controls
+              autoPlay
+              src="https://www.w3schools.com/html/mov_bbb.mp4"
+              poster={heroImage}
+            >
+              Tarayıcınız video etiketini desteklemiyor.
+            </video>
+          </div>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 };
