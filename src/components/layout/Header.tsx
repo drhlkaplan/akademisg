@@ -16,7 +16,12 @@ import { Menu, Shield, User, LogOut, LayoutDashboard, Settings } from "lucide-re
 const navigation = [
   { name: "Ana Sayfa", href: "/" },
   { name: "Eğitimler", href: "/courses" },
-  { name: "Sertifika Doğrula", href: "/verify" },
+  { name: "Hizmetler", href: "/services" },
+  { name: "Fiyatlandırma", href: "/pricing" },
+  { name: "Kurumsal", href: "/corporate" },
+  { name: "Blog", href: "/blog" },
+  { name: "Hakkımızda", href: "/about" },
+  { name: "İletişim", href: "/contact" },
 ];
 
 export function Header() {
