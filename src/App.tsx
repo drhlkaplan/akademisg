@@ -149,6 +149,22 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/admin/certificate-templates"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <CertificateTemplates />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/analytics"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AnalyticsDashboard />
+                </ProtectedRoute>
+              }
+            />
             
             {/* Student Certificates */}
             <Route
