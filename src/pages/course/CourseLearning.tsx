@@ -204,7 +204,7 @@ export default function CourseLearning() {
       );
 
       // Auto-generate certificate only if course has auto_certificate enabled
-      const autoCert = (course as any)?.auto_certificate !== false;
+      const autoCert = course?.auto_certificate !== false;
       if (autoCert) {
         await generateCertificate(enrollId);
       }
