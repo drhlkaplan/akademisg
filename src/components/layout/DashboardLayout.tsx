@@ -31,6 +31,7 @@ import {
   KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useFirmBranding } from "@/contexts/FirmBrandingContext";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -68,26 +69,35 @@ export function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { branding } = useFirmBranding();
 
   const navItems = userRole === "student" ? studentNavItems : adminNavItems;
-  const dashboardTitle = userRole === "student" ? "Öğrenci Paneli" : "Yönetim Paneli";
+  const dashboardTitle = userRole === "student"
+    ? (branding?.name ? `${branding.name}` : "Öğrenci Paneli")
+    : "Yönetim Paneli";
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="p-4 border-b border-sidebar-border">
         <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary shadow-md">
-            <Shield className="h-6 w-6 text-sidebar-primary-foreground" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-lg font-bold text-sidebar-foreground leading-tight">
-              İSG<span className="text-sidebar-primary">Akademi</span>
-            </span>
-            <span className="text-[10px] text-sidebar-foreground/60 leading-none">
-              {dashboardTitle}
-            </span>
-          </div>
+          {branding?.logo_url && userRole === "student" ? (
+            <img src={branding.logo_url} alt={branding.name} className="h-10 max-w-[180px] object-contain" />
+          ) : (
+            <>
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary shadow-md">
+                <Shield className="h-6 w-6 text-sidebar-primary-foreground" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-lg font-bold text-sidebar-foreground leading-tight">
+                  İSG<span className="text-sidebar-primary">Akademi</span>
+                </span>
+                <span className="text-[10px] text-sidebar-foreground/60 leading-none">
+                  {dashboardTitle}
+                </span>
+              </div>
+            </>
+          )}
         </Link>
       </div>
 

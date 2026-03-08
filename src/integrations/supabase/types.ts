@@ -437,39 +437,69 @@ export type Database = {
       firms: {
         Row: {
           address: string | null
+          bg_color: string | null
           created_at: string | null
+          custom_css: string | null
           email: string | null
+          favicon_url: string | null
+          firm_code: string | null
+          footer_text: string | null
           id: string
           is_active: boolean | null
+          login_bg_url: string | null
+          logo_url: string | null
           name: string
           phone: string | null
+          primary_color: string | null
+          secondary_color: string | null
           sector: string | null
           tax_number: string | null
           updated_at: string | null
+          welcome_message: string | null
         }
         Insert: {
           address?: string | null
+          bg_color?: string | null
           created_at?: string | null
+          custom_css?: string | null
           email?: string | null
+          favicon_url?: string | null
+          firm_code?: string | null
+          footer_text?: string | null
           id?: string
           is_active?: boolean | null
+          login_bg_url?: string | null
+          logo_url?: string | null
           name: string
           phone?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
           sector?: string | null
           tax_number?: string | null
           updated_at?: string | null
+          welcome_message?: string | null
         }
         Update: {
           address?: string | null
+          bg_color?: string | null
           created_at?: string | null
+          custom_css?: string | null
           email?: string | null
+          favicon_url?: string | null
+          firm_code?: string | null
+          footer_text?: string | null
           id?: string
           is_active?: boolean | null
+          login_bg_url?: string | null
+          logo_url?: string | null
           name?: string
           phone?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
           sector?: string | null
           tax_number?: string | null
           updated_at?: string | null
+          welcome_message?: string | null
         }
         Relationships: []
       }
@@ -1005,6 +1035,7 @@ export type Database = {
       }
     }
     Functions: {
+      get_email_by_tc: { Args: { tc_no: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
