@@ -327,7 +327,7 @@ export default function ExamsManagement() {
     setIsQuestionBankOpen(true);
   };
 
-
+  const resetExamForm = () => {
     setExamForm({
       title: "",
       course_id: "",
