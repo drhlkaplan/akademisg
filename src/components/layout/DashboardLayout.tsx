@@ -170,8 +170,8 @@ export function DashboardLayout({
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {userRole === "student" ? (
-          studentNavItems.map((item) => {
+        {userRole === "student" || userRole === "company" ? (
+          (userRole === "student" ? studentNavItems : companyNavItems).map((item) => {
             const isActive = location.pathname === item.href;
             return (
               <Link
