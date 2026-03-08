@@ -82,7 +82,13 @@ export default function StudentDashboard() {
   const [joiningGroup, setJoiningGroup] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Redirect firm admins to firm panel
   useEffect(() => {
+    if (isFirmAdmin) {
+      navigate("/firm", { replace: true });
+    }
+  }, [isFirmAdmin, navigate]);
+
     if (user) {
       fetchData();
     }
