@@ -616,10 +616,16 @@ export default function ExamsManagement() {
                             <FileQuestion className="h-4 w-4" />
                             Sorular ({questions?.length || 0})
                           </h4>
-                          <Button size="sm" onClick={() => handleAddQuestion(exam.id)}>
-                            <Plus className="mr-1 h-3 w-3" />
-                            Soru Ekle
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button size="sm" variant="outline" onClick={() => handleOpenQuestionBank(exam.id)}>
+                              <FileQuestion className="mr-1 h-3 w-3" />
+                              Soru Bankasından Ekle
+                            </Button>
+                            <Button size="sm" onClick={() => handleAddQuestion(exam.id)}>
+                              <Plus className="mr-1 h-3 w-3" />
+                              Yeni Soru Ekle
+                            </Button>
+                          </div>
                         </div>
                         {questions && questions.length > 0 ? (
                           <Table>
