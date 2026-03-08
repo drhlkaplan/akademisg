@@ -31,6 +31,7 @@ import {
   KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useFirmBranding } from "@/contexts/FirmBrandingContext";
 
 interface DashboardLayoutProps {
   children: ReactNode;
