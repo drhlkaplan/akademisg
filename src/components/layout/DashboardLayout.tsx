@@ -41,6 +41,14 @@ interface DashboardLayoutProps {
   userRole?: "student" | "admin" | "company" | "superadmin";
 }
 
+const companyNavItems = [
+  { icon: LayoutDashboard, label: "Gösterge Paneli", href: "/firm" },
+  { icon: Users, label: "Çalışanlar", href: "/firm/employees" },
+  { icon: BookOpen, label: "Eğitimler", href: "/firm/courses" },
+  { icon: BarChart3, label: "Raporlar", href: "/firm/reports" },
+  { icon: Award, label: "Sertifikalar", href: "/firm/certificates" },
+];
+
 const studentNavItems = [
   { icon: LayoutDashboard, label: "Gösterge Paneli", href: "/dashboard" },
   { icon: BookOpen, label: "Eğitimlerim", href: "/dashboard/courses" },
