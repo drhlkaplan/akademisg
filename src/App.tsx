@@ -237,6 +237,7 @@ const App = () => (
           </Suspense>
         </BrowserRouter>
       </TooltipProvider>
+      </FirmBrandingProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
