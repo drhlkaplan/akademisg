@@ -202,8 +202,11 @@ export default function CourseLearning() {
         prev ? { ...prev, progress_percent: 100, status: "completed" } : prev
       );
 
-      // Auto-generate certificate
-      await generateCertificate(enrollId);
+      // Auto-generate certificate only if course has auto_certificate enabled
+      const autoCert = (course as any)?.auto_certificate !== false;
+      if (autoCert) {
+        await generateCertificate(enrollId);
+      }
     } else {
       // Update progress percentage
       const total = allLessons?.length || 1;
