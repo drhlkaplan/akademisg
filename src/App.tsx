@@ -192,10 +192,34 @@ const App = () => (
               }
             />
             <Route
-              path="/firm/*"
+              path="/firm/employees"
               element={
                 <ProtectedRoute requireFirmAdmin>
-                  <FirmDashboard />
+                  <FirmEmployees />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/firm/courses"
+              element={
+                <ProtectedRoute requireFirmAdmin>
+                  <FirmCourses />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/firm/reports"
+              element={
+                <ProtectedRoute requireFirmAdmin>
+                  <FirmReports />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/firm/certificates"
+              element={
+                <ProtectedRoute requireFirmAdmin>
+                  <FirmCertificates />
                 </ProtectedRoute>
               }
             />
