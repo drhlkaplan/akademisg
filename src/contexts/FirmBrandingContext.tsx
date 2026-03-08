@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface FirmBranding {
   firm_id: string;
@@ -29,6 +30,7 @@ const FirmBrandingContext = createContext<FirmBrandingContextType | undefined>(u
 const FIRM_CODE_KEY = "isg_firm_code";
 
 export function FirmBrandingProvider({ children }: { children: ReactNode }) {
+  const { profile } = useAuth();
   const [firmCode, setFirmCodeState] = useState<string | null>(() => {
     return localStorage.getItem(FIRM_CODE_KEY);
   });
@@ -49,11 +51,53 @@ export function FirmBrandingProvider({ children }: { children: ReactNode }) {
     setFirmCode(null);
   };
 
+  // Auto-load branding from profile's firm_id when user logs in
+  useEffect(() => {
+    if (!profile?.firm_id) return;
+    // If we already have branding for this firm, skip
+    if (branding?.firm_id === profile.firm_id) return;
+
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("firms")
+        .select("id, firm_code, name, logo_url, primary_color, secondary_color, bg_color, welcome_message, login_bg_url, footer_text, custom_css, favicon_url")
+        .eq("id", profile.firm_id!)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (data && !error) {
+        const code = data.firm_code || "";
+        setFirmCode(code);
+        setBranding({
+          firm_id: data.id,
+          firm_code: code,
+          name: data.name,
+          logo_url: data.logo_url,
+          primary_color: data.primary_color || "#f97316",
+          secondary_color: data.secondary_color || "#1a2744",
+          bg_color: data.bg_color || "#f8fafc",
+          welcome_message: data.welcome_message || "Eğitimlerinize hoş geldiniz",
+          login_bg_url: data.login_bg_url,
+          footer_text: data.footer_text,
+          custom_css: data.custom_css,
+          favicon_url: data.favicon_url,
+        });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [profile?.firm_id]);
+
+  // Load branding by firm_code (for login page pre-fill)
   useEffect(() => {
     if (!firmCode) {
-      setBranding(null);
+      // Don't clear branding if it was loaded from profile
+      if (!profile?.firm_id) setBranding(null);
       return;
     }
+    // If branding already loaded for this code, skip
+    if (branding?.firm_code === firmCode) return;
 
     let cancelled = false;
     setIsLoading(true);
