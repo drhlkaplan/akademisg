@@ -191,15 +191,15 @@ export default function CourseLearning() {
     const allCompleted = allLessons?.every((l) => completedIds.has(l.id)) ?? false;
 
     if (allCompleted) {
-      // Mark enrollment as completed
-      await supabase
-        .from("enrollments")
-        .update({
-          status: "completed",
-          progress_percent: 100,
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", enrollId);
+      // Mark enrollment as completed via RPC
+      await supabase.rpc("update_enrollment_progress", {
+        _enrollment_id: enrollId,
+        _progress_percent: 100,
+      });
+      // Admin-level completion status change - use edge function or let server handle
+      // For now, the progress is set to 100; actual status change to 'completed' 
+      // needs a server-side function
+      await supabase.rpc("complete_enrollment", { _enrollment_id: enrollId });
 
       setEnrollment((prev) =>
         prev ? { ...prev, progress_percent: 100, status: "completed" } : prev
@@ -211,15 +211,15 @@ export default function CourseLearning() {
         await generateCertificate(enrollId);
       }
     } else {
-      // Update progress percentage
+      // Update progress percentage via RPC
       const total = allLessons?.length || 1;
       const completed = completedIds.size;
       const pct = Math.round((completed / total) * 100);
 
-      await supabase
-        .from("enrollments")
-        .update({ progress_percent: pct })
-        .eq("id", enrollId);
+      await supabase.rpc("update_enrollment_progress", {
+        _enrollment_id: enrollId,
+        _progress_percent: pct,
+      });
 
       setEnrollment((prev) => (prev ? { ...prev, progress_percent: pct } : prev));
     }
