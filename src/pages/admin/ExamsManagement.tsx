@@ -942,6 +942,19 @@ export default function ExamsManagement() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* AI Question Generator */}
+        {aiExamContext && (
+          <AIContentGenerator
+            open={aiQuestionOpen}
+            onOpenChange={setAiQuestionOpen}
+            mode="questions"
+            context={aiExamContext}
+            onQuestionsGenerated={() => {
+              queryClient.invalidateQueries({ queryKey: ["exam-questions", expandedExamId] });
+            }}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
