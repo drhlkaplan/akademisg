@@ -54,6 +54,7 @@ import {
   ToggleRight,
   ChevronDown,
   ChevronUp,
+  Sparkles,
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
