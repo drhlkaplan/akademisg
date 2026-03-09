@@ -68,7 +68,10 @@ Deno.serve(async (req) => {
       return new Response("Invalid path", { status: 400, headers: corsHeaders });
     }
 
-    const objectPath = decodeURIComponent(pathname.slice(markerIndex + marker.length));
+    let objectPath = decodeURIComponent(pathname.slice(markerIndex + marker.length));
+    // Strip padding segments (___/) used to prevent ../ escaping above the proxy path
+    objectPath = objectPath.replace(/^\/?(?:___\/)+/, "");
+    console.log("scorm-proxy resolved path:", objectPath);
     if (!objectPath) {
       return new Response("Missing object path", { status: 400, headers: corsHeaders });
     }
