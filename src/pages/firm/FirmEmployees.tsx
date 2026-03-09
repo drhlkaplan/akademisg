@@ -56,7 +56,7 @@ export default function FirmEmployees() {
       if (!firmId) return [];
       const { data, error } = await supabase
         .from("profiles")
-        .select("*, user_roles(role)")
+        .select("*")
         .eq("firm_id", firmId)
         .order("first_name");
       if (error) throw error;

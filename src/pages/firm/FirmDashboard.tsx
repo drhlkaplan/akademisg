@@ -30,7 +30,7 @@ export default function FirmDashboard() {
       if (!firmId) return [];
       const { data, error } = await supabase
         .from("profiles")
-        .select("*, user_roles(role)")
+        .select("*")
         .eq("firm_id", firmId);
       if (error) throw error;
       return data;
