@@ -13,7 +13,6 @@ interface ScormPlayerProps {
   onComplete?: () => void;
 }
 
-/** Extract storage object path from package_url */
 function extractFolderPath(packageUrl: string): string | null {
   const marker = "scorm-packages/";
   const idx = packageUrl.indexOf(marker);
@@ -22,100 +21,127 @@ function extractFolderPath(packageUrl: string): string | null {
   return raw.replace(/^\/+|\/+$/g, "") || null;
 }
 
-/** Build proxy URL with padding segments */
 function buildProxyBase(folderPath: string): string {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const padding = "___/___/___/___/___/___/___/___/___/___";
   return `${supabaseUrl}/functions/v1/scorm-proxy/${padding}/${folderPath}`;
 }
 
-function sanitizePath(path: string): string {
-  return path.replace(/&/g, "_").replace(/ /g, "_");
+function buildListUrl(folderPath: string): string {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  return `${supabaseUrl}/functions/v1/scorm-proxy/${folderPath}?list=1`;
 }
 
-/** Check if a file exists at the proxy URL using HEAD-like GET */
-async function checkFileExists(url: string): Promise<boolean> {
+interface StorageItem {
+  name: string;
+  id: string | null;
+  metadata: Record<string, unknown> | null;
+}
+
+const PRIORITY_FILES = [
+  "story_html5.html",
+  "index_lms_html5.html",
+  "index.html",
+  "story.html",
+  "index_lms.html",
+];
+
+/** List files in a storage directory via the proxy listing endpoint */
+async function listFiles(folderPath: string): Promise<StorageItem[]> {
   try {
-    const res = await fetch(url, { method: "GET" });
-    res.body?.cancel();
-    return res.ok;
+    const res = await fetch(buildListUrl(folderPath));
+    if (!res.ok) return [];
+    return await res.json();
   } catch {
-    return false;
+    return [];
   }
 }
 
-/** Extract subfolder prefixes from entry point path */
-function getSubfolderPrefixes(entryPoint: string): string[] {
-  const parts = entryPoint.split("/");
-  if (parts.length <= 1) return [];
-  const prefixes: string[] = [];
-  for (let i = parts.length - 1; i >= 1; i--) {
-    prefixes.push(parts.slice(0, i).join("/"));
-  }
-  return prefixes;
-}
+/** Find a launchable HTML file by listing directory contents (no 404 probes!) */
+async function resolveEntryPoint(folderPath: string, entryPoint: string): Promise<string | null> {
+  const proxyBase = buildProxyBase(folderPath);
 
-/** Resolve the actual launchable HTML file within a SCORM package */
-async function resolveEntryPoint(baseUrl: string, entryPoint: string): Promise<string | null> {
-  const sanitizedEntry = sanitizePath(entryPoint);
-  const subfolders = getSubfolderPrefixes(sanitizedEntry);
-  const searchBases = [baseUrl, ...subfolders.map(sf => `${baseUrl}/${sf}`)];
+  // List root directory
+  const rootFiles = await listFiles(folderPath);
+  const rootFileNames = new Set(rootFiles.map(f => f.name));
 
-  // Priority: direct content files first
-  const priorityFiles = [
-    "story_html5.html",
-    "index_lms_html5.html",
-    "index.html",
-    "scormcontent/index.html",
-    "story.html",
-    "index_lms.html",
-  ];
-
-  for (const file of priorityFiles) {
-    for (const base of searchBases) {
-      const url = `${base}/${file}`;
-      if (await checkFileExists(url)) return url;
+  // Check priority files at root
+  for (const file of PRIORITY_FILES) {
+    if (rootFileNames.has(file)) {
+      return `${proxyBase}/${file}`;
     }
   }
 
-  // Try imsmanifest.xml
-  for (const base of searchBases) {
-    try {
-      const manifestRes = await fetch(`${base}/imsmanifest.xml`);
-      if (manifestRes.ok) {
-        const xml = await manifestRes.text();
-        const launchFile = parseLaunchFromManifest(xml);
-        if (launchFile) {
-          const launchUrl = `${base}/${sanitizePath(launchFile)}`;
-          if (await checkFileExists(launchUrl)) return launchUrl;
-        }
-      }
-    } catch {}
+  // Check scormcontent/index.html
+  if (rootFileNames.has("scormcontent")) {
+    const scormContentFiles = await listFiles(`${folderPath}/scormcontent`);
+    if (scormContentFiles.some(f => f.name === "index.html")) {
+      return `${proxyBase}/scormcontent/index.html`;
+    }
   }
 
-  // Last resort
-  const entryFileName = sanitizedEntry.split("/").pop()?.toLowerCase() || "";
-  if (!entryFileName.includes("aicccomm")) {
-    const fallbackUrl = `${baseUrl}/${sanitizedEntry}`;
-    if (await checkFileExists(fallbackUrl)) return fallbackUrl;
+  // Extract subfolder hints from entry point
+  const sanitizedEntry = entryPoint.replace(/&/g, "_").replace(/ /g, "_");
+  const entryParts = sanitizedEntry.split("/");
+
+  // Search subfolders derived from entry point path
+  if (entryParts.length > 1) {
+    // Try each subfolder prefix, deepest first
+    for (let depth = entryParts.length - 1; depth >= 1; depth--) {
+      const subPath = entryParts.slice(0, depth).join("/");
+      const subFiles = await listFiles(`${folderPath}/${subPath}`);
+      const subFileNames = new Set(subFiles.map(f => f.name));
+
+      for (const file of PRIORITY_FILES) {
+        if (subFileNames.has(file)) {
+          return `${proxyBase}/${subPath}/${file}`;
+        }
+      }
+    }
+  }
+
+  // Search ALL subfolders from root listing (folders have id=null in Supabase storage)
+  const subfolders = rootFiles.filter(f => f.id === null);
+  for (const folder of subfolders) {
+    const subFiles = await listFiles(`${folderPath}/${folder.name}`);
+    const subFileNames = new Set(subFiles.map(f => f.name));
+
+    for (const file of PRIORITY_FILES) {
+      if (subFileNames.has(file)) {
+        return `${proxyBase}/${folder.name}/${file}`;
+      }
+    }
+  }
+
+  // Try imsmanifest.xml at root
+  if (rootFileNames.has("imsmanifest.xml")) {
+    const launchFile = await parseManifestFromProxy(`${proxyBase}/imsmanifest.xml`);
+    if (launchFile) {
+      return `${proxyBase}/${launchFile.replace(/&/g, "_").replace(/ /g, "_")}`;
+    }
   }
 
   return null;
 }
 
-function parseLaunchFromManifest(xml: string): string | null {
+async function parseManifestFromProxy(url: string): Promise<string | null> {
   try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const xml = await res.text();
     const doc = new DOMParser().parseFromString(xml, "text/xml");
     for (const resource of doc.querySelectorAll("resource")) {
       const href = resource.getAttribute("href");
       if (href?.endsWith(".html") && !href.toLowerCase().includes("aicccomm")) return href;
     }
-    for (const file of doc.querySelectorAll("resource file")) {
-      const href = file.getAttribute("href");
-      if (href?.endsWith(".html") && !href.toLowerCase().includes("aicccomm")) return href;
-    }
   } catch {}
   return null;
+}
+
+function parseTimeToSeconds(timeStr: string): number {
+  const parts = timeStr.split(":");
+  if (parts.length === 3) return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+  return 0;
 }
 
 function formatTime(seconds: number): string {
@@ -123,14 +149,6 @@ function formatTime(seconds: number): string {
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
   return `${String(h).padStart(4, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-function parseTimeToSeconds(timeStr: string): number {
-  const parts = timeStr.split(":");
-  if (parts.length === 3) {
-    return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
-  }
-  return 0;
 }
 
 export const ScormPlayer = ({
@@ -145,7 +163,6 @@ export const ScormPlayer = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Persist SCORM data to database
   const persistProgress = useCallback(async (data: Record<string, string>, method: string) => {
     try {
       const lessonStatus = data.lesson_status || "not attempted";
@@ -171,15 +188,12 @@ export const ScormPlayer = ({
     }
   }, [enrollmentId, lessonId, scormPackageId, onComplete]);
 
-  // Listen for postMessage from SCORM content iframe
+  // Listen for postMessage from SCORM content
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (!event.data || event.data.type !== "scorm_api_event") return;
-
       const { method, data } = event.data;
-
       if (method === "LMSCommit") {
-        // Debounce commits
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = setTimeout(() => persistProgress(data, method), 2000);
       } else if (method === "LMSFinish") {
@@ -187,7 +201,6 @@ export const ScormPlayer = ({
         persistProgress(data, method);
       }
     };
-
     window.addEventListener("message", handler);
     return () => {
       window.removeEventListener("message", handler);
@@ -208,10 +221,9 @@ export const ScormPlayer = ({
       return;
     }
 
-    const proxyBase = buildProxyBase(folderPath);
-    setDebugInfo(`Proxy Base: ${proxyBase}\nEntry: ${entryPoint}`);
+    setDebugInfo(`Folder: ${folderPath}\nEntry: ${entryPoint}`);
 
-    const resolvedUrl = await resolveEntryPoint(proxyBase, entryPoint);
+    const resolvedUrl = await resolveEntryPoint(folderPath, entryPoint);
     if (!resolvedUrl) {
       setDebugInfo(prev => `${prev}\n❌ No launchable file found`);
       setError("SCORM başlangıç dosyası bulunamadı. Lütfen paketi silip yeniden yükleyin.");
@@ -239,30 +251,25 @@ export const ScormPlayer = ({
           params.set("suspend_data", progress.suspend_data);
         }
         if (progress.score_raw != null) params.set("score_raw", String(progress.score_raw));
-        if (progress.score_min != null) params.set("score_min", String(progress.score_min));
-        if (progress.score_max != null) params.set("score_max", String(progress.score_max));
         if (progress.total_time != null) params.set("total_time", formatTime(progress.total_time));
         progressParams = params.toString();
       }
     } catch {}
 
-    // Build the final URL with SCORM injection params
+    // Build final iframe URL with SCORM injection params
     const separator = resolvedUrl.includes("?") ? "&" : "?";
     const origin = encodeURIComponent(window.location.origin);
     let finalUrl = `${resolvedUrl}${separator}scorm=1&origin=${origin}`;
     if (progressParams) finalUrl += `&${progressParams}`;
 
+    console.log("SCORM Player: loading iframe with URL:", finalUrl);
     setIframeSrc(finalUrl);
     setDebugInfo(prev => `${prev}\n✅ Loading via iframe.src + proxy-injected API`);
   }, [packageUrl, entryPoint, enrollmentId, lessonId]);
 
-  useEffect(() => {
-    loadContent();
-  }, [loadContent]);
+  useEffect(() => { loadContent(); }, [loadContent]);
 
-  const handleIframeLoad = useCallback(() => {
-    setIsLoading(false);
-  }, []);
+  const handleIframeLoad = useCallback(() => { setIsLoading(false); }, []);
 
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
