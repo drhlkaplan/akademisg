@@ -287,15 +287,27 @@ export const ScormPlayer = ({
   }
 
   return (
-    <div ref={containerRef} className="relative flex flex-col h-full bg-foreground/5 rounded-lg overflow-hidden border border-border">
-      <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
-        <span className="text-sm text-muted-foreground">SCORM İçerik Oynatıcı</span>
-        <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="h-8 w-8">
-          {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-        </Button>
+    <div ref={containerRef} className="relative flex flex-col h-full bg-foreground/5 rounded-lg overflow-hidden border border-border shadow-sm">
+      {/* Professional toolbar */}
+      <div className="flex items-center justify-between px-4 py-2.5 bg-card border-b border-border">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className="h-2.5 w-2.5 rounded-full bg-success animate-pulse" />
+            <span className="text-sm font-medium text-foreground">SCORM İçerik Oynatıcı</span>
+          </div>
+          <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded font-mono">SCORM 1.2</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={handleRetry} className="h-8 w-8" title="Yeniden yükle">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="h-8 w-8" title={isFullscreen ? "Küçült" : "Tam ekran"}>
+            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </Button>
+        </div>
       </div>
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-card/80 z-10 mt-10">
+        <div className="absolute inset-0 flex items-center justify-center bg-card/80 z-10 mt-12">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-accent" />
             <p className="text-sm text-muted-foreground">Eğitim içeriği yükleniyor...</p>
