@@ -67,6 +67,7 @@ import {
   MapPin,
   Palette,
 } from "lucide-react";
+import { FileUploadField } from "@/components/admin/FileUploadField";
 import type { Database } from "@/integrations/supabase/types";
 
 type Firm = Database["public"]["Tables"]["firms"]["Row"];

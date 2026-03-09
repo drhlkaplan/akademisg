@@ -116,7 +116,7 @@ export default function FirmReports() {
     doc.setTextColor(100, 100, 100);
     doc.text(`Oluşturulma: ${new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })}`, 14, 25);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: 30,
       head: [headers],
       body: rows,

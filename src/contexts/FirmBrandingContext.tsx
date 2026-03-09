@@ -52,7 +52,18 @@ export function FirmBrandingProvider({ children }: { children: ReactNode }) {
   };
 
   // Auto-load branding from profile's firm_id when user logs in
+  // Clear branding when user has no firm
   useEffect(() => {
+    // If user is logged in but has no firm, clear any existing branding
+    if (profile && !profile.firm_id) {
+      if (branding) {
+        setBranding(null);
+        // Clear stored firm code so it doesn't persist
+        setFirmCode(null);
+      }
+      return;
+    }
+
     if (!profile?.firm_id) return;
     // If we already have branding for this firm, skip
     if (branding?.firm_id === profile.firm_id) return;
