@@ -104,6 +104,10 @@ const App = () => (
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
             <Route path="/verify" element={<CertificateVerify />} />
+            <Route path="/kvkk" element={<KVKK />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/cookies" element={<CookiePolicy />} />
             
             {/* Protected Student Dashboard */}
             <Route
