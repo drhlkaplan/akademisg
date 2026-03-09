@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { FirmBrandingProvider } from "@/contexts/FirmBrandingContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 import Index from "./pages/Index";
 
 // Retry wrapper for lazy imports to handle chunk loading failures
@@ -70,6 +71,10 @@ const FirmCourses = lazyRetry(() => import("./pages/firm/FirmCourses"));
 const FirmReports = lazyRetry(() => import("./pages/firm/FirmReports"));
 const FirmCertificates = lazyRetry(() => import("./pages/firm/FirmCertificates"));
 const NotFound = lazyRetry(() => import("./pages/NotFound"));
+const KVKK = lazyRetry(() => import("./pages/legal/KVKK"));
+const PrivacyPolicy = lazyRetry(() => import("./pages/legal/PrivacyPolicy"));
+const TermsOfService = lazyRetry(() => import("./pages/legal/TermsOfService"));
+const CookiePolicy = lazyRetry(() => import("./pages/legal/CookiePolicy"));
 
 const queryClient = new QueryClient();
 
@@ -80,6 +85,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <CookieConsentBanner />
         <BrowserRouter>
           <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
           <Routes>
@@ -99,6 +105,10 @@ const App = () => (
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
             <Route path="/verify" element={<CertificateVerify />} />
+            <Route path="/kvkk" element={<KVKK />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/cookies" element={<CookiePolicy />} />
             
             {/* Protected Student Dashboard */}
             <Route
