@@ -31,6 +31,7 @@ import {
   KeyRound,
   Search,
   ChevronRight,
+  Video,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFirmBranding } from "@/contexts/FirmBrandingContext";
