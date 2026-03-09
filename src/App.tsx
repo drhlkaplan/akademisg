@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { FirmBrandingProvider } from "@/contexts/FirmBrandingContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 import Index from "./pages/Index";
 
 // Retry wrapper for lazy imports to handle chunk loading failures
