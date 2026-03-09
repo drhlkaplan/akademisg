@@ -621,6 +621,20 @@ export default function ExamsManagement() {
                             Sorular ({questions?.length || 0})
                           </h4>
                           <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setAiExamContext({
+                                  title: exam.courses?.title || exam.title,
+                                  exam_id: exam.id,
+                                });
+                                setAiQuestionOpen(true);
+                              }}
+                            >
+                              <Sparkles className="mr-1 h-3 w-3 text-warning" />
+                              AI ile Soru Üret
+                            </Button>
                             <Button size="sm" variant="outline" onClick={() => handleOpenQuestionBank(exam.id)}>
                               <FileQuestion className="mr-1 h-3 w-3" />
                               Soru Bankasından Ekle
