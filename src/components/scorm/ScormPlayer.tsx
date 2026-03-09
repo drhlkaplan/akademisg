@@ -32,9 +32,14 @@ function extractFolderPath(packageUrl: string): string | null {
  * All SCORM files are served through the scorm-proxy edge function
  * to handle private bucket access and correct MIME types.
  */
+/**
+ * Build proxy URL with padding segments to prevent ../  escaping above the proxy path.
+ * 10 padding segments mean content JS would need 10+ "../" to escape — practically impossible.
+ */
 function buildProxyBase(folderPath: string): string {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  return `${supabaseUrl}/functions/v1/scorm-proxy/${folderPath}`;
+  const padding = "___/___/___/___/___/___/___/___/___/___";
+  return `${supabaseUrl}/functions/v1/scorm-proxy/${padding}/${folderPath}`;
 }
 
 function sanitizePath(path: string): string {
