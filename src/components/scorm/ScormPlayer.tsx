@@ -93,9 +93,9 @@ async function resolveEntryPoint(baseUrl: string, entryPoint: string, authToken?
   // story_html5.html is the actual Articulate content; story.html is a router that redirects
   // and breaks srcdoc context. index.html is preferred if it exists.
   const priorityFiles = [
-    "index.html",
     "story_html5.html",
     "index_lms_html5.html",
+    "index.html",
     "scormcontent/index.html",
     "story.html",
     "index_lms.html",
