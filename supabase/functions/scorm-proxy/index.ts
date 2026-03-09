@@ -49,6 +49,129 @@ function getContentTypeByPath(path: string, upstreamContentType?: string | null)
   return "application/octet-stream";
 }
 
+/**
+ * Build a self-contained SCORM 1.2 API script that:
+ * - Stores CMI data in memory (pre-populated from query params)
+ * - Uses postMessage to sync data with the parent window
+ * - Provides synchronous LMS* methods as required by SCORM 1.2
+ */
+function buildScormApiScript(parentOrigin: string, initialData: Record<string, string>): string {
+  return `<script>
+(function() {
+  var _initialized = false;
+  var _finished = false;
+  var _lastError = '0';
+  var _parentOrigin = ${JSON.stringify(parentOrigin)};
+
+  var cmiData = {
+    'cmi.core.lesson_status': ${JSON.stringify(initialData.lesson_status || 'not attempted')},
+    'cmi.core.lesson_location': ${JSON.stringify(initialData.lesson_location || '')},
+    'cmi.suspend_data': ${JSON.stringify(initialData.suspend_data || '')},
+    'cmi.core.score.raw': ${JSON.stringify(initialData.score_raw || '')},
+    'cmi.core.score.min': ${JSON.stringify(initialData.score_min || '0')},
+    'cmi.core.score.max': ${JSON.stringify(initialData.score_max || '100')},
+    'cmi.core.total_time': ${JSON.stringify(initialData.total_time || '0000:00:00')},
+    'cmi.core.session_time': '0000:00:00',
+    'cmi.core.student_id': '',
+    'cmi.core.student_name': '',
+    'cmi.core.credit': 'credit',
+    'cmi.core.entry': ${JSON.stringify(initialData.lesson_status && initialData.lesson_status !== 'not attempted' ? 'resume' : 'ab-initio')},
+    'cmi.core.exit': '',
+    'cmi.core.lesson_mode': 'normal',
+    'cmi.launch_data': '',
+    'cmi.comments': '',
+    'cmi.comments_from_lms': ''
+  };
+
+  function sendToParent(method) {
+    try {
+      window.parent.postMessage({
+        type: 'scorm_api_event',
+        method: method,
+        data: {
+          lesson_status: cmiData['cmi.core.lesson_status'],
+          lesson_location: cmiData['cmi.core.lesson_location'],
+          suspend_data: cmiData['cmi.suspend_data'],
+          score_raw: cmiData['cmi.core.score.raw'],
+          total_time: cmiData['cmi.core.total_time'],
+          session_time: cmiData['cmi.core.session_time'],
+          exit: cmiData['cmi.core.exit']
+        }
+      }, _parentOrigin);
+    } catch(e) { console.warn('SCORM postMessage failed', e); }
+  }
+
+  var API = {
+    LMSInitialize: function() {
+      if (_initialized) { _lastError = '101'; return 'false'; }
+      _initialized = true;
+      _finished = false;
+      _lastError = '0';
+      sendToParent('LMSInitialize');
+      return 'true';
+    },
+    LMSFinish: function() {
+      if (!_initialized) { _lastError = '301'; return 'false'; }
+      if (_finished) { _lastError = '101'; return 'false'; }
+      _finished = true;
+      _initialized = false;
+      _lastError = '0';
+      sendToParent('LMSFinish');
+      return 'true';
+    },
+    LMSGetValue: function(element) {
+      if (!_initialized) { _lastError = '301'; return ''; }
+      _lastError = '0';
+      if (element in cmiData) return cmiData[element];
+      // Handle wildcard/count elements
+      if (element === 'cmi.objectives._count') return '0';
+      if (element === 'cmi.interactions._count') return '0';
+      if (element === 'cmi.student_data.mastery_score') return '';
+      if (element === 'cmi.student_data.max_time_allowed') return '';
+      if (element === 'cmi.student_data.time_limit_action') return '';
+      _lastError = '401';
+      return '';
+    },
+    LMSSetValue: function(element, value) {
+      if (!_initialized) { _lastError = '301'; return 'false'; }
+      _lastError = '0';
+      cmiData[element] = value;
+      return 'true';
+    },
+    LMSCommit: function() {
+      if (!_initialized) { _lastError = '301'; return 'false'; }
+      _lastError = '0';
+      sendToParent('LMSCommit');
+      return 'true';
+    },
+    LMSGetLastError: function() { return _lastError; },
+    LMSGetErrorString: function(code) {
+      var errors = {
+        '0': 'No Error', '101': 'General Exception',
+        '201': 'Invalid argument error', '202': 'Element cannot have children',
+        '203': 'Element not an array - cannot have count',
+        '301': 'Not initialized', '401': 'Not implemented error',
+        '402': 'Invalid set value, element is a keyword',
+        '403': 'Element is read only', '404': 'Element is write only',
+        '405': 'Incorrect Data Type'
+      };
+      return errors[code] || 'Unknown Error';
+    },
+    LMSGetDiagnostic: function(code) { return code || ''; }
+  };
+
+  // Set API on window for SCORM 1.2 discovery
+  window.API = API;
+
+  // Also support SCORM 2004 discovery pattern (some content checks both)
+  window.API_1484_11 = API;
+
+  // Make API discoverable from child frames
+  // Articulate walks up parent chain looking for API
+})();
+<\/script>`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -61,7 +184,8 @@ Deno.serve(async (req) => {
       return new Response("Server misconfiguration", { status: 500, headers: corsHeaders });
     }
 
-    const { pathname } = new URL(req.url);
+    const reqUrl = new URL(req.url);
+    const { pathname } = reqUrl;
     const marker = "/scorm-proxy/";
     const markerIndex = pathname.indexOf(marker);
     if (markerIndex === -1) {
@@ -77,31 +201,6 @@ Deno.serve(async (req) => {
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
-
-    // --- Optional Authentication & Enrollment Check ---
-    // Auth is optional: when present we verify enrollment for HTML entry points.
-    // Sub-resources (JS, CSS, images) loaded via <base> tag won't have auth headers,
-    // so we allow them through. The bucket is private, so the proxy itself is the gatekeeper.
-    const authHeader = req.headers.get("Authorization");
-    if (authHeader) {
-      try {
-        const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-        if (anonKey) {
-          const userClient = createClient(supabaseUrl, anonKey, {
-            global: { headers: { Authorization: authHeader } },
-          });
-          const { data: { user } } = await userClient.auth.getUser();
-          // If user is authenticated, we've validated. No further checks needed
-          // since the proxy is the access control layer.
-          if (!user) {
-            // Invalid token provided - still serve to avoid breaking sub-resources
-            console.warn("Invalid auth token, serving anyway");
-          }
-        }
-      } catch {
-        // Auth check failed, continue serving
-      }
-    }
 
     // --- Fetch file using signed URL (bucket is private) ---
     const { data: signedUrlData, error: signedUrlError } = await adminClient.storage
@@ -126,7 +225,34 @@ Deno.serve(async (req) => {
     }
 
     const contentType = getContentTypeByPath(objectPath, upstream.headers.get("Content-Type"));
-    const body = await upstream.arrayBuffer();
+    let body = await upstream.arrayBuffer();
+
+    // --- Inject SCORM API into HTML files when requested ---
+    const shouldInjectScorm = reqUrl.searchParams.get("scorm") === "1" && contentType.includes("text/html");
+
+    if (shouldInjectScorm) {
+      const htmlText = new TextDecoder().decode(body);
+      const parentOrigin = reqUrl.searchParams.get("origin") || "*";
+
+      const initialData: Record<string, string> = {};
+      for (const key of ["lesson_status", "lesson_location", "suspend_data", "score_raw", "score_min", "score_max", "total_time"]) {
+        const val = reqUrl.searchParams.get(key);
+        if (val) initialData[key] = val;
+      }
+
+      const scormScript = buildScormApiScript(parentOrigin, initialData);
+
+      let modifiedHtml: string;
+      if (htmlText.match(/<head[^>]*>/i)) {
+        modifiedHtml = htmlText.replace(/<head[^>]*>/i, `$&\n${scormScript}`);
+      } else if (htmlText.match(/<html[^>]*>/i)) {
+        modifiedHtml = htmlText.replace(/<html[^>]*>/i, `$&\n<head>${scormScript}</head>`);
+      } else {
+        modifiedHtml = scormScript + htmlText;
+      }
+
+      body = new TextEncoder().encode(modifiedHtml).buffer;
+    }
 
     return new Response(body, {
       status: 200,
@@ -135,7 +261,7 @@ Deno.serve(async (req) => {
         "Content-Type": contentType,
         "Content-Security-Policy": "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data: blob:; media-src * data: blob:; font-src * data:",
         "X-Content-Type-Options": "nosniff",
-        "Cache-Control": "public, max-age=3600",
+        "Cache-Control": shouldInjectScorm ? "no-cache" : "public, max-age=3600",
       },
     });
   } catch (error) {

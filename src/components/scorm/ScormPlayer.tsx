@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useScormApi } from "@/hooks/useScormApi";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Maximize2, Minimize2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,11 +13,7 @@ interface ScormPlayerProps {
   onComplete?: () => void;
 }
 
-/**
- * Extract the storage object path from a package_url.
- * package_url is typically: https://xxx.supabase.co/storage/v1/object/public/scorm-packages/COURSE_ID/TIMESTAMP
- * We need: COURSE_ID/TIMESTAMP
- */
+/** Extract storage object path from package_url */
 function extractFolderPath(packageUrl: string): string | null {
   const marker = "scorm-packages/";
   const idx = packageUrl.indexOf(marker);
@@ -27,15 +22,7 @@ function extractFolderPath(packageUrl: string): string | null {
   return raw.replace(/^\/+|\/+$/g, "") || null;
 }
 
-/**
- * Build the proxy base URL for a given folder path.
- * All SCORM files are served through the scorm-proxy edge function
- * to handle private bucket access and correct MIME types.
- */
-/**
- * Build proxy URL with padding segments to prevent ../  escaping above the proxy path.
- * 10 padding segments mean content JS would need 10+ "../" to escape — practically impossible.
- */
+/** Build proxy URL with padding segments */
 function buildProxyBase(folderPath: string): string {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const padding = "___/___/___/___/___/___/___/___/___/___";
@@ -46,21 +33,10 @@ function sanitizePath(path: string): string {
   return path.replace(/&/g, "_").replace(/ /g, "_");
 }
 
-const ROUTER_FILENAMES = new Set([
-  "index_lms.html", "index.html", "launch.html", "story.html",
-]);
-
-/**
- * Check if a file exists at the proxy URL.
- * Uses the user's auth token for authenticated requests.
- */
-async function checkFileExists(url: string, authToken?: string): Promise<boolean> {
+/** Check if a file exists at the proxy URL using HEAD-like GET */
+async function checkFileExists(url: string): Promise<boolean> {
   try {
-    const headers: Record<string, string> = {};
-    if (authToken) {
-      headers["Authorization"] = `Bearer ${authToken}`;
-    }
-    const res = await fetch(url, { method: "GET", headers });
+    const res = await fetch(url, { method: "GET" });
     res.body?.cancel();
     return res.ok;
   } catch {
@@ -68,10 +44,7 @@ async function checkFileExists(url: string, authToken?: string): Promise<boolean
   }
 }
 
-/**
- * Extract possible subfolder prefixes from an entry point path.
- * e.g. "Genel_Konular/lms/AICCComm.html" → ["Genel_Konular/lms", "Genel_Konular"]
- */
+/** Extract subfolder prefixes from entry point path */
 function getSubfolderPrefixes(entryPoint: string): string[] {
   const parts = entryPoint.split("/");
   if (parts.length <= 1) return [];
@@ -82,16 +55,13 @@ function getSubfolderPrefixes(entryPoint: string): string[] {
   return prefixes;
 }
 
-async function resolveEntryPoint(baseUrl: string, entryPoint: string, authToken?: string): Promise<string | null> {
+/** Resolve the actual launchable HTML file within a SCORM package */
+async function resolveEntryPoint(baseUrl: string, entryPoint: string): Promise<string | null> {
   const sanitizedEntry = sanitizePath(entryPoint);
-  
-  // Build list of base directories to search: root + any subfolder from entry point
   const subfolders = getSubfolderPrefixes(sanitizedEntry);
   const searchBases = [baseUrl, ...subfolders.map(sf => `${baseUrl}/${sf}`)];
-  
-  // Priority: direct content files first (avoid router pages that redirect)
-  // story_html5.html is the actual Articulate content; story.html is a router that redirects
-  // and breaks srcdoc context. index.html is preferred if it exists.
+
+  // Priority: direct content files first
   const priorityFiles = [
     "story_html5.html",
     "index_lms_html5.html",
@@ -100,39 +70,34 @@ async function resolveEntryPoint(baseUrl: string, entryPoint: string, authToken?
     "story.html",
     "index_lms.html",
   ];
-  
-  // Search in all bases with priority files
+
   for (const file of priorityFiles) {
     for (const base of searchBases) {
       const url = `${base}/${file}`;
-      if (await checkFileExists(url, authToken)) return url;
+      if (await checkFileExists(url)) return url;
     }
   }
 
-  // Try parsing imsmanifest.xml for launch file
+  // Try imsmanifest.xml
   for (const base of searchBases) {
     try {
-      const manifestUrl = `${base}/imsmanifest.xml`;
-      const headers: Record<string, string> = {};
-      if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
-      const manifestRes = await fetch(manifestUrl, { headers });
+      const manifestRes = await fetch(`${base}/imsmanifest.xml`);
       if (manifestRes.ok) {
         const xml = await manifestRes.text();
         const launchFile = parseLaunchFromManifest(xml);
         if (launchFile) {
-          const sanitizedLaunch = sanitizePath(launchFile);
-          const launchUrl = `${base}/${sanitizedLaunch}`;
-          if (await checkFileExists(launchUrl, authToken)) return launchUrl;
+          const launchUrl = `${base}/${sanitizePath(launchFile)}`;
+          if (await checkFileExists(launchUrl)) return launchUrl;
         }
       }
     } catch {}
   }
 
-  // Last resort: use the entry point as-is (if it's not a known non-launch file)
+  // Last resort
   const entryFileName = sanitizedEntry.split("/").pop()?.toLowerCase() || "";
   if (!entryFileName.includes("aicccomm")) {
     const fallbackUrl = `${baseUrl}/${sanitizedEntry}`;
-    if (await checkFileExists(fallbackUrl, authToken)) return fallbackUrl;
+    if (await checkFileExists(fallbackUrl)) return fallbackUrl;
   }
 
   return null;
@@ -143,7 +108,7 @@ function parseLaunchFromManifest(xml: string): string | null {
     const doc = new DOMParser().parseFromString(xml, "text/xml");
     for (const resource of doc.querySelectorAll("resource")) {
       const href = resource.getAttribute("href");
-      if (href?.endsWith(".html")) return href;
+      if (href?.endsWith(".html") && !href.toLowerCase().includes("aicccomm")) return href;
     }
     for (const file of doc.querySelectorAll("resource file")) {
       const href = file.getAttribute("href");
@@ -153,6 +118,21 @@ function parseLaunchFromManifest(xml: string): string | null {
   return null;
 }
 
+function formatTime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return `${String(h).padStart(4, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function parseTimeToSeconds(timeStr: string): number {
+  const parts = timeStr.split(":");
+  if (parts.length === 3) {
+    return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+  }
+  return 0;
+}
+
 export const ScormPlayer = ({
   packageUrl, entryPoint, enrollmentId, scormPackageId, lessonId, userId, onComplete,
 }: ScormPlayerProps) => {
@@ -160,25 +140,66 @@ export const ScormPlayer = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [srcdocContent, setSrcdocContent] = useState<string>("");
+  const [iframeSrc, setIframeSrc] = useState<string>("");
   const [debugInfo, setDebugInfo] = useState<string>("");
   const containerRef = useRef<HTMLDivElement>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const { createApiObject } = useScormApi({ enrollmentId, scormPackageId, lessonId, userId, onComplete });
+  // Persist SCORM data to database
+  const persistProgress = useCallback(async (data: Record<string, string>, method: string) => {
+    try {
+      const lessonStatus = data.lesson_status || "not attempted";
+      const scoreRaw = data.score_raw ? parseFloat(data.score_raw) : null;
+      const totalTimeSeconds = data.total_time ? parseTimeToSeconds(data.total_time) : null;
 
-  // Set SCORM API on window for iframe access
+      await supabase.rpc("record_lesson_progress", {
+        _enrollment_id: enrollmentId,
+        _lesson_id: lessonId,
+        _lesson_status: lessonStatus,
+        _score_raw: scoreRaw,
+        _lesson_location: data.lesson_location || null,
+        _suspend_data: data.suspend_data || null,
+        _total_time: totalTimeSeconds,
+        _scorm_package_id: scormPackageId,
+      });
+
+      if (method === "LMSFinish" && (lessonStatus === "completed" || lessonStatus === "passed")) {
+        onComplete?.();
+      }
+    } catch (err) {
+      console.error("SCORM save error:", err);
+    }
+  }, [enrollmentId, lessonId, scormPackageId, onComplete]);
+
+  // Listen for postMessage from SCORM content iframe
   useEffect(() => {
-    const api = createApiObject();
-    (window as any).API = api.API;
-    (window as any).API_1484_11 = api.API_1484_11;
-    return () => { delete (window as any).API; delete (window as any).API_1484_11; };
-  }, [createApiObject]);
+    const handler = (event: MessageEvent) => {
+      if (!event.data || event.data.type !== "scorm_api_event") return;
+
+      const { method, data } = event.data;
+
+      if (method === "LMSCommit") {
+        // Debounce commits
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = setTimeout(() => persistProgress(data, method), 2000);
+      } else if (method === "LMSFinish") {
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        persistProgress(data, method);
+      }
+    };
+
+    window.addEventListener("message", handler);
+    return () => {
+      window.removeEventListener("message", handler);
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [persistProgress]);
 
   const loadContent = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     setDebugInfo("");
-    setSrcdocContent("");
+    setIframeSrc("");
 
     const folderPath = extractFolderPath(packageUrl);
     if (!folderPath) {
@@ -187,18 +208,10 @@ export const ScormPlayer = ({
       return;
     }
 
-    // Build proxy-based URL (not public storage URL)
     const proxyBase = buildProxyBase(folderPath);
     setDebugInfo(`Proxy Base: ${proxyBase}\nEntry: ${entryPoint}`);
 
-    // Get auth token for authenticated proxy requests
-    let authToken: string | undefined;
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      authToken = session?.access_token;
-    } catch {}
-
-    const resolvedUrl = await resolveEntryPoint(proxyBase, entryPoint, authToken);
+    const resolvedUrl = await resolveEntryPoint(proxyBase, entryPoint);
     if (!resolvedUrl) {
       setDebugInfo(prev => `${prev}\n❌ No launchable file found`);
       setError("SCORM başlangıç dosyası bulunamadı. Lütfen paketi silip yeniden yükleyin.");
@@ -208,105 +221,47 @@ export const ScormPlayer = ({
 
     setDebugInfo(prev => `${prev}\nResolved: ${resolvedUrl}`);
 
+    // Fetch existing progress to pre-populate SCORM API
+    let progressParams = "";
     try {
-      const headers: Record<string, string> = {};
-      if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
-      
-      const response = await fetch(resolvedUrl, { headers });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const htmlText = await response.text();
+      const { data: progress } = await supabase
+        .from("lesson_progress")
+        .select("*")
+        .eq("enrollment_id", enrollmentId)
+        .eq("lesson_id", lessonId)
+        .maybeSingle();
 
-      // Determine base directory for relative URL resolution
-      // This points to the proxy so all sub-resources (JS, CSS, images)
-      // are also served through the proxy with correct MIME types
-      const lastSlash = resolvedUrl.lastIndexOf("/");
-      const proxyDir = resolvedUrl.substring(0, lastSlash);
-      
-      const baseTag = `<base href="${proxyDir}/">`;
-
-      // SCORM API bridge: inject script that finds API from parent window
-      const apiBridge = `<script>
-(function() {
-  function findAPI(win) {
-    try {
-      if (win.API) return win.API;
-      if (win.API_1484_11) return win.API_1484_11;
-    } catch(e) {}
-    return null;
-  }
-  function scanForAPI(win) {
-    var api = findAPI(win);
-    if (api) return api;
-    try {
-      if (win.parent && win.parent !== win) {
-        api = findAPI(win.parent);
-        if (api) return api;
+      if (progress) {
+        const params = new URLSearchParams();
+        if (progress.lesson_status) params.set("lesson_status", progress.lesson_status);
+        if (progress.lesson_location) params.set("lesson_location", progress.lesson_location);
+        if (progress.suspend_data && progress.suspend_data.length < 2000) {
+          params.set("suspend_data", progress.suspend_data);
+        }
+        if (progress.score_raw != null) params.set("score_raw", String(progress.score_raw));
+        if (progress.score_min != null) params.set("score_min", String(progress.score_min));
+        if (progress.score_max != null) params.set("score_max", String(progress.score_max));
+        if (progress.total_time != null) params.set("total_time", formatTime(progress.total_time));
+        progressParams = params.toString();
       }
-    } catch(e) {}
-    try {
-      if (win.opener) {
-        api = findAPI(win.opener);
-        if (api) return api;
-      }
-    } catch(e) {}
-    try {
-      if (win.top && win.top !== win) {
-        api = findAPI(win.top);
-        if (api) return api;
-      }
-    } catch(e) {}
-    return null;
-  }
-  var attempts = 0;
-  var interval = setInterval(function() {
-    var api = scanForAPI(window);
-    if (api) {
-      window.API = api;
-      window.API_1484_11 = api;
-      clearInterval(interval);
-    } else if (++attempts > 50) {
-      clearInterval(interval);
-      console.warn('SCORM API not found after polling');
-    }
-  }, 100);
-  try {
-    if (window.parent && window.parent.API) {
-      window.API = window.parent.API;
-      window.API_1484_11 = window.parent.API_1484_11 || window.parent.API;
-    }
-  } catch(e) {}
-})();
-<\/script>`;
+    } catch {}
 
-      let modifiedHtml: string;
-      if (htmlText.match(/<head[^>]*>/i)) {
-        modifiedHtml = htmlText.replace(/<head[^>]*>/i, `$&\n${baseTag}\n${apiBridge}`);
-      } else {
-        modifiedHtml = `${baseTag}\n${apiBridge}\n${htmlText}`;
-      }
+    // Build the final URL with SCORM injection params
+    const separator = resolvedUrl.includes("?") ? "&" : "?";
+    const origin = encodeURIComponent(window.location.origin);
+    let finalUrl = `${resolvedUrl}${separator}scorm=1&origin=${origin}`;
+    if (progressParams) finalUrl += `&${progressParams}`;
 
-      setSrcdocContent(modifiedHtml);
-      setDebugInfo(prev => `${prev}\n✅ Content loaded via srcdoc+proxy`);
-    } catch (err) {
-      setError(`İçerik yüklenemedi: ${err instanceof Error ? err.message : "Bilinmeyen hata"}`);
-      setIsLoading(false);
-    }
-  }, [packageUrl, entryPoint]);
+    setIframeSrc(finalUrl);
+    setDebugInfo(prev => `${prev}\n✅ Loading via iframe.src + proxy-injected API`);
+  }, [packageUrl, entryPoint, enrollmentId, lessonId]);
 
-  // Load on mount and when props change
   useEffect(() => {
     loadContent();
   }, [loadContent]);
 
   const handleIframeLoad = useCallback(() => {
     setIsLoading(false);
-    try {
-      const w = iframeRef.current?.contentWindow;
-      if (w) {
-        (w as any).API = (window as any).API;
-        (w as any).API_1484_11 = (window as any).API_1484_11;
-      }
-    } catch {}
   }, []);
 
   const toggleFullscreen = () => {
@@ -340,7 +295,6 @@ export const ScormPlayer = ({
 
   return (
     <div ref={containerRef} className="relative flex flex-col h-full bg-foreground/5 rounded-lg overflow-hidden border border-border shadow-sm">
-      {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-2.5 bg-card border-b border-border">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -366,10 +320,10 @@ export const ScormPlayer = ({
           </div>
         </div>
       )}
-      {srcdocContent && (
+      {iframeSrc && (
         <iframe
           ref={iframeRef}
-          srcDoc={srcdocContent}
+          src={iframeSrc}
           className="flex-1 w-full border-0"
           style={{ minHeight: "500px" }}
           onLoad={handleIframeLoad}
