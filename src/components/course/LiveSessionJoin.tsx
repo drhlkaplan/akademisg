@@ -60,19 +60,13 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
 
     setIsJoining(true);
     try {
-      // Create tracking record
-      const { data: tracking, error } = await supabase
-        .from("live_session_tracking")
-        .insert({
-          live_session_id: session.id,
-          user_id: user!.id,
-          joined_at: new Date().toISOString(),
-        })
-        .select("id")
-        .single();
+      // Use SECURITY DEFINER RPC instead of direct insert
+      const { data: trackingIdResult, error } = await supabase.rpc("join_live_session", {
+        _live_session_id: session.id,
+      });
 
       if (error) throw error;
-      setTrackingId(tracking.id);
+      setTrackingId(trackingIdResult);
       setJoined(true);
 
       // Open BBB in new tab
@@ -85,13 +79,11 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
   };
 
   const leaveSession = async (id: string) => {
-    await supabase
-      .from("live_session_tracking")
-      .update({
-        left_at: new Date().toISOString(),
-        duration_seconds: elapsed,
-      })
-      .eq("id", id);
+    // Use SECURITY DEFINER RPC instead of direct update
+    await supabase.rpc("leave_live_session", {
+      _tracking_id: id,
+      _duration_seconds: elapsed,
+    });
   };
 
   const handleLeave = async () => {
@@ -101,12 +93,12 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
       setTrackingId(null);
       setElapsed(0);
 
-      // Mark lesson as completed
-      await supabase.from("lesson_progress").upsert({
-        enrollment_id: enrollmentId,
-        lesson_id: lessonId,
-        lesson_status: "completed",
-      }, { onConflict: "enrollment_id,lesson_id" });
+      // Mark lesson as completed via SECURITY DEFINER RPC
+      await supabase.rpc("record_lesson_progress", {
+        _enrollment_id: enrollmentId,
+        _lesson_id: lessonId,
+        _lesson_status: "completed",
+      });
 
       toast({ title: "Ayrıldınız", description: "Canlı oturumdan ayrıldınız." });
     }
