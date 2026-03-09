@@ -89,14 +89,16 @@ async function resolveEntryPoint(baseUrl: string, entryPoint: string, authToken?
   const subfolders = getSubfolderPrefixes(sanitizedEntry);
   const searchBases = [baseUrl, ...subfolders.map(sf => `${baseUrl}/${sf}`)];
   
-  // Simple priority: index.html first, then story.html, then story_html5.html
+  // Priority: direct content files first (avoid router pages that redirect)
+  // story_html5.html is the actual Articulate content; story.html is a router that redirects
+  // and breaks srcdoc context. index.html is preferred if it exists.
   const priorityFiles = [
     "index.html",
-    "story.html",
     "story_html5.html",
-    "index_lms.html",
     "index_lms_html5.html",
     "scormcontent/index.html",
+    "story.html",
+    "index_lms.html",
   ];
   
   // Search in all bases with priority files
