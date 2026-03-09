@@ -65,6 +65,7 @@ import {
   List,
   Eye,
   EyeOff,
+  Sparkles,
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
