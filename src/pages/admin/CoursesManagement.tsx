@@ -687,6 +687,21 @@ export default function CoursesManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* AI Content Generator */}
+      {aiCourseContext && (
+        <AIContentGenerator
+          open={aiDialogOpen}
+          onOpenChange={setAiDialogOpen}
+          mode="description"
+          context={aiCourseContext}
+          onDescriptionGenerated={(desc) => {
+            // Could be used to update course description
+            navigator.clipboard.writeText(desc);
+            toast({ title: "Açıklama panoya kopyalandı" });
+          }}
+        />
+      )}
     </DashboardLayout>
   );
 }
