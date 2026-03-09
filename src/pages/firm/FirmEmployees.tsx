@@ -162,7 +162,16 @@ export default function FirmEmployees() {
       const { data, error } = await supabase.functions.invoke("manage-firm-employees", {
         body: { action: "assign_course", user_ids, course_id },
       });
-      if (error) throw error;
+      if (error) {
+        let msg = "İşlem sırasında bir hata oluştu";
+        try {
+          const body = await (error as any).context?.json?.();
+          if (body?.error) msg = body.error;
+        } catch {
+          if (typeof error === "object" && "message" in error) msg = (error as any).message;
+        }
+        throw new Error(msg);
+      }
       if (data?.error) throw new Error(data.error);
       return data;
     },
