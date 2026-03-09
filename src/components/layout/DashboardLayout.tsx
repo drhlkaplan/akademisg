@@ -31,6 +31,7 @@ import {
   KeyRound,
   Search,
   ChevronRight,
+  Video,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFirmBranding } from "@/contexts/FirmBrandingContext";
@@ -78,6 +79,7 @@ const adminNavGroups = [
     items: [
       { icon: GraduationCap, label: "Eğitimler", href: "/admin/courses" },
       { icon: FileCheck, label: "Sınavlar", href: "/admin/exams" },
+      { icon: Video, label: "Canlı Oturumlar", href: "/admin/live-sessions" },
       { icon: Award, label: "Sertifikalar", href: "/admin/certificates" },
       { icon: FileText, label: "Şablonlar", href: "/admin/certificate-templates" },
     ],

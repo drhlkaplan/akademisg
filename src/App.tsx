@@ -61,6 +61,9 @@ const MyExams = lazyRetry(() => import("./pages/dashboard/MyExams"));
 const Help = lazyRetry(() => import("./pages/dashboard/Help"));
 const ProfileSettings = lazyRetry(() => import("./pages/dashboard/ProfileSettings"));
 const GroupsManagement = lazyRetry(() => import("./pages/admin/GroupsManagement"));
+const ActivityLogs = lazyRetry(() => import("./pages/admin/ActivityLogs"));
+const AdminSettings = lazyRetry(() => import("./pages/admin/AdminSettings"));
+const LiveSessionsManagement = lazyRetry(() => import("./pages/admin/LiveSessionsManagement"));
 const FirmDashboard = lazyRetry(() => import("./pages/firm/FirmDashboard"));
 const FirmEmployees = lazyRetry(() => import("./pages/firm/FirmEmployees"));
 const FirmCourses = lazyRetry(() => import("./pages/firm/FirmCourses"));
@@ -195,6 +198,30 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <ReportCenter />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/logs"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <ActivityLogs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/settings"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/live-sessions"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <LiveSessionsManagement />
                 </ProtectedRoute>
               }
             />
