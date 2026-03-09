@@ -1,4 +1,5 @@
 import { ScormPlayer } from "@/components/scorm/ScormPlayer";
+import { LiveSessionJoin } from "@/components/course/LiveSessionJoin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
