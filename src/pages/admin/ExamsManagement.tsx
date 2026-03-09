@@ -98,6 +98,8 @@ export default function ExamsManagement() {
   const [expandedExamId, setExpandedExamId] = useState<string | null>(null);
   const [bankSourceExamId, setBankSourceExamId] = useState<string>("");
   const [selectedBankQuestions, setSelectedBankQuestions] = useState<Set<string>>(new Set());
+  const [aiQuestionOpen, setAiQuestionOpen] = useState(false);
+  const [aiExamContext, setAiExamContext] = useState<any>(null);
   
   const [examForm, setExamForm] = useState({
     title: "",
