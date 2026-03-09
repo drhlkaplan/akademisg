@@ -529,6 +529,8 @@ export default function CoursesManagement() {
                               AI Açıklama Üret
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive"
                               onClick={() => handleOpenDelete(course)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
