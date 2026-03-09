@@ -515,7 +515,20 @@ export default function CoursesManagement() {
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
-                              className="text-destructive"
+                              onClick={() => {
+                                setAiCourseContext({
+                                  title: course.title,
+                                  category: course.course_categories?.name,
+                                  danger_class: course.course_categories?.danger_class,
+                                  duration_minutes: course.duration_minutes,
+                                });
+                                setAiDialogOpen(true);
+                              }}
+                            >
+                              <Sparkles className="mr-2 h-4 w-4" />
+                              AI Açıklama Üret
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                               onClick={() => handleOpenDelete(course)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
