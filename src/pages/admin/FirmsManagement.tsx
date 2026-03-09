@@ -724,14 +724,21 @@ export default function FirmsManagement() {
               </h3>
               <div className="grid gap-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="logo_url">Logo URL</Label>
-                    <Input id="logo_url" value={formData.logo_url} onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })} placeholder="https://firma.com/logo.png" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="favicon_url">Favicon URL</Label>
-                    <Input id="favicon_url" value={formData.favicon_url} onChange={(e) => setFormData({ ...formData, favicon_url: e.target.value })} placeholder="https://firma.com/favicon.ico" />
-                  </div>
+                  <FileUploadField
+                    label="Logo"
+                    value={formData.logo_url}
+                    onChange={(url) => setFormData({ ...formData, logo_url: url })}
+                    folder={`firms/${formData.firm_code || "default"}`}
+                    placeholder="https://firma.com/logo.png"
+                  />
+                  <FileUploadField
+                    label="Favicon"
+                    value={formData.favicon_url}
+                    onChange={(url) => setFormData({ ...formData, favicon_url: url })}
+                    folder={`firms/${formData.firm_code || "default"}`}
+                    accept="image/x-icon,image/png,image/svg+xml"
+                    placeholder="https://firma.com/favicon.ico"
+                  />
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
