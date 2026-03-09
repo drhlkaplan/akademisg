@@ -1044,6 +1044,32 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      join_live_session: { Args: { _live_session_id: string }; Returns: string }
+      leave_live_session: {
+        Args: { _duration_seconds: number; _tracking_id: string }
+        Returns: undefined
+      }
+      record_lesson_progress: {
+        Args: {
+          _enrollment_id: string
+          _lesson_id: string
+          _lesson_location?: string
+          _lesson_status: string
+          _score_raw?: number
+          _scorm_package_id?: string
+          _suspend_data?: string
+          _total_time?: number
+        }
+        Returns: string
+      }
+      update_enrollment_progress: {
+        Args: {
+          _enrollment_id: string
+          _progress_percent: number
+          _status?: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:
