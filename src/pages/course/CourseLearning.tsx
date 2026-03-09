@@ -121,10 +121,11 @@ export default function CourseLearning() {
         if (enrollError) throw enrollError;
         enrollData = newEnroll;
       } else if (enrollData.status === "pending") {
-        await supabase
-          .from("enrollments")
-          .update({ status: "active", started_at: new Date().toISOString() })
-          .eq("id", enrollData.id);
+        await supabase.rpc("update_enrollment_progress", {
+          _enrollment_id: enrollData.id,
+          _progress_percent: enrollData.progress_percent || 0,
+          _status: "active",
+        });
         enrollData.status = "active";
       }
 

@@ -103,28 +103,22 @@ export function useScormApi({ enrollmentId, scormPackageId, lessonId, userId, on
       const lessonStatus = activeApi.lmsGetValue("cmi.core.lesson_status") || "not attempted";
       const scoreRawStr = activeApi.lmsGetValue("cmi.core.score.raw");
       const scoreRaw = scoreRawStr ? parseFloat(scoreRawStr) : null;
-      const scoreMinStr = activeApi.lmsGetValue("cmi.core.score.min");
-      const scoreMaxStr = activeApi.lmsGetValue("cmi.core.score.max");
       const totalTimeStr = activeApi.lmsGetValue("cmi.core.total_time") || "0000:00:00";
       const totalTimeSeconds = parseTimeToSeconds(totalTimeStr);
       const lessonLocation = activeApi.lmsGetValue("cmi.core.lesson_location") || null;
       const suspendData = activeApi.lmsGetValue("cmi.suspend_data") || null;
 
-      await supabase
-        .from("lesson_progress")
-        .upsert({
-          enrollment_id: enrollmentId,
-          lesson_id: lessonId,
-          scorm_package_id: scormPackageId,
-          lesson_location: lessonLocation,
-          lesson_status: lessonStatus,
-          score_raw: scoreRaw,
-          score_min: scoreMinStr ? parseFloat(scoreMinStr) : null,
-          score_max: scoreMaxStr ? parseFloat(scoreMaxStr) : null,
-          total_time: totalTimeSeconds,
-          suspend_data: suspendData,
-        }, { onConflict: "enrollment_id,lesson_id" })
-        .select();
+      // Use SECURITY DEFINER RPC instead of direct upsert
+      await supabase.rpc("record_lesson_progress", {
+        _enrollment_id: enrollmentId,
+        _lesson_id: lessonId,
+        _lesson_status: lessonStatus,
+        _score_raw: scoreRaw,
+        _lesson_location: lessonLocation,
+        _suspend_data: suspendData,
+        _total_time: totalTimeSeconds,
+        _scorm_package_id: scormPackageId,
+      });
 
       if ((lessonStatus === "completed" || lessonStatus === "passed") && onComplete) {
         onComplete();
