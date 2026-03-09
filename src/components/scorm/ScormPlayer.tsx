@@ -89,27 +89,25 @@ async function resolveEntryPoint(baseUrl: string, entryPoint: string, authToken?
   const subfolders = getSubfolderPrefixes(sanitizedEntry);
   const searchBases = [baseUrl, ...subfolders.map(sf => `${baseUrl}/${sf}`)];
   
-  // Direct content files that are actual SCORM content (not router/redirect pages)
-  const directContentFiles = [
-    "story_html5.html", "index_lms_html5.html",
-    "scormcontent/index.html", "SCORMContent/index.html",
+  // Simple priority: index.html first, then story.html, then story_html5.html
+  const priorityFiles = [
+    "index.html",
+    "story.html",
+    "story_html5.html",
+    "index_lms.html",
+    "index_lms_html5.html",
+    "scormcontent/index.html",
   ];
   
-  for (const base of searchBases) {
-    for (const file of directContentFiles) {
+  // Search in all bases with priority files
+  for (const file of priorityFiles) {
+    for (const base of searchBases) {
       const url = `${base}/${file}`;
       if (await checkFileExists(url, authToken)) return url;
     }
   }
 
-  // If the entry point is not a known router file, try it directly
-  const entryFileName = sanitizedEntry.split("/").pop()?.toLowerCase() || "";
-  if (!ROUTER_FILENAMES.has(entryFileName)) {
-    const url = `${baseUrl}/${sanitizedEntry}`;
-    if (await checkFileExists(url, authToken)) return url;
-  }
-
-  // Try parsing imsmanifest.xml for launch file - search in all bases
+  // Try parsing imsmanifest.xml for launch file
   for (const base of searchBases) {
     try {
       const manifestUrl = `${base}/imsmanifest.xml`;
@@ -121,11 +119,6 @@ async function resolveEntryPoint(baseUrl: string, entryPoint: string, authToken?
         const launchFile = parseLaunchFromManifest(xml);
         if (launchFile) {
           const sanitizedLaunch = sanitizePath(launchFile);
-          const launchFileName = sanitizedLaunch.split("/").pop()?.toLowerCase() || "";
-          if (ROUTER_FILENAMES.has(launchFileName)) {
-            const html5Url = `${base}/${sanitizedLaunch.replace(/\.html$/i, "_html5.html")}`;
-            if (await checkFileExists(html5Url, authToken)) return html5Url;
-          }
           const launchUrl = `${base}/${sanitizedLaunch}`;
           if (await checkFileExists(launchUrl, authToken)) return launchUrl;
         }
@@ -133,17 +126,12 @@ async function resolveEntryPoint(baseUrl: string, entryPoint: string, authToken?
     } catch {}
   }
 
-  // Fallback: try common entry points in all bases
-  for (const base of searchBases) {
-    for (const file of ["story.html", "index_lms.html", "index.html"]) {
-      const url = `${base}/${file}`;
-      if (await checkFileExists(url, authToken)) return url;
-    }
+  // Last resort: use the entry point as-is (if it's not a known non-launch file)
+  const entryFileName = sanitizedEntry.split("/").pop()?.toLowerCase() || "";
+  if (!entryFileName.includes("aicccomm")) {
+    const fallbackUrl = `${baseUrl}/${sanitizedEntry}`;
+    if (await checkFileExists(fallbackUrl, authToken)) return fallbackUrl;
   }
-
-  // Last resort: use the entry point as-is
-  const fallbackUrl = `${baseUrl}/${entryPoint}`;
-  if (await checkFileExists(fallbackUrl, authToken)) return fallbackUrl;
 
   return null;
 }
