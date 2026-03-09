@@ -98,6 +98,8 @@ export default function CoursesManagement() {
   const [isEditing, setIsEditing] = useState(false);
   const [managingLessonsCourseId, setManagingLessonsCourseId] = useState<string | null>(null);
   const [managingLessonsCourseTitle, setManagingLessonsCourseTitle] = useState<string>("");
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [aiCourseContext, setAiCourseContext] = useState<any>(null);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
