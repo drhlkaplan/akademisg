@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AIContentGenerator } from "@/components/admin/AIContentGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,6 +54,7 @@ import {
   ToggleRight,
   ChevronDown,
   ChevronUp,
+  Sparkles,
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -96,6 +98,8 @@ export default function ExamsManagement() {
   const [expandedExamId, setExpandedExamId] = useState<string | null>(null);
   const [bankSourceExamId, setBankSourceExamId] = useState<string>("");
   const [selectedBankQuestions, setSelectedBankQuestions] = useState<Set<string>>(new Set());
+  const [aiQuestionOpen, setAiQuestionOpen] = useState(false);
+  const [aiExamContext, setAiExamContext] = useState<any>(null);
   
   const [examForm, setExamForm] = useState({
     title: "",
@@ -617,6 +621,20 @@ export default function ExamsManagement() {
                             Sorular ({questions?.length || 0})
                           </h4>
                           <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setAiExamContext({
+                                  title: exam.courses?.title || exam.title,
+                                  exam_id: exam.id,
+                                });
+                                setAiQuestionOpen(true);
+                              }}
+                            >
+                              <Sparkles className="mr-1 h-3 w-3 text-warning" />
+                              AI ile Soru Üret
+                            </Button>
                             <Button size="sm" variant="outline" onClick={() => handleOpenQuestionBank(exam.id)}>
                               <FileQuestion className="mr-1 h-3 w-3" />
                               Soru Bankasından Ekle
@@ -924,6 +942,19 @@ export default function ExamsManagement() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* AI Question Generator */}
+        {aiExamContext && (
+          <AIContentGenerator
+            open={aiQuestionOpen}
+            onOpenChange={setAiQuestionOpen}
+            mode="questions"
+            context={aiExamContext}
+            onQuestionsGenerated={() => {
+              queryClient.invalidateQueries({ queryKey: ["exam-questions", expandedExamId] });
+            }}
+          />
+        )}
       </div>
     </DashboardLayout>
   );

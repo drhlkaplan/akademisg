@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.manage-firm-employees]
 verify_jwt = false
+
+[functions.ai-content]
+verify_jwt = false

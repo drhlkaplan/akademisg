@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LessonManagement } from "@/components/admin/LessonManagement";
+import { AIContentGenerator } from "@/components/admin/AIContentGenerator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +65,7 @@ import {
   List,
   Eye,
   EyeOff,
+  Sparkles,
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -96,6 +98,8 @@ export default function CoursesManagement() {
   const [isEditing, setIsEditing] = useState(false);
   const [managingLessonsCourseId, setManagingLessonsCourseId] = useState<string | null>(null);
   const [managingLessonsCourseTitle, setManagingLessonsCourseTitle] = useState<string>("");
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [aiCourseContext, setAiCourseContext] = useState<any>(null);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -511,6 +515,21 @@ export default function CoursesManagement() {
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
+                              onClick={() => {
+                                setAiCourseContext({
+                                  title: course.title,
+                                  category: course.course_categories?.name,
+                                  danger_class: course.course_categories?.danger_class,
+                                  duration_minutes: course.duration_minutes,
+                                });
+                                setAiDialogOpen(true);
+                              }}
+                            >
+                              <Sparkles className="mr-2 h-4 w-4" />
+                              AI Açıklama Üret
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
                               className="text-destructive"
                               onClick={() => handleOpenDelete(course)}
                             >
@@ -670,6 +689,21 @@ export default function CoursesManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* AI Content Generator */}
+      {aiCourseContext && (
+        <AIContentGenerator
+          open={aiDialogOpen}
+          onOpenChange={setAiDialogOpen}
+          mode="description"
+          context={aiCourseContext}
+          onDescriptionGenerated={(desc) => {
+            // Could be used to update course description
+            navigator.clipboard.writeText(desc);
+            toast({ title: "Açıklama panoya kopyalandı" });
+          }}
+        />
+      )}
     </DashboardLayout>
   );
 }
