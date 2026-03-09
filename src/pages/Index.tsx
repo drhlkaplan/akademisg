@@ -278,7 +278,7 @@ const Index = () => {
                 <Button
                   variant="outline"
                   size="xl"
-                  className="border-accent-foreground/30 text-accent-foreground hover:bg-accent-foreground/10"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
                   asChild
                 >
                   <Link to="/contact">Kurumsal Teklif Al</Link>
