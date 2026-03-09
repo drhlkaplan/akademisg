@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useScormApi } from "@/hooks/useScormApi";
+import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Maximize2, Minimize2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -13,6 +14,11 @@ interface ScormPlayerProps {
   onComplete?: () => void;
 }
 
+/**
+ * Extract the storage object path from a package_url.
+ * package_url is typically: https://xxx.supabase.co/storage/v1/object/public/scorm-packages/COURSE_ID/TIMESTAMP
+ * We need: COURSE_ID/TIMESTAMP
+ */
 function extractFolderPath(packageUrl: string): string | null {
   const marker = "scorm-packages/";
   const idx = packageUrl.indexOf(marker);
@@ -21,9 +27,14 @@ function extractFolderPath(packageUrl: string): string | null {
   return raw.replace(/^\/+|\/+$/g, "") || null;
 }
 
-function buildStorageBase(folderPath: string): string {
+/**
+ * Build the proxy base URL for a given folder path.
+ * All SCORM files are served through the scorm-proxy edge function
+ * to handle private bucket access and correct MIME types.
+ */
+function buildProxyBase(folderPath: string): string {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  return `${supabaseUrl}/storage/v1/object/public/scorm-packages/${folderPath}`;
+  return `${supabaseUrl}/functions/v1/scorm-proxy/${folderPath}`;
 }
 
 function sanitizePath(path: string): string {
@@ -34,9 +45,17 @@ const ROUTER_FILENAMES = new Set([
   "index_lms.html", "index.html", "launch.html", "story.html",
 ]);
 
-async function checkFileExists(url: string): Promise<boolean> {
+/**
+ * Check if a file exists at the proxy URL.
+ * Uses the user's auth token for authenticated requests.
+ */
+async function checkFileExists(url: string, authToken?: string): Promise<boolean> {
   try {
-    const res = await fetch(url, { method: "GET" });
+    const headers: Record<string, string> = {};
+    if (authToken) {
+      headers["Authorization"] = `Bearer ${authToken}`;
+    }
+    const res = await fetch(url, { method: "GET", headers });
     res.body?.cancel();
     return res.ok;
   } catch {
@@ -44,44 +63,60 @@ async function checkFileExists(url: string): Promise<boolean> {
   }
 }
 
-async function resolveEntryPoint(baseUrl: string, entryPoint: string): Promise<string | null> {
+async function resolveEntryPoint(baseUrl: string, entryPoint: string, authToken?: string): Promise<string | null> {
   const sanitizedEntry = sanitizePath(entryPoint);
+  
+  // Direct content files that are actual SCORM content (not router/redirect pages)
   const directContentFiles = [
     "story_html5.html", "index_lms_html5.html",
     "scormcontent/index.html", "SCORMContent/index.html",
   ];
+  
   for (const file of directContentFiles) {
     const url = `${baseUrl}/${file}`;
-    if (await checkFileExists(url)) return url;
+    if (await checkFileExists(url, authToken)) return url;
   }
+
+  // If the entry point is not a known router file, try it directly
   const entryFileName = sanitizedEntry.split("/").pop()?.toLowerCase() || "";
   if (!ROUTER_FILENAMES.has(entryFileName)) {
     const url = `${baseUrl}/${sanitizedEntry}`;
-    if (await checkFileExists(url)) return url;
+    if (await checkFileExists(url, authToken)) return url;
   }
+
+  // Try parsing imsmanifest.xml for launch file
   try {
-    const manifestRes = await fetch(`${baseUrl}/imsmanifest.xml`);
+    const manifestUrl = `${baseUrl}/imsmanifest.xml`;
+    const headers: Record<string, string> = {};
+    if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
+    const manifestRes = await fetch(manifestUrl, { headers });
     if (manifestRes.ok) {
       const xml = await manifestRes.text();
       const launchFile = parseLaunchFromManifest(xml);
       if (launchFile) {
         const sanitizedLaunch = sanitizePath(launchFile);
         const launchFileName = sanitizedLaunch.split("/").pop()?.toLowerCase() || "";
+        // If manifest points to a router, try _html5 variant first
         if (ROUTER_FILENAMES.has(launchFileName)) {
           const html5Url = `${baseUrl}/${sanitizedLaunch.replace(/\.html$/i, "_html5.html")}`;
-          if (await checkFileExists(html5Url)) return html5Url;
+          if (await checkFileExists(html5Url, authToken)) return html5Url;
         }
         const launchUrl = `${baseUrl}/${sanitizedLaunch}`;
-        if (await checkFileExists(launchUrl)) return launchUrl;
+        if (await checkFileExists(launchUrl, authToken)) return launchUrl;
       }
     }
   } catch {}
+
+  // Fallback: try common entry points
   for (const file of ["story.html", "index_lms.html", "index.html"]) {
     const url = `${baseUrl}/${file}`;
-    if (await checkFileExists(url)) return url;
+    if (await checkFileExists(url, authToken)) return url;
   }
+
+  // Last resort: use the entry point as-is
   const fallbackUrl = `${baseUrl}/${entryPoint}`;
-  if (await checkFileExists(fallbackUrl)) return fallbackUrl;
+  if (await checkFileExists(fallbackUrl, authToken)) return fallbackUrl;
+
   return null;
 }
 
@@ -113,6 +148,7 @@ export const ScormPlayer = ({
 
   const { createApiObject } = useScormApi({ enrollmentId, scormPackageId, lessonId, userId, onComplete });
 
+  // Set SCORM API on window for iframe access
   useEffect(() => {
     const api = createApiObject();
     (window as any).API = api.API;
@@ -120,36 +156,59 @@ export const ScormPlayer = ({
     return () => { delete (window as any).API; delete (window as any).API_1484_11; };
   }, [createApiObject]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const resolve = async () => {
-      setIsLoading(true); setError(null); setDebugInfo(""); setSrcdocContent("");
-      const folderPath = extractFolderPath(packageUrl);
-      if (!folderPath) { setError("Paket yolu çözümlenemedi."); setIsLoading(false); return; }
-      const baseUrl = buildStorageBase(folderPath);
-      setDebugInfo(`Base: ${baseUrl}\nEntry: ${entryPoint}`);
-      const resolvedStorageUrl = await resolveEntryPoint(baseUrl, entryPoint);
-      if (cancelled) return;
-      if (!resolvedStorageUrl) {
-        setDebugInfo(prev => `${prev}\n❌ No launchable file found`);
-        setError("SCORM başlangıç dosyası bulunamadı. Lütfen paketi silip yeniden yükleyin.");
-        setIsLoading(false);
-        return;
-      }
-      setDebugInfo(prev => `${prev}\nResolved: ${resolvedStorageUrl}`);
-      try {
-        const response = await fetch(resolvedStorageUrl);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const htmlText = await response.text();
-        // Determine base directory for relative URL resolution
-        const lastSlash = resolvedStorageUrl.lastIndexOf("/");
-        const storageDir = resolvedStorageUrl.substring(0, lastSlash);
-        // Inject <base> tag so all relative resources load from storage
-        const baseTag = `<base href="${storageDir}/">`;
-        // Inject SCORM API bridge so iframe content can find the API
-        const apiBridge = `<script>
+  const loadContent = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    setDebugInfo("");
+    setSrcdocContent("");
+
+    const folderPath = extractFolderPath(packageUrl);
+    if (!folderPath) {
+      setError("Paket yolu çözümlenemedi.");
+      setIsLoading(false);
+      return;
+    }
+
+    // Build proxy-based URL (not public storage URL)
+    const proxyBase = buildProxyBase(folderPath);
+    setDebugInfo(`Proxy Base: ${proxyBase}\nEntry: ${entryPoint}`);
+
+    // Get auth token for authenticated proxy requests
+    let authToken: string | undefined;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      authToken = session?.access_token;
+    } catch {}
+
+    const resolvedUrl = await resolveEntryPoint(proxyBase, entryPoint, authToken);
+    if (!resolvedUrl) {
+      setDebugInfo(prev => `${prev}\n❌ No launchable file found`);
+      setError("SCORM başlangıç dosyası bulunamadı. Lütfen paketi silip yeniden yükleyin.");
+      setIsLoading(false);
+      return;
+    }
+
+    setDebugInfo(prev => `${prev}\nResolved: ${resolvedUrl}`);
+
+    try {
+      const headers: Record<string, string> = {};
+      if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
+      
+      const response = await fetch(resolvedUrl, { headers });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const htmlText = await response.text();
+
+      // Determine base directory for relative URL resolution
+      // This points to the proxy so all sub-resources (JS, CSS, images)
+      // are also served through the proxy with correct MIME types
+      const lastSlash = resolvedUrl.lastIndexOf("/");
+      const proxyDir = resolvedUrl.substring(0, lastSlash);
+      
+      const baseTag = `<base href="${proxyDir}/">`;
+
+      // SCORM API bridge: inject script that finds API from parent window
+      const apiBridge = `<script>
 (function() {
-  // Walk up window hierarchy to find SCORM API (standard algorithm)
   function findAPI(win) {
     try {
       if (win.API) return win.API;
@@ -180,7 +239,6 @@ export const ScormPlayer = ({
     } catch(e) {}
     return null;
   }
-  // Poll until API is available from parent
   var attempts = 0;
   var interval = setInterval(function() {
     var api = scanForAPI(window);
@@ -193,7 +251,6 @@ export const ScormPlayer = ({
       console.warn('SCORM API not found after polling');
     }
   }, 100);
-  // Also try immediate assignment from parent
   try {
     if (window.parent && window.parent.API) {
       window.API = window.parent.API;
@@ -201,27 +258,27 @@ export const ScormPlayer = ({
     }
   } catch(e) {}
 })();
-</script>`;
-        let modifiedHtml: string;
-        if (htmlText.match(/<head[^>]*>/i)) {
-          modifiedHtml = htmlText.replace(/<head[^>]*>/i, `$&\n${baseTag}\n${apiBridge}`);
-        } else {
-          modifiedHtml = `${baseTag}\n${apiBridge}\n${htmlText}`;
-        }
-        if (!cancelled) {
-          setSrcdocContent(modifiedHtml);
-          setDebugInfo(prev => `${prev}\n✅ Content loaded via srcdoc`);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(`İçerik yüklenemedi: ${err instanceof Error ? err.message : "Bilinmeyen hata"}`);
-          setIsLoading(false);
-        }
+<\/script>`;
+
+      let modifiedHtml: string;
+      if (htmlText.match(/<head[^>]*>/i)) {
+        modifiedHtml = htmlText.replace(/<head[^>]*>/i, `$&\n${baseTag}\n${apiBridge}`);
+      } else {
+        modifiedHtml = `${baseTag}\n${apiBridge}\n${htmlText}`;
       }
-    };
-    resolve();
-    return () => { cancelled = true; };
+
+      setSrcdocContent(modifiedHtml);
+      setDebugInfo(prev => `${prev}\n✅ Content loaded via srcdoc+proxy`);
+    } catch (err) {
+      setError(`İçerik yüklenemedi: ${err instanceof Error ? err.message : "Bilinmeyen hata"}`);
+      setIsLoading(false);
+    }
   }, [packageUrl, entryPoint]);
+
+  // Load on mount and when props change
+  useEffect(() => {
+    loadContent();
+  }, [loadContent]);
 
   const handleIframeLoad = useCallback(() => {
     setIsLoading(false);
@@ -233,29 +290,6 @@ export const ScormPlayer = ({
       }
     } catch {}
   }, []);
-
-  const handleRetry = useCallback(() => {
-    setError(null); setSrcdocContent("");
-    setIsLoading(true);
-    const folderPath = extractFolderPath(packageUrl);
-    if (folderPath) {
-      const baseUrl = buildStorageBase(folderPath);
-      resolveEntryPoint(baseUrl, entryPoint).then(async url => {
-        if (!url) { setError("SCORM başlangıç dosyası bulunamadı."); setIsLoading(false); return; }
-        try {
-          const response = await fetch(url);
-          const htmlText = await response.text();
-          const lastSlash = url.lastIndexOf("/");
-          const baseTag = `<base href="${url.substring(0, lastSlash)}/">`;
-          const apiBridgeScript = `<script>try{if(window.parent&&window.parent.API){window.API=window.parent.API;window.API_1484_11=window.parent.API_1484_11||window.parent.API;}}catch(e){}</script>`;
-          const modifiedHtml = htmlText.match(/<head[^>]*>/i)
-            ? htmlText.replace(/<head[^>]*>/i, `$&\n${baseTag}\n${apiBridgeScript}`)
-            : `${baseTag}\n${apiBridgeScript}\n${htmlText}`;
-          setSrcdocContent(modifiedHtml);
-        } catch { setError("İçerik yüklenemedi."); setIsLoading(false); }
-      });
-    }
-  }, [packageUrl, entryPoint]);
 
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
@@ -275,7 +309,7 @@ export const ScormPlayer = ({
         <AlertTriangle className="h-12 w-12 text-warning mb-4" />
         <h3 className="text-lg font-semibold text-foreground mb-2">İçerik Yüklenemedi</h3>
         <p className="text-muted-foreground text-center mb-4">{error}</p>
-        <Button variant="outline" onClick={handleRetry}><RefreshCw className="h-4 w-4 mr-2" />Tekrar Dene</Button>
+        <Button variant="outline" onClick={loadContent}><RefreshCw className="h-4 w-4 mr-2" />Tekrar Dene</Button>
         {debugInfo && (
           <details className="mt-4 w-full max-w-lg">
             <summary className="text-xs text-muted-foreground cursor-pointer">Debug Bilgisi</summary>
@@ -288,7 +322,7 @@ export const ScormPlayer = ({
 
   return (
     <div ref={containerRef} className="relative flex flex-col h-full bg-foreground/5 rounded-lg overflow-hidden border border-border shadow-sm">
-      {/* Professional toolbar */}
+      {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-2.5 bg-card border-b border-border">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -298,7 +332,7 @@ export const ScormPlayer = ({
           <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded font-mono">SCORM 1.2</span>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" onClick={handleRetry} className="h-8 w-8" title="Yeniden yükle">
+          <Button variant="ghost" size="icon" onClick={loadContent} className="h-8 w-8" title="Yeniden yükle">
             <RefreshCw className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="h-8 w-8" title={isFullscreen ? "Küçült" : "Tam ekran"}>
