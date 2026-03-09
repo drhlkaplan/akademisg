@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LessonSidebar, type LessonItem, type LessonProgressItem } from "@/components/course/LessonSidebar";
 import { LessonContent } from "@/components/course/LessonContent";
+import { LessonTabs } from "@/components/course/LessonTabs";
 import { Badge } from "@/components/ui/badge-custom";
 import { Button } from "@/components/ui/button";
 import {
