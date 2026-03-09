@@ -92,21 +92,7 @@ export function LessonContent({
 
     case "live": {
       return (
-        <div className="flex flex-col items-center justify-center h-full gap-6">
-          <div className="h-20 w-20 rounded-2xl bg-info/10 flex items-center justify-center">
-            <Video className="h-10 w-10 text-info" />
-          </div>
-          <div className="text-center space-y-2">
-            <h3 className="text-xl font-semibold text-foreground">{lesson.title}</h3>
-            <p className="text-muted-foreground max-w-md">
-              Canlı oturum henüz başlamamıştır veya planlanan saatte aktif olacaktır.
-            </p>
-          </div>
-          <Button variant="outline" disabled>
-            <Video className="h-4 w-4 mr-2" />
-            Oturum Bekleniyor
-          </Button>
-        </div>
+        <LiveSessionJoin lessonId={lesson.id} enrollmentId={enrollmentId} />
       );
     }
 

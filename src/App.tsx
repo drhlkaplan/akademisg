@@ -201,6 +201,30 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/admin/logs"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <ActivityLogs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/settings"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/live-sessions"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <LiveSessionsManagement />
+                </ProtectedRoute>
+              }
+            />
             
             {/* Firm Admin Dashboard */}
             <Route
