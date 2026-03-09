@@ -1,3 +1,5 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -53,6 +55,13 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !serviceRoleKey || !anonKey) {
+      return new Response("Server misconfiguration", { status: 500, headers: corsHeaders });
+    }
+
     const { pathname } = new URL(req.url);
     const marker = "/scorm-proxy/";
     const markerIndex = pathname.indexOf(marker);
@@ -65,13 +74,62 @@ Deno.serve(async (req) => {
       return new Response("Missing object path", { status: 400, headers: corsHeaders });
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    if (!supabaseUrl) {
-      return new Response("Server misconfiguration", { status: 500, headers: corsHeaders });
+    // --- Authentication & Enrollment Check ---
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response("Unauthorized", { status: 401, headers: corsHeaders });
     }
 
-    const objectUrl = `${supabaseUrl}/storage/v1/object/public/scorm-packages/${objectPath}`;
-    const upstream = await fetch(objectUrl, { method: "GET" });
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: authError } = await userClient.auth.getUser();
+    if (authError || !user) {
+      return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+    }
+
+    // Extract courseId from the first path segment (objectPath = "courseId/...")
+    const courseId = objectPath.split("/")[0];
+    if (!courseId) {
+      return new Response("Invalid path", { status: 400, headers: corsHeaders });
+    }
+
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+    // Check if user is admin OR enrolled in the course
+    const { data: roles } = await adminClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .in("role", ["admin", "super_admin"]);
+
+    const isAdmin = roles && roles.length > 0;
+
+    if (!isAdmin) {
+      const { data: enrollment } = await adminClient
+        .from("enrollments")
+        .select("id")
+        .eq("course_id", courseId)
+        .eq("user_id", user.id)
+        .in("status", ["active", "pending", "completed"])
+        .limit(1)
+        .maybeSingle();
+
+      if (!enrollment) {
+        return new Response("Forbidden", { status: 403, headers: corsHeaders });
+      }
+    }
+
+    // --- Fetch file using signed URL (bucket is now private) ---
+    const { data: signedUrlData, error: signedUrlError } = await adminClient.storage
+      .from("scorm-packages")
+      .createSignedUrl(objectPath, 300);
+
+    if (signedUrlError || !signedUrlData?.signedUrl) {
+      return new Response("File not found", { status: 404, headers: corsHeaders });
+    }
+
+    const upstream = await fetch(signedUrlData.signedUrl, { method: "GET" });
 
     if (!upstream.ok) {
       const body = await upstream.arrayBuffer();
@@ -85,9 +143,6 @@ Deno.serve(async (req) => {
     }
 
     const contentType = getContentTypeByPath(objectPath, upstream.headers.get("Content-Type"));
-
-    // Always read as arrayBuffer to preserve binary data and avoid
-    // Deno/Supabase gateway overriding Content-Type for string responses
     const body = await upstream.arrayBuffer();
 
     return new Response(body, {
@@ -95,11 +150,9 @@ Deno.serve(async (req) => {
       headers: {
         ...corsHeaders,
         "Content-Type": contentType,
-        // Override restrictive CSP that Supabase gateway may add
         "Content-Security-Policy": "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data: blob:; media-src * data: blob:; font-src * data:",
         "X-Content-Type-Options": "nosniff",
         "Cache-Control": "public, max-age=3600",
-        "X-Scorm-Object-Path": objectPath,
       },
     });
   } catch (error) {

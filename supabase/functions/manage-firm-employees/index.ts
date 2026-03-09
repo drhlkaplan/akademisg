@@ -228,7 +228,8 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: String(error) }), {
+    console.error("manage-firm-employees error:", error);
+    return new Response(JSON.stringify({ error: "İşlem sırasında bir hata oluştu" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
