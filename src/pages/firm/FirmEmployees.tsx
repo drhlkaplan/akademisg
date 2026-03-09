@@ -56,7 +56,7 @@ export default function FirmEmployees() {
       if (!firmId) return [];
       const { data, error } = await supabase
         .from("profiles")
-        .select("*, user_roles(role)")
+        .select("*")
         .eq("firm_id", firmId)
         .order("first_name");
       if (error) throw error;
@@ -340,7 +340,7 @@ export default function FirmEmployees() {
                             <div>
                               <p className="font-medium">{emp.first_name} {emp.last_name}</p>
                               <p className="text-xs text-muted-foreground">
-                                {(emp as any).user_roles?.map((r: any) => r.role).join(", ") || "student"}
+                                Çalışan
                               </p>
                             </div>
                           </div>
