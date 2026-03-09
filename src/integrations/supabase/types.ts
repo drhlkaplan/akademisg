@@ -1040,6 +1040,7 @@ export type Database = {
         Returns: undefined
       }
       get_email_by_tc: { Args: { tc_no: string }; Returns: string }
+      get_my_firm_id: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
