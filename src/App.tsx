@@ -71,6 +71,10 @@ const FirmCourses = lazyRetry(() => import("./pages/firm/FirmCourses"));
 const FirmReports = lazyRetry(() => import("./pages/firm/FirmReports"));
 const FirmCertificates = lazyRetry(() => import("./pages/firm/FirmCertificates"));
 const NotFound = lazyRetry(() => import("./pages/NotFound"));
+const KVKK = lazyRetry(() => import("./pages/legal/KVKK"));
+const PrivacyPolicy = lazyRetry(() => import("./pages/legal/PrivacyPolicy"));
+const TermsOfService = lazyRetry(() => import("./pages/legal/TermsOfService"));
+const CookiePolicy = lazyRetry(() => import("./pages/legal/CookiePolicy"));
 
 const queryClient = new QueryClient();
 
