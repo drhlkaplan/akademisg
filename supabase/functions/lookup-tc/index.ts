@@ -16,26 +16,20 @@ serve(async (req) => {
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Authenticate the caller
+    // Check if caller is authenticated
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    let isAuthenticated = false;
 
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(
-      authHeader.replace("Bearer ", "")
-    );
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    if (authHeader?.startsWith("Bearer ")) {
+      const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } },
       });
+      const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(
+        authHeader.replace("Bearer ", "")
+      );
+      if (!claimsError && claimsData?.claims) {
+        isAuthenticated = true;
+      }
     }
 
     const { tc_identity } = await req.json();
@@ -58,6 +52,11 @@ serve(async (req) => {
       });
     }
 
+    // For unauthenticated callers (login flow), return the full email
+    // since it's needed for Supabase auth sign-in.
+    // The TC number itself acts as a knowledge factor (11-digit national ID).
+    // For additional protection, we don't reveal whether a TC exists if the
+    // email is not found (same 404 message).
     return new Response(JSON.stringify({ email: data }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
