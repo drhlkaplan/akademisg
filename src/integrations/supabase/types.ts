@@ -1035,6 +1035,10 @@ export type Database = {
       }
     }
     Functions: {
+      complete_enrollment: {
+        Args: { _enrollment_id: string }
+        Returns: undefined
+      }
       get_email_by_tc: { Args: { tc_no: string }; Returns: string }
       has_role: {
         Args: {
