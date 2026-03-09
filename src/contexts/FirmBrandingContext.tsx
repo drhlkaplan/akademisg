@@ -52,7 +52,18 @@ export function FirmBrandingProvider({ children }: { children: ReactNode }) {
   };
 
   // Auto-load branding from profile's firm_id when user logs in
+  // Clear branding when user has no firm
   useEffect(() => {
+    // If user is logged in but has no firm, clear any existing branding
+    if (profile && !profile.firm_id) {
+      if (branding) {
+        setBranding(null);
+        // Clear stored firm code so it doesn't persist
+        setFirmCode(null);
+      }
+      return;
+    }
+
     if (!profile?.firm_id) return;
     // If we already have branding for this firm, skip
     if (branding?.firm_id === profile.firm_id) return;
@@ -90,12 +101,21 @@ export function FirmBrandingProvider({ children }: { children: ReactNode }) {
   }, [profile?.firm_id]);
 
   // Load branding by firm_code (for login page pre-fill)
+  // Only applies to users who are logged in AND have a firm_id, or on login pages with firm_code
   useEffect(() => {
     if (!firmCode) {
       // Don't clear branding if it was loaded from profile
       if (!profile?.firm_id) setBranding(null);
       return;
     }
+
+    // IMPORTANT: If user is logged in but does NOT belong to a firm,
+    // do NOT apply firm branding (prevents theme leaking to non-firm users)
+    if (profile && !profile.firm_id) {
+      setBranding(null);
+      return;
+    }
+
     // If branding already loaded for this code, skip
     if (branding?.firm_code === firmCode) return;
 
@@ -134,7 +154,7 @@ export function FirmBrandingProvider({ children }: { children: ReactNode }) {
     })();
 
     return () => { cancelled = true; };
-  }, [firmCode]);
+  }, [firmCode, profile]);
 
   // Apply custom CSS and favicon when branding changes
   useEffect(() => {

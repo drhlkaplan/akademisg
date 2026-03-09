@@ -59,6 +59,7 @@ const MyCertificates = lazyRetry(() => import("./pages/dashboard/MyCertificates"
 const MyCourses = lazyRetry(() => import("./pages/dashboard/MyCourses"));
 const MyExams = lazyRetry(() => import("./pages/dashboard/MyExams"));
 const Help = lazyRetry(() => import("./pages/dashboard/Help"));
+const ProfileSettings = lazyRetry(() => import("./pages/dashboard/ProfileSettings"));
 const GroupsManagement = lazyRetry(() => import("./pages/admin/GroupsManagement"));
 const FirmDashboard = lazyRetry(() => import("./pages/firm/FirmDashboard"));
 const FirmEmployees = lazyRetry(() => import("./pages/firm/FirmEmployees"));
@@ -270,6 +271,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Help />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/profile"
+              element={
+                <ProtectedRoute>
+                  <ProfileSettings />
                 </ProtectedRoute>
               }
             />

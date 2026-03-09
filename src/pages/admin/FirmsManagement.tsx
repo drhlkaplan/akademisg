@@ -67,6 +67,7 @@ import {
   MapPin,
   Palette,
 } from "lucide-react";
+import { FileUploadField } from "@/components/admin/FileUploadField";
 import type { Database } from "@/integrations/supabase/types";
 
 type Firm = Database["public"]["Tables"]["firms"]["Row"];
@@ -724,14 +725,21 @@ export default function FirmsManagement() {
               </h3>
               <div className="grid gap-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="logo_url">Logo URL</Label>
-                    <Input id="logo_url" value={formData.logo_url} onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })} placeholder="https://firma.com/logo.png" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="favicon_url">Favicon URL</Label>
-                    <Input id="favicon_url" value={formData.favicon_url} onChange={(e) => setFormData({ ...formData, favicon_url: e.target.value })} placeholder="https://firma.com/favicon.ico" />
-                  </div>
+                  <FileUploadField
+                    label="Logo"
+                    value={formData.logo_url}
+                    onChange={(url) => setFormData({ ...formData, logo_url: url })}
+                    folder={`firms/${formData.firm_code || "default"}`}
+                    placeholder="https://firma.com/logo.png"
+                  />
+                  <FileUploadField
+                    label="Favicon"
+                    value={formData.favicon_url}
+                    onChange={(url) => setFormData({ ...formData, favicon_url: url })}
+                    folder={`firms/${formData.firm_code || "default"}`}
+                    accept="image/x-icon,image/png,image/svg+xml"
+                    placeholder="https://firma.com/favicon.ico"
+                  />
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
@@ -760,10 +768,13 @@ export default function FirmsManagement() {
                   <Label htmlFor="welcome_message">Karşılama Mesajı</Label>
                   <Input id="welcome_message" value={formData.welcome_message} onChange={(e) => setFormData({ ...formData, welcome_message: e.target.value })} placeholder="Eğitimlerinize hoş geldiniz" />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="login_bg_url">Login Arka Plan Görseli URL</Label>
-                  <Input id="login_bg_url" value={formData.login_bg_url} onChange={(e) => setFormData({ ...formData, login_bg_url: e.target.value })} placeholder="https://firma.com/bg.jpg" />
-                </div>
+                <FileUploadField
+                  label="Login Arka Plan Görseli"
+                  value={formData.login_bg_url}
+                  onChange={(url) => setFormData({ ...formData, login_bg_url: url })}
+                  folder={`firms/${formData.firm_code || "default"}`}
+                  placeholder="https://firma.com/bg.jpg"
+                />
                 <div className="space-y-2">
                   <Label htmlFor="footer_text">Footer Metni</Label>
                   <Input id="footer_text" value={formData.footer_text} onChange={(e) => setFormData({ ...formData, footer_text: e.target.value })} placeholder="© 2026 Firma Adı. Tüm hakları saklıdır." />

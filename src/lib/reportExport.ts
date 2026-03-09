@@ -1,14 +1,6 @@
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
-
-// Extend jsPDF type for autotable
-declare module "jspdf" {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-    lastAutoTable: { finalY: number };
-  }
-}
 
 interface ExportOptions {
   title: string;
@@ -27,9 +19,9 @@ export function exportToPDF({ title, headers, rows, fileName }: ExportOptions) {
 
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  doc.text(`Oluşturulma Tarihi: ${new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}`, 14, 25);
+  doc.text(`Olusturulma Tarihi: ${new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}`, 14, 25);
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: 30,
     head: [headers],
     body: rows,
@@ -52,7 +44,7 @@ export function exportToPDF({ title, headers, rows, fileName }: ExportOptions) {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(150);
-    doc.text(`İSG Akademi - Sayfa ${i}/${pageCount}`, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 8, { align: "center" });
+    doc.text(`ISG Akademi - Sayfa ${i}/${pageCount}`, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 8, { align: "center" });
   }
 
   doc.save(`${fileName}.pdf`);
