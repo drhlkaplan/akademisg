@@ -292,6 +292,7 @@ export default function CourseLearning() {
               lessonProgress={lessonProgress}
               activeLessonId={activeLessonId}
               overallProgress={progress}
+              requireSequential={course.require_sequential !== false}
               onSelectLesson={(id) => {
                 setActiveLessonId(id);
                 // auto-close on mobile
