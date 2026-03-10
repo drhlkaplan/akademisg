@@ -153,6 +153,10 @@ export function LiveSessionJoin({ lessonId, enrollmentId, minDurationMinutes = 0
   }
 
   if (joined) {
+    const progressPercent = minDurationMinutes > 0
+      ? Math.min(100, Math.round((elapsed / minDurationSeconds) * 100))
+      : 100;
+
     return (
       <div className="flex flex-col items-center justify-center h-full gap-6 p-8">
         <div className="h-20 w-20 rounded-full bg-success/10 flex items-center justify-center">
@@ -160,11 +164,35 @@ export function LiveSessionJoin({ lessonId, enrollmentId, minDurationMinutes = 0
         </div>
         <div className="text-center space-y-2">
           <h3 className="text-lg font-semibold text-foreground">Canlı Oturum Devam Ediyor</h3>
-          <Badge variant="success">Bağlı</Badge>
+          <Badge variant={hasMeetMinDuration ? "success" : "warning"}>
+            {hasMeetMinDuration ? "Süre Tamamlandı" : "Bağlı"}
+          </Badge>
           <div className="flex items-center justify-center gap-2 mt-3 text-muted-foreground">
             <Clock className="h-4 w-4" />
             <span className="font-mono text-lg">{formatTime(elapsed)}</span>
           </div>
+          {minDurationMinutes > 0 && (
+            <div className="w-full max-w-xs mx-auto mt-2 space-y-1">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Minimum süre: {minDurationMinutes} dk</span>
+                <span>%{progressPercent}</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div
+                  className={cn(
+                    "h-2 rounded-full transition-all duration-300",
+                    hasMeetMinDuration ? "bg-success" : "bg-warning"
+                  )}
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              {!hasMeetMinDuration && (
+                <p className="text-xs text-warning mt-1">
+                  Dersin tamamlanması için en az {minDurationMinutes} dakika katılım gerekiyor.
+                </p>
+              )}
+            </div>
+          )}
           <p className="text-sm text-muted-foreground mt-2">
             Canlı ders yeni sekmede açıldı. Bu sayfada süre takibi devam ediyor.
           </p>
