@@ -234,6 +234,41 @@ export default function ReportCenter() {
     return rows;
   }, [lessons, lessonProgress, enrollments, profiles, courseFilter, firmFilter, searchQuery, courseMap, profileMap]);
 
+  // --- LIVE SESSION REPORT DATA ---
+  const liveReportData = useMemo(() => {
+    if (!liveTracking || !liveSessions || !lessons || !profiles) return [];
+
+    const sessionMap = new Map(liveSessions?.map((s) => [s.id, s]) || []);
+    const lessonMap = new Map(lessons?.map((l) => [l.id, l]) || []);
+
+    return liveTracking
+      .map((t) => {
+        const session = sessionMap.get(t.live_session_id);
+        if (!session) return null;
+        const lesson = lessonMap.get(session.lesson_id);
+        if (!lesson) return null;
+        const course = courseMap.get(lesson.course_id);
+        const profile = profileMap.get(t.user_id);
+
+        if (courseFilter !== "all" && lesson.course_id !== courseFilter) return null;
+        if (firmFilter !== "all" && profile?.firm_id !== firmFilter) return null;
+
+        const userName = profile ? `${profile.first_name} ${profile.last_name}` : "Bilinmiyor";
+        if (searchQuery && !userName.toLowerCase().includes(searchQuery.toLowerCase())) return null;
+
+        return {
+          userName,
+          tcIdentity: profile?.tc_identity || "-",
+          courseName: course?.title || "-",
+          lessonTitle: lesson.title,
+          joinedAt: t.joined_at,
+          leftAt: t.left_at,
+          durationSeconds: t.duration_seconds || 0,
+        };
+      })
+      .filter(Boolean) as any[];
+  }, [liveTracking, liveSessions, lessons, profiles, courseFilter, firmFilter, searchQuery, courseMap, profileMap]);
+
   // --- EXPORT HANDLERS ---
   const statusLabel = (s: string | null) => {
     const map: Record<string, string> = {
