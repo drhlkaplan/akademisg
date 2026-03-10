@@ -626,6 +626,116 @@ export default function ReportCenter() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* LIVE SESSION REPORT TAB */}
+            <TabsContent value="live" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  <Badge variant="secondary">{liveReportData.length}</Badge> katılım kaydı
+                </p>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => handleExportLiveReport("pdf")}>
+                    <FileText className="mr-2 h-4 w-4 text-destructive" /> PDF İndir
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => handleExportLiveReport("excel")}>
+                    <FileSpreadsheet className="mr-2 h-4 w-4 text-success" /> Excel İndir
+                  </Button>
+                </div>
+              </div>
+
+              {/* Summary cards */}
+              {liveReportData.length > 0 && (() => {
+                const totalDuration = liveReportData.reduce((s: number, r: any) => s + r.durationSeconds, 0);
+                const uniqueUsers = new Set(liveReportData.map((r: any) => r.userName)).size;
+                const avgDuration = Math.round(totalDuration / liveReportData.length);
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card>
+                      <CardContent className="p-4 flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                          <Users className="h-5 w-5 text-accent" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-foreground">{uniqueUsers}</p>
+                          <p className="text-xs text-muted-foreground">Benzersiz Katılımcı</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4 flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center">
+                          <Video className="h-5 w-5 text-success" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-foreground">{formatDuration(totalDuration)}</p>
+                          <p className="text-xs text-muted-foreground">Toplam Katılım Süresi</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4 flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                          <Video className="h-5 w-5 text-warning" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-foreground">{formatDuration(avgDuration)}</p>
+                          <p className="text-xs text-muted-foreground">Ortalama Katılım Süresi</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                );
+              })()}
+
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Ad Soyad</TableHead>
+                          <TableHead className="hidden md:table-cell">TC Kimlik</TableHead>
+                          <TableHead>Eğitim</TableHead>
+                          <TableHead className="hidden lg:table-cell">Ders</TableHead>
+                          <TableHead className="text-center">Giriş</TableHead>
+                          <TableHead className="text-center hidden md:table-cell">Çıkış</TableHead>
+                          <TableHead className="text-center">Süre</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {liveReportData.slice(0, 50).map((r: any, i: number) => (
+                          <TableRow key={i}>
+                            <TableCell className="font-medium">{r.userName}</TableCell>
+                            <TableCell className="hidden md:table-cell text-muted-foreground text-sm font-mono">
+                              {r.tcIdentity !== "-" ? `${r.tcIdentity.slice(0, 3)}***${r.tcIdentity.slice(-2)}` : "-"}
+                            </TableCell>
+                            <TableCell className="max-w-[140px] truncate">{r.courseName}</TableCell>
+                            <TableCell className="hidden lg:table-cell max-w-[140px] truncate">{r.lessonTitle}</TableCell>
+                            <TableCell className="text-center text-sm text-muted-foreground">
+                              {formatDateTR(r.joinedAt)}
+                            </TableCell>
+                            <TableCell className="text-center hidden md:table-cell text-sm text-muted-foreground">
+                              {r.leftAt ? formatDateTR(r.leftAt) : <Badge variant="success">Devam ediyor</Badge>}
+                            </TableCell>
+                            <TableCell className="text-center text-sm font-medium">
+                              {formatDuration(r.durationSeconds)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {liveReportData.length === 0 && (
+                    <div className="text-center py-12 text-muted-foreground">Canlı ders katılım kaydı bulunamadı</div>
+                  )}
+                  {liveReportData.length > 50 && (
+                    <div className="text-center py-3 text-sm text-muted-foreground border-t">
+                      İlk 50 kayıt gösteriliyor. Tamamı için PDF veya Excel olarak indirin.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
         )}
       </div>
