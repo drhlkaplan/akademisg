@@ -299,6 +299,7 @@ export default function CoursesManagement() {
       category_id: "",
       is_active: true,
       thumbnail_url: "",
+      require_sequential: true,
     });
   };
 
