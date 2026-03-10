@@ -465,6 +465,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       content_html: isHtml ? (lesson.content_url || "") : "",
       exam_id: lesson.exam_id || "",
       scorm_package_id: lesson.scorm_package_id || "",
+      min_live_duration_minutes: (lesson as any).min_live_duration_minutes || 0,
     });
     setDialogOpen(true);
   };
