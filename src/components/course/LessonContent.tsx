@@ -66,6 +66,25 @@ export function LessonContent({
     }
 
     case "exam": {
+      // If exam lesson has a SCORM package, render it as SCORM content
+      if (lesson.scorm_package_id) {
+        const pkg = scormPackages[lesson.scorm_package_id];
+        if (pkg) {
+          return (
+            <ScormPlayer
+              packageUrl={pkg.package_url}
+              entryPoint={pkg.entry_point || "index.html"}
+              enrollmentId={enrollmentId}
+              scormPackageId={pkg.id}
+              lessonId={lesson.id}
+              userId={userId}
+              onComplete={onScormComplete}
+            />
+          );
+        }
+      }
+
+      // Platform exam
       if (!lesson.exam_id) {
         return <EmptyState icon={FileQuestion} title="Sınav Henüz Atanmamış" description="Bu ders için sınav henüz oluşturulmamıştır." />;
       }

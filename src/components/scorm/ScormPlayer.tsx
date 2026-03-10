@@ -13,6 +13,13 @@ interface ScormPlayerProps {
   onComplete?: () => void;
 }
 
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+/**
+ * Extract the storage folder path from a public package URL.
+ * e.g. "https://xxx.supabase.co/storage/v1/object/public/scorm-packages/courseId/timestamp"
+ *   → "courseId/timestamp"
+ */
 function extractFolderPath(packageUrl: string): string | null {
   const marker = "scorm-packages/";
   const idx = packageUrl.indexOf(marker);
@@ -21,21 +28,22 @@ function extractFolderPath(packageUrl: string): string | null {
   return raw.replace(/^\/+|\/+$/g, "") || null;
 }
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+/** Build a direct public storage URL (correct MIME types, no gateway override) */
+function buildPublicUrl(folderPath: string, filePath: string): string {
+  return `${supabaseUrl}/storage/v1/object/public/scorm-packages/${folderPath}/${filePath}`;
+}
 
+/** Build a public base URL for the <base> tag so relative resources load from storage */
+function buildPublicBaseUrl(folderPath: string, entryDir: string): string {
+  const base = entryDir
+    ? `${supabaseUrl}/storage/v1/object/public/scorm-packages/${folderPath}/${entryDir}`
+    : `${supabaseUrl}/storage/v1/object/public/scorm-packages/${folderPath}/`;
+  return base.endsWith("/") ? base : base + "/";
+}
+
+/** Use the proxy only for directory listing (JSON, unaffected by gateway) */
 function buildListUrl(folderPath: string): string {
   return `${supabaseUrl}/functions/v1/scorm-proxy/${folderPath}?list=1`;
-}
-
-function buildProxyUrl(folderPath: string, filePath: string): string {
-  return `${supabaseUrl}/functions/v1/scorm-proxy/${folderPath}/${filePath}`;
-}
-
-function buildProxyBaseUrl(folderPath: string, entryDir: string): string {
-  const base = entryDir
-    ? `${supabaseUrl}/functions/v1/scorm-proxy/${folderPath}/${entryDir}`
-    : `${supabaseUrl}/functions/v1/scorm-proxy/${folderPath}/`;
-  return base.endsWith("/") ? base : base + "/";
 }
 
 interface StorageItem {
@@ -46,9 +54,9 @@ interface StorageItem {
 
 const PRIORITY_FILES = [
   "index_lms_html5.html",
+  "story_html5.html",
   "index.html",
   "index_lms.html",
-  "story_html5.html",
   "story.html",
 ];
 
@@ -98,7 +106,7 @@ async function resolveEntryFile(folderPath: string, entryPoint: string): Promise
   }
 
   if (rootFileNames.has("imsmanifest.xml")) {
-    const manifestUrl = `${supabaseUrl}/storage/v1/object/public/scorm-packages/${folderPath}/imsmanifest.xml`;
+    const manifestUrl = buildPublicUrl(folderPath, "imsmanifest.xml");
     try {
       const res = await fetch(manifestUrl);
       if (res.ok) {
@@ -255,16 +263,16 @@ export function ScormPlayer({
       return;
     }
 
-    // Fetch HTML from proxy (returns text because of gateway, but we handle it)
-    const proxyUrl = buildProxyUrl(folderPath, entryFile);
+    // Use PUBLIC storage URL directly (correct MIME types, no gateway override)
+    const publicUrl = buildPublicUrl(folderPath, entryFile);
     const entryDir = entryFile.includes("/") ? entryFile.substring(0, entryFile.lastIndexOf("/") + 1) : "";
-    const baseUrl = buildProxyBaseUrl(folderPath, entryDir);
+    const baseUrl = buildPublicBaseUrl(folderPath, entryDir);
 
-    console.log("SCORM Player: fetching from proxy:", proxyUrl);
-    console.log("SCORM Player: base URL:", baseUrl);
+    console.log("SCORM Player: loading from public URL:", publicUrl);
+    console.log("SCORM Player: base URL for resources:", baseUrl);
 
     try {
-      const res = await fetch(proxyUrl);
+      const res = await fetch(publicUrl);
       if (!res.ok) {
         setError(`İçerik dosyası yüklenemedi (HTTP ${res.status}).`);
         setIsLoading(false);
