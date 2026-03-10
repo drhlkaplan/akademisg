@@ -150,6 +150,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     content_html: "",
     exam_id: "",
     scorm_package_id: "",
+    min_live_duration_minutes: 0,
   });
 
   // Fetch lessons
