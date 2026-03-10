@@ -98,6 +98,27 @@ export default function ReportCenter() {
     },
   });
 
+  const { data: liveTracking } = useQuery({
+    queryKey: ["report-live-tracking"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("live_session_tracking")
+        .select("id, live_session_id, user_id, joined_at, left_at, duration_seconds")
+        .order("joined_at", { ascending: false });
+      return data || [];
+    },
+  });
+
+  const { data: liveSessions } = useQuery({
+    queryKey: ["report-live-sessions"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("live_sessions")
+        .select("id, lesson_id, room_url, is_active, created_at");
+      return data || [];
+    },
+  });
+
   const isLoading = enrollLoading || !profiles || !courses;
 
   // --- Helpers ---
