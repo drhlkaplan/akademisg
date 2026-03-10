@@ -13,7 +13,7 @@ interface LiveSessionJoinProps {
   minDurationMinutes?: number;
 }
 
-export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps) {
+export function LiveSessionJoin({ lessonId, enrollmentId, minDurationMinutes = 0 }: LiveSessionJoinProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [session, setSession] = useState<any>(null);
