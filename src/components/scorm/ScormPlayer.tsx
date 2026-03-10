@@ -26,14 +26,9 @@ function buildListUrl(folderPath: string): string {
   return `${supabaseUrl}/functions/v1/scorm-proxy/${folderPath}?list=1`;
 }
 
-function buildPublicUrl(folderPath: string, filePath: string): string {
+function buildProxyUrl(folderPath: string, filePath: string): string {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  return `${supabaseUrl}/storage/v1/object/public/scorm-packages/${folderPath}/${filePath}`;
-}
-
-function buildPublicBaseUrl(folderPath: string): string {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  return `${supabaseUrl}/storage/v1/object/public/scorm-packages/${folderPath}/`;
+  return `${supabaseUrl}/functions/v1/scorm-proxy/${folderPath}/${filePath}`;
 }
 
 interface StorageItem {
@@ -95,8 +90,10 @@ async function resolveEntryFile(folderPath: string, entryPoint: string): Promise
     }
   }
 
+  // Parse imsmanifest.xml as last resort
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   if (rootFileNames.has("imsmanifest.xml")) {
-    const manifestUrl = buildPublicUrl(folderPath, "imsmanifest.xml");
+    const manifestUrl = `${supabaseUrl}/storage/v1/object/public/scorm-packages/${folderPath}/imsmanifest.xml`;
     try {
       const res = await fetch(manifestUrl);
       if (res.ok) {
@@ -126,54 +123,6 @@ function formatTime(seconds: number): string {
   return `${String(h).padStart(4, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-function buildScormApiScript(initialData: Record<string, string>): string {
-  return `<script>
-(function() {
-  var _initialized = false, _finished = false, _lastError = '0';
-  var cmiData = {
-    'cmi.core.lesson_status': ${JSON.stringify(initialData.lesson_status || 'not attempted')},
-    'cmi.core.lesson_location': ${JSON.stringify(initialData.lesson_location || '')},
-    'cmi.suspend_data': ${JSON.stringify(initialData.suspend_data || '')},
-    'cmi.core.score.raw': ${JSON.stringify(initialData.score_raw || '')},
-    'cmi.core.score.min': '0',
-    'cmi.core.score.max': '100',
-    'cmi.core.total_time': ${JSON.stringify(initialData.total_time || '0000:00:00')},
-    'cmi.core.session_time': '0000:00:00',
-    'cmi.core.student_id': '', 'cmi.core.student_name': '',
-    'cmi.core.credit': 'credit',
-    'cmi.core.entry': ${JSON.stringify(initialData.lesson_status && initialData.lesson_status !== 'not attempted' ? 'resume' : 'ab-initio')},
-    'cmi.core.exit': '', 'cmi.core.lesson_mode': 'normal',
-    'cmi.launch_data': '', 'cmi.comments': '', 'cmi.comments_from_lms': ''
-  };
-  function sendToParent(method) {
-    try {
-      window.parent.postMessage({ type: 'scorm_api_event', method: method, data: {
-        lesson_status: cmiData['cmi.core.lesson_status'],
-        lesson_location: cmiData['cmi.core.lesson_location'],
-        suspend_data: cmiData['cmi.suspend_data'],
-        score_raw: cmiData['cmi.core.score.raw'],
-        total_time: cmiData['cmi.core.total_time'],
-        session_time: cmiData['cmi.core.session_time'],
-        exit: cmiData['cmi.core.exit']
-      }}, '*');
-    } catch(e) {}
-  }
-  var API = {
-    LMSInitialize: function() { _initialized = true; _finished = false; _lastError = '0'; sendToParent('LMSInitialize'); return 'true'; },
-    LMSFinish: function() { if (!_initialized) { _lastError = '301'; return 'false'; } _finished = true; _initialized = false; _lastError = '0'; sendToParent('LMSFinish'); return 'true'; },
-    LMSGetValue: function(el) { if (!_initialized) { _lastError = '301'; return ''; } _lastError = '0'; if (el in cmiData) return cmiData[el]; if (el.match(/_count$/)) return '0'; return ''; },
-    LMSSetValue: function(el, val) { if (!_initialized) { _lastError = '301'; return 'false'; } _lastError = '0'; cmiData[el] = val; return 'true'; },
-    LMSCommit: function() { if (!_initialized) { _lastError = '301'; return 'false'; } _lastError = '0'; sendToParent('LMSCommit'); return 'true'; },
-    LMSGetLastError: function() { return _lastError; },
-    LMSGetErrorString: function(c) { return {'0':'No Error','101':'General Exception','301':'Not initialized','401':'Not implemented'}[c]||'Unknown'; },
-    LMSGetDiagnostic: function(c) { return c||''; }
-  };
-  window.API = API;
-  window.API_1484_11 = API;
-})();
-<\/script>`;
-}
-
 export function ScormPlayer({
   packageUrl, entryPoint, enrollmentId, scormPackageId, lessonId, userId, onComplete,
 }: ScormPlayerProps) {
@@ -181,10 +130,9 @@ export function ScormPlayer({
   const [isLoading, setIsLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [iframeSrc, setIframeSrc] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  const blobUrlRef = useRef<string | null>(null);
 
   const persistProgress = useCallback(async (data: Record<string, string>, method: string) => {
     try {
@@ -234,13 +182,7 @@ export function ScormPlayer({
   const loadContent = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
-    // Revoke previous blob URL
-    if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-      blobUrlRef.current = null;
-    }
-    setBlobUrl(null);
+    setIframeSrc(null);
 
     const folderPath = extractFolderPath(packageUrl);
     if (!folderPath) {
@@ -256,74 +198,41 @@ export function ScormPlayer({
       return;
     }
 
-    const publicUrl = buildPublicUrl(folderPath, entryFile);
-    const entryDir = entryFile.includes("/") ? entryFile.substring(0, entryFile.lastIndexOf("/") + 1) : "";
-    const baseUrl = entryDir
-      ? `${buildPublicBaseUrl(folderPath)}${entryDir}`
-      : buildPublicBaseUrl(folderPath);
-
-    console.log("SCORM Player: loading from:", publicUrl);
-
+    // Fetch existing progress for SCORM API initialization
+    const initialData: Record<string, string> = {};
     try {
-      const res = await fetch(publicUrl);
-      if (!res.ok) {
-        setError(`İçerik dosyası yüklenemedi (HTTP ${res.status}).`);
-        setIsLoading(false);
-        return;
+      const { data: progress } = await supabase
+        .from("lesson_progress")
+        .select("*")
+        .eq("enrollment_id", enrollmentId)
+        .eq("lesson_id", lessonId)
+        .maybeSingle();
+
+      if (progress) {
+        if (progress.lesson_status) initialData.lesson_status = progress.lesson_status;
+        if (progress.lesson_location) initialData.lesson_location = progress.lesson_location;
+        if (progress.suspend_data && progress.suspend_data.length < 4000) initialData.suspend_data = progress.suspend_data;
+        if (progress.score_raw != null) initialData.score_raw = String(progress.score_raw);
+        if (progress.total_time != null) initialData.total_time = formatTime(progress.total_time);
       }
-      let html = await res.text();
+    } catch {}
 
-      // Fetch existing progress
-      const initialData: Record<string, string> = {};
-      try {
-        const { data: progress } = await supabase
-          .from("lesson_progress")
-          .select("*")
-          .eq("enrollment_id", enrollmentId)
-          .eq("lesson_id", lessonId)
-          .maybeSingle();
-
-        if (progress) {
-          if (progress.lesson_status) initialData.lesson_status = progress.lesson_status;
-          if (progress.lesson_location) initialData.lesson_location = progress.lesson_location;
-          if (progress.suspend_data && progress.suspend_data.length < 4000) initialData.suspend_data = progress.suspend_data;
-          if (progress.score_raw != null) initialData.score_raw = String(progress.score_raw);
-          if (progress.total_time != null) initialData.total_time = formatTime(progress.total_time);
-        }
-      } catch {}
-
-      // Inject <base> tag and SCORM API script
-      const scormScript = buildScormApiScript(initialData);
-      const baseTag = `<base href="${baseUrl}">`;
-
-      if (html.match(/<head[^>]*>/i)) {
-        html = html.replace(/<head[^>]*>/i, `$&\n${baseTag}\n${scormScript}`);
-      } else if (html.match(/<html[^>]*>/i)) {
-        html = html.replace(/<html[^>]*>/i, `$&\n<head>${baseTag}\n${scormScript}</head>`);
-      } else {
-        html = `<!DOCTYPE html><html><head>${baseTag}\n${scormScript}</head><body>${html}</body></html>`;
-      }
-
-      // Create Blob URL — renders as proper HTML with correct MIME type
-      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      blobUrlRef.current = url;
-      setBlobUrl(url);
-    } catch (err: any) {
-      console.error("SCORM fetch error:", err);
-      setError("Eğitim içeriği yüklenirken bir hata oluştu.");
-      setIsLoading(false);
+    // Build scorm-proxy URL with SCORM API injection params
+    const proxyUrl = buildProxyUrl(folderPath, entryFile);
+    const params = new URLSearchParams();
+    params.set("scorm", "1");
+    params.set("origin", window.location.origin);
+    for (const [key, val] of Object.entries(initialData)) {
+      if (val) params.set(key, val);
     }
+
+    const fullUrl = `${proxyUrl}?${params.toString()}`;
+    console.log("SCORM Player: loading via proxy:", fullUrl);
+    setIframeSrc(fullUrl);
   }, [packageUrl, entryPoint, enrollmentId, lessonId]);
 
   useEffect(() => {
     loadContent();
-    return () => {
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
-      }
-    };
   }, [loadContent]);
 
   const handleIframeLoad = useCallback(() => { setIsLoading(false); }, []);
@@ -378,16 +287,15 @@ export function ScormPlayer({
           </div>
         </div>
       )}
-      {blobUrl && (
+      {iframeSrc && (
         <iframe
           ref={iframeRef}
-          src={blobUrl}
+          src={iframeSrc}
           className="flex-1 w-full border-0"
           style={{ minHeight: "500px" }}
           onLoad={handleIframeLoad}
           onError={() => { setIsLoading(false); setError("Eğitim içeriği yüklenemedi."); }}
           allow="fullscreen"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
           title="SCORM Eğitim İçeriği"
         />
       )}
