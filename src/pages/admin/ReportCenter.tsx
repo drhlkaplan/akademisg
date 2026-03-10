@@ -338,6 +338,31 @@ export default function ReportCenter() {
     format === "pdf" ? exportToPDF(opts) : exportToExcel(opts);
   };
 
+  const handleExportLiveReport = (format: "pdf" | "excel") => {
+    const headers = [
+      "Ad Soyad", "TC Kimlik", "Eğitim", "Ders", "Giriş Zamanı",
+      "Çıkış Zamanı", "Katılım Süresi",
+    ];
+    const rows = liveReportData.map((r: any) => [
+      r.userName,
+      r.tcIdentity !== "-" ? `${r.tcIdentity.slice(0, 3)}***${r.tcIdentity.slice(-2)}` : "-",
+      r.courseName,
+      r.lessonTitle,
+      formatDateTR(r.joinedAt),
+      r.leftAt ? formatDateTR(r.leftAt) : "Devam ediyor",
+      formatDuration(r.durationSeconds),
+    ]);
+
+    const opts = {
+      title: "Canlı Ders Katılım Raporu",
+      headers,
+      rows,
+      fileName: `canli_ders_raporu_${new Date().toISOString().slice(0, 10)}`,
+    };
+
+    format === "pdf" ? exportToPDF(opts) : exportToExcel(opts);
+  };
+
   const usersForManual = useMemo(() =>
     profiles?.map((p) => ({ user_id: p.user_id, name: `${p.first_name} ${p.last_name}` })) || [],
     [profiles]
