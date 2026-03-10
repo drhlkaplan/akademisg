@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge-custom";
 import { useToast } from "@/hooks/use-toast";
-import { Video, Key, Clock, Maximize2, Minimize2 } from "lucide-react";
+import { Video, Key, Clock, ExternalLink } from "lucide-react";
 
 interface LiveSessionJoinProps {
   lessonId: string;
@@ -21,7 +21,7 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
   const [joined, setJoined] = useState(false);
   const [trackingId, setTrackingId] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const popupRef = useRef<Window | null>(null);
 
   useEffect(() => {
     fetchSession();
@@ -34,19 +34,24 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
     return () => clearInterval(interval);
   }, [joined]);
 
+  // Check if popup is closed
+  useEffect(() => {
+    if (!joined || !popupRef.current) return;
+    const interval = setInterval(() => {
+      if (popupRef.current?.closed) {
+        handleLeave();
+        clearInterval(interval);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [joined]);
+
   // Leave on unmount
   useEffect(() => {
     return () => {
       if (trackingId) leaveSession(trackingId);
     };
   }, [trackingId]);
-
-  // Fullscreen change listener
-  useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", handler);
-    return () => document.removeEventListener("fullscreenchange", handler);
-  }, []);
 
   const fetchSession = async () => {
     const { data } = await supabase
@@ -74,6 +79,10 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
       if (error) throw error;
       setTrackingId(trackingIdResult);
       setJoined(true);
+
+      // Open in new tab/popup
+      const popup = window.open(session.room_url, "_blank", "noopener");
+      popupRef.current = popup;
     } catch {
       toast({ title: "Hata", description: "Oturuma katılınamadı.", variant: "destructive" });
     } finally {
@@ -81,12 +90,12 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
     }
   };
 
-  const leaveSession = async (id: string) => {
+  const leaveSession = useCallback(async (id: string) => {
     await supabase.rpc("leave_live_session", {
       _tracking_id: id,
       _duration_seconds: elapsed,
     });
-  };
+  }, [elapsed]);
 
   const handleLeave = async () => {
     if (trackingId) {
@@ -94,6 +103,7 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
       setJoined(false);
       setTrackingId(null);
       setElapsed(0);
+      popupRef.current = null;
 
       await supabase.rpc("record_lesson_progress", {
         _enrollment_id: enrollmentId,
@@ -105,16 +115,11 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
     }
   };
 
-  const toggleFullscreen = () => {
-    const container = document.getElementById("live-session-container");
-    if (!container) return;
-    if (!isFullscreen) container.requestFullscreen?.();
-    else document.exitFullscreen?.();
-  };
-
   const formatTime = (s: number) => {
-    const m = Math.floor(s / 60);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
     const sec = s % 60;
+    if (h > 0) return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
     return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
   };
 
@@ -132,36 +137,30 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
 
   if (joined) {
     return (
-      <div id="live-session-container" className="flex flex-col h-full bg-background">
-        {/* Header bar */}
-        <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className="h-2.5 w-2.5 rounded-full bg-success animate-pulse" />
-              <span className="text-sm font-medium text-foreground">Canlı Oturum</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Clock className="h-3.5 w-3.5" />
-              <span className="font-mono">{formatTime(elapsed)}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleFullscreen} title={isFullscreen ? "Küçült" : "Tam ekran"}>
-              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            </Button>
-            <Button variant="destructive" size="sm" onClick={handleLeave}>
-              Oturumdan Ayrıl
-            </Button>
-          </div>
+      <div className="flex flex-col items-center justify-center h-full gap-6 p-8">
+        <div className="h-20 w-20 rounded-full bg-success/10 flex items-center justify-center">
+          <Video className="h-10 w-10 text-success" />
         </div>
-        {/* BBB iframe */}
-        <iframe
-          src={session.room_url}
-          className="flex-1 w-full border-0"
-          allow="camera; microphone; fullscreen; display-capture; autoplay"
-          allowFullScreen
-          title="Canlı Ders Oturumu"
-        />
+        <div className="text-center space-y-2">
+          <h3 className="text-lg font-semibold text-foreground">Canlı Oturum Devam Ediyor</h3>
+          <Badge variant="success">Bağlı</Badge>
+          <div className="flex items-center justify-center gap-2 mt-3 text-muted-foreground">
+            <Clock className="h-4 w-4" />
+            <span className="font-mono text-lg">{formatTime(elapsed)}</span>
+          </div>
+          <p className="text-sm text-muted-foreground mt-2">
+            Canlı ders yeni sekmede açıldı. Bu sayfada süre takibi devam ediyor.
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => window.open(session.room_url, "_blank")}>
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Oturuma Dön
+          </Button>
+          <Button variant="destructive" onClick={handleLeave}>
+            Oturumdan Ayrıl
+          </Button>
+        </div>
       </div>
     );
   }
@@ -192,6 +191,9 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
         <Button className="w-full" onClick={handleJoin} disabled={isJoining || !accessKey.trim()}>
           {isJoining ? "Katılıyor..." : "Oturuma Katıl"}
         </Button>
+        <p className="text-xs text-muted-foreground text-center">
+          Ders yeni bir sekmede açılacaktır
+        </p>
       </div>
     </div>
   );
