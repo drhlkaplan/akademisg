@@ -5,14 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge-custom";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import { Video, Key, Clock, ExternalLink } from "lucide-react";
 
 interface LiveSessionJoinProps {
   lessonId: string;
   enrollmentId: string;
+  minDurationMinutes?: number;
 }
 
-export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps) {
+export function LiveSessionJoin({ lessonId, enrollmentId, minDurationMinutes = 0 }: LiveSessionJoinProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [session, setSession] = useState<any>(null);
@@ -97,21 +99,37 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
     });
   }, [elapsed]);
 
+  const minDurationSeconds = minDurationMinutes * 60;
+  const hasMeetMinDuration = minDurationMinutes <= 0 || elapsed >= minDurationSeconds;
+
   const handleLeave = async () => {
     if (trackingId) {
       await leaveSession(trackingId);
       setJoined(false);
       setTrackingId(null);
-      setElapsed(0);
       popupRef.current = null;
 
-      await supabase.rpc("record_lesson_progress", {
-        _enrollment_id: enrollmentId,
-        _lesson_id: lessonId,
-        _lesson_status: "completed",
-      });
-
-      toast({ title: "Ayrıldınız", description: "Canlı oturumdan ayrıldınız." });
+      if (hasMeetMinDuration) {
+        await supabase.rpc("record_lesson_progress", {
+          _enrollment_id: enrollmentId,
+          _lesson_id: lessonId,
+          _lesson_status: "completed",
+        });
+        toast({ title: "Ayrıldınız", description: "Canlı oturum tamamlandı." });
+      } else {
+        const remainingMin = Math.ceil((minDurationSeconds - elapsed) / 60);
+        await supabase.rpc("record_lesson_progress", {
+          _enrollment_id: enrollmentId,
+          _lesson_id: lessonId,
+          _lesson_status: "incomplete",
+        });
+        toast({
+          title: "Süre Yetersiz",
+          description: `Dersin tamamlanması için en az ${remainingMin} dakika daha katılım gerekiyor.`,
+          variant: "destructive",
+        });
+      }
+      setElapsed(0);
     }
   };
 
@@ -136,6 +154,10 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
   }
 
   if (joined) {
+    const progressPercent = minDurationMinutes > 0
+      ? Math.min(100, Math.round((elapsed / minDurationSeconds) * 100))
+      : 100;
+
     return (
       <div className="flex flex-col items-center justify-center h-full gap-6 p-8">
         <div className="h-20 w-20 rounded-full bg-success/10 flex items-center justify-center">
@@ -143,11 +165,35 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
         </div>
         <div className="text-center space-y-2">
           <h3 className="text-lg font-semibold text-foreground">Canlı Oturum Devam Ediyor</h3>
-          <Badge variant="success">Bağlı</Badge>
+          <Badge variant={hasMeetMinDuration ? "success" : "warning"}>
+            {hasMeetMinDuration ? "Süre Tamamlandı" : "Bağlı"}
+          </Badge>
           <div className="flex items-center justify-center gap-2 mt-3 text-muted-foreground">
             <Clock className="h-4 w-4" />
             <span className="font-mono text-lg">{formatTime(elapsed)}</span>
           </div>
+          {minDurationMinutes > 0 && (
+            <div className="w-full max-w-xs mx-auto mt-2 space-y-1">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Minimum süre: {minDurationMinutes} dk</span>
+                <span>%{progressPercent}</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div
+                  className={cn(
+                    "h-2 rounded-full transition-all duration-300",
+                    hasMeetMinDuration ? "bg-success" : "bg-warning"
+                  )}
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              {!hasMeetMinDuration && (
+                <p className="text-xs text-warning mt-1">
+                  Dersin tamamlanması için en az {minDurationMinutes} dakika katılım gerekiyor.
+                </p>
+              )}
+            </div>
+          )}
           <p className="text-sm text-muted-foreground mt-2">
             Canlı ders yeni sekmede açıldı. Bu sayfada süre takibi devam ediyor.
           </p>

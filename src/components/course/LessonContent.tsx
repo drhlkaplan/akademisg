@@ -111,7 +111,11 @@ export function LessonContent({
 
     case "live": {
       return (
-        <LiveSessionJoin lessonId={lesson.id} enrollmentId={enrollmentId} />
+        <LiveSessionJoin
+          lessonId={lesson.id}
+          enrollmentId={enrollmentId}
+          minDurationMinutes={lesson.min_live_duration_minutes || 0}
+        />
       );
     }
 

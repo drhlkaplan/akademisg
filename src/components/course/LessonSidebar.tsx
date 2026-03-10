@@ -28,6 +28,7 @@ export interface LessonItem {
   scorm_package_id: string | null;
   exam_id: string | null;
   content_url: string | null;
+  min_live_duration_minutes?: number;
 }
 
 export interface LessonProgressItem {
