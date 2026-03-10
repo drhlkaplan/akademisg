@@ -779,82 +779,120 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
               </div>
             )}
 
-            {/* Exam type */}
+            {/* Exam type - radio choice */}
             {formData.type === "exam" && (
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Platform Sınavı Seçin</Label>
-                  <Select
-                    value={formData.exam_id}
-                    onValueChange={(val) => setFormData({ ...formData, exam_id: val })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sınav seçin" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {exams?.map((exam) => (
-                        <SelectItem key={exam.id} value={exam.id}>
-                          {exam.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {(!exams || exams.length === 0) && (
-                    <p className="text-xs text-muted-foreground">
-                      Bu kursa ait sınav yok. Sınav Yönetimi'nden oluşturun.
-                    </p>
-                  )}
-                </div>
-
-                {/* SCORM Exam Option */}
-                <div className="border-t pt-4 space-y-2">
-                  <Label className="text-sm font-medium">Veya SCORM Sınav Paketi Ekle</Label>
-                  <p className="text-xs text-muted-foreground">
-                    SCORM formatında hazırlanmış bir sınav paketini de ders olarak bağlayabilirsiniz.
-                  </p>
-                  <Select
-                    value={formData.scorm_package_id}
-                    onValueChange={(val) => setFormData({ ...formData, scorm_package_id: val })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="SCORM sınav paketi seçin (opsiyonel)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {scormPackages?.map((pkg) => (
-                        <SelectItem key={pkg.id} value={pkg.id}>
-                          {pkg.id.slice(0, 8)}... ({pkg.scorm_version || "1.2"})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
-                    <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-xs text-muted-foreground mb-2">
-                      Yeni SCORM sınav paketi yükleyin (.zip)
-                    </p>
-                    <input
-                      type="file"
-                      accept=".zip"
-                      className="hidden"
-                      id="scorm-exam-file-input"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleScormUpload(file);
+                <div className="space-y-3">
+                  <Label className="text-sm font-semibold">Sınav Kaynağı</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExamMode("platform");
+                        setFormData(prev => ({ ...prev, scorm_package_id: "" }));
                       }}
-                    />
-                    <label htmlFor="scorm-exam-file-input" className="cursor-pointer">
-                      <Button variant="outline" size="sm" disabled={uploading} asChild>
-                        <span>
-                          {uploading ? (
-                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Yükleniyor...</>
-                          ) : (
-                            <><Upload className="mr-2 h-4 w-4" />SCORM Dosya Seç</>
-                          )}
-                        </span>
-                      </Button>
-                    </label>
+                      className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                        examMode === "platform"
+                          ? "border-accent bg-accent/5 shadow-sm"
+                          : "border-border hover:border-muted-foreground/30"
+                      }`}
+                    >
+                      <FileQuestion className="h-6 w-6 text-accent" />
+                      <span className="text-sm font-medium">Platform Sınavı</span>
+                      <span className="text-xs text-muted-foreground text-center">Sistemde oluşturulmuş sınavlardan seçin</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExamMode("scorm");
+                        setFormData(prev => ({ ...prev, exam_id: "" }));
+                      }}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                        examMode === "scorm"
+                          ? "border-accent bg-accent/5 shadow-sm"
+                          : "border-border hover:border-muted-foreground/30"
+                      }`}
+                    >
+                      <Package className="h-6 w-6 text-accent" />
+                      <span className="text-sm font-medium">SCORM Sınav</span>
+                      <span className="text-xs text-muted-foreground text-center">SCORM formatında sınav paketi yükleyin</span>
+                    </button>
                   </div>
                 </div>
+
+                {examMode === "platform" && (
+                  <div className="space-y-2">
+                    <Label>Sınav Seçin</Label>
+                    <Select
+                      value={formData.exam_id}
+                      onValueChange={(val) => setFormData({ ...formData, exam_id: val })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sınav seçin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {exams?.map((exam) => (
+                          <SelectItem key={exam.id} value={exam.id}>
+                            {exam.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {(!exams || exams.length === 0) && (
+                      <p className="text-xs text-muted-foreground">
+                        Bu kursa ait sınav yok. Sınav Yönetimi'nden oluşturun.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {examMode === "scorm" && (
+                  <div className="space-y-3">
+                    <Label>SCORM Sınav Paketi</Label>
+                    <Select
+                      value={formData.scorm_package_id}
+                      onValueChange={(val) => setFormData({ ...formData, scorm_package_id: val })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="SCORM sınav paketi seçin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {scormPackages?.map((pkg) => (
+                          <SelectItem key={pkg.id} value={pkg.id}>
+                            {pkg.id.slice(0, 8)}... ({pkg.scorm_version || "1.2"})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
+                      <Upload className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Yeni SCORM sınav paketi yükleyin (.zip)
+                      </p>
+                      <input
+                        type="file"
+                        accept=".zip"
+                        className="hidden"
+                        id="scorm-exam-file-input"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleScormUpload(file);
+                        }}
+                      />
+                      <label htmlFor="scorm-exam-file-input" className="cursor-pointer">
+                        <Button variant="outline" size="sm" disabled={uploading} asChild>
+                          <span>
+                            {uploading ? (
+                              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Yükleniyor...</>
+                            ) : (
+                              <><Upload className="mr-2 h-4 w-4" />SCORM Dosya Seç</>
+                            )}
+                          </span>
+                        </Button>
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
