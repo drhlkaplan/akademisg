@@ -659,6 +659,7 @@ export type Database = {
           exam_id: string | null
           id: string
           is_active: boolean
+          min_live_duration_minutes: number
           scorm_package_id: string | null
           sort_order: number
           title: string
@@ -673,6 +674,7 @@ export type Database = {
           exam_id?: string | null
           id?: string
           is_active?: boolean
+          min_live_duration_minutes?: number
           scorm_package_id?: string | null
           sort_order?: number
           title: string
@@ -687,6 +689,7 @@ export type Database = {
           exam_id?: string | null
           id?: string
           is_active?: boolean
+          min_live_duration_minutes?: number
           scorm_package_id?: string | null
           sort_order?: number
           title?: string

@@ -1,0 +1,1 @@
+ALTER TABLE public.lessons ADD COLUMN min_live_duration_minutes integer NOT NULL DEFAULT 0;
