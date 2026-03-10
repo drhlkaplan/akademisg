@@ -10,6 +10,7 @@ import { Video, Key, Clock, ExternalLink } from "lucide-react";
 interface LiveSessionJoinProps {
   lessonId: string;
   enrollmentId: string;
+  minDurationMinutes?: number;
 }
 
 export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps) {
