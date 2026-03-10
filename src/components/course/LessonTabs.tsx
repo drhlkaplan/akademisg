@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge-custom";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileText, MessageSquare, HelpCircle, Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -17,9 +18,12 @@ interface LessonTabsProps {
 
 export function LessonTabs({ lesson, courseTitle, category, dangerClass }: LessonTabsProps) {
   const [notes, setNotes] = useState("");
-  const [aiSummary, setAiSummary] = useState("");
+  const [aiSummaries, setAiSummaries] = useState<Record<string, string>>({});
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const { toast } = useToast();
+
+  const currentLessonId = lesson?.id || "";
+  const aiSummary = aiSummaries[currentLessonId] || "";
 
   const handleGenerateSummary = async () => {
     if (!lesson) return;
@@ -40,7 +44,7 @@ export function LessonTabs({ lesson, courseTitle, category, dangerClass }: Lesso
       });
 
       if (error) throw error;
-      setAiSummary(data.content);
+      setAiSummaries(prev => ({ ...prev, [lesson.id]: data.content }));
     } catch (err: any) {
       toast({
         title: "Hata",
@@ -102,21 +106,23 @@ export function LessonTabs({ lesson, courseTitle, category, dangerClass }: Lesso
             </div>
 
             {aiSummary && (
-              <div className="mb-4 prose prose-sm max-w-none text-foreground">
-                <div
-                  className="whitespace-pre-wrap text-sm leading-relaxed"
-                  dangerouslySetInnerHTML={{
-                    __html: aiSummary
-                      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-                      .replace(/\*(.*?)\*/g, "<em>$1</em>")
-                      .replace(/^### (.*$)/gm, '<h3 class="text-base font-semibold mt-3 mb-1">$1</h3>')
-                      .replace(/^## (.*$)/gm, '<h2 class="text-lg font-semibold mt-4 mb-2">$1</h2>')
-                      .replace(/^# (.*$)/gm, '<h1 class="text-xl font-bold mt-4 mb-2">$1</h1>')
-                      .replace(/^- (.*$)/gm, '<li class="ml-4">$1</li>')
-                      .replace(/^\d+\. (.*$)/gm, '<li class="ml-4 list-decimal">$1</li>')
-                  }}
-                />
-              </div>
+              <ScrollArea className="mb-4 max-h-64 rounded-md border border-border">
+                <div className="p-3 prose prose-sm max-w-none text-foreground">
+                  <div
+                    className="whitespace-pre-wrap text-sm leading-relaxed"
+                    dangerouslySetInnerHTML={{
+                      __html: aiSummary
+                        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+                        .replace(/\*(.*?)\*/g, "<em>$1</em>")
+                        .replace(/^### (.*$)/gm, '<h3 class="text-base font-semibold mt-3 mb-1">$1</h3>')
+                        .replace(/^## (.*$)/gm, '<h2 class="text-lg font-semibold mt-4 mb-2">$1</h2>')
+                        .replace(/^# (.*$)/gm, '<h1 class="text-xl font-bold mt-4 mb-2">$1</h1>')
+                        .replace(/^- (.*$)/gm, '<li class="ml-4">$1</li>')
+                        .replace(/^\d+\. (.*$)/gm, '<li class="ml-4 list-decimal">$1</li>')
+                    }}
+                  />
+                </div>
+              </ScrollArea>
             )}
 
             <Textarea
