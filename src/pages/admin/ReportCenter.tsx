@@ -435,12 +435,15 @@ export default function ReportCenter() {
           </div>
         ) : (
           <Tabs defaultValue="users" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
               <TabsTrigger value="users" className="gap-2">
                 <Users className="h-4 w-4" /> Kullanıcı Raporu
               </TabsTrigger>
               <TabsTrigger value="lessons" className="gap-2">
                 <BookOpen className="h-4 w-4" /> Ders Raporu
+              </TabsTrigger>
+              <TabsTrigger value="live" className="gap-2">
+                <Video className="h-4 w-4" /> Canlı Ders
               </TabsTrigger>
             </TabsList>
 
