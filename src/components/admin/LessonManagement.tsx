@@ -447,6 +447,10 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     setIsEditing(true);
     setSelectedLesson(lesson);
     const isHtml = lesson.content_url?.startsWith("<");
+    // Set exam mode based on existing data
+    if (lesson.type === "exam") {
+      setExamMode(lesson.scorm_package_id ? "scorm" : "platform");
+    }
     setFormData({
       title: lesson.title,
       type: lesson.type,
