@@ -236,7 +236,8 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
           content_url: data.type === "content" ? (data.content_html || data.content_url || null) : (data.content_url || null),
           exam_id: data.exam_id || null,
           scorm_package_id: data.scorm_package_id || null,
-        })
+          min_live_duration_minutes: data.type === "live" ? data.min_live_duration_minutes : 0,
+        } as any)
         .eq("id", data.id);
       if (error) throw error;
     },
