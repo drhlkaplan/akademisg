@@ -21,19 +21,21 @@ function extractFolderPath(packageUrl: string): string | null {
   return raw.replace(/^\/+|\/+$/g, "") || null;
 }
 
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
 function buildListUrl(folderPath: string): string {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   return `${supabaseUrl}/functions/v1/scorm-proxy/${folderPath}?list=1`;
 }
 
-function buildPublicUrl(folderPath: string, filePath: string): string {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  return `${supabaseUrl}/storage/v1/object/public/scorm-packages/${folderPath}/${filePath}`;
+function buildProxyUrl(folderPath: string, filePath: string): string {
+  return `${supabaseUrl}/functions/v1/scorm-proxy/${folderPath}/${filePath}`;
 }
 
-function buildPublicBaseUrl(folderPath: string): string {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  return `${supabaseUrl}/storage/v1/object/public/scorm-packages/${folderPath}/`;
+function buildProxyBaseUrl(folderPath: string, entryDir: string): string {
+  const base = entryDir
+    ? `${supabaseUrl}/functions/v1/scorm-proxy/${folderPath}/${entryDir}`
+    : `${supabaseUrl}/functions/v1/scorm-proxy/${folderPath}/`;
+  return base.endsWith("/") ? base : base + "/";
 }
 
 interface StorageItem {
@@ -43,11 +45,11 @@ interface StorageItem {
 }
 
 const PRIORITY_FILES = [
-  "story_html5.html",
   "index_lms_html5.html",
   "index.html",
-  "story.html",
   "index_lms.html",
+  "story_html5.html",
+  "story.html",
 ];
 
 async function listFiles(folderPath: string): Promise<StorageItem[]> {
@@ -96,7 +98,7 @@ async function resolveEntryFile(folderPath: string, entryPoint: string): Promise
   }
 
   if (rootFileNames.has("imsmanifest.xml")) {
-    const manifestUrl = buildPublicUrl(folderPath, "imsmanifest.xml");
+    const manifestUrl = `${supabaseUrl}/storage/v1/object/public/scorm-packages/${folderPath}/imsmanifest.xml`;
     try {
       const res = await fetch(manifestUrl);
       if (res.ok) {
@@ -211,7 +213,6 @@ export function ScormPlayer({
     }
   }, [enrollmentId, lessonId, scormPackageId, onComplete]);
 
-  // Listen for postMessage from SCORM content
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (!event.data || event.data.type !== "scorm_api_event") return;
@@ -234,8 +235,6 @@ export function ScormPlayer({
   const loadContent = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
-    // Revoke previous blob URL
     if (blobUrlRef.current) {
       URL.revokeObjectURL(blobUrlRef.current);
       blobUrlRef.current = null;
@@ -251,21 +250,21 @@ export function ScormPlayer({
 
     const entryFile = await resolveEntryFile(folderPath, entryPoint);
     if (!entryFile) {
-      setError("SCORM başlangıç dosyası bulunamadı. Lütfen paketi silip yeniden yükleyin.");
+      setError("SCORM başlangıç dosyası bulunamadı.");
       setIsLoading(false);
       return;
     }
 
-    const publicUrl = buildPublicUrl(folderPath, entryFile);
+    // Fetch HTML from proxy (returns text because of gateway, but we handle it)
+    const proxyUrl = buildProxyUrl(folderPath, entryFile);
     const entryDir = entryFile.includes("/") ? entryFile.substring(0, entryFile.lastIndexOf("/") + 1) : "";
-    const baseUrl = entryDir
-      ? `${buildPublicBaseUrl(folderPath)}${entryDir}`
-      : buildPublicBaseUrl(folderPath);
+    const baseUrl = buildProxyBaseUrl(folderPath, entryDir);
 
-    console.log("SCORM Player: loading from:", publicUrl);
+    console.log("SCORM Player: fetching from proxy:", proxyUrl);
+    console.log("SCORM Player: base URL:", baseUrl);
 
     try {
-      const res = await fetch(publicUrl);
+      const res = await fetch(proxyUrl);
       if (!res.ok) {
         setError(`İçerik dosyası yüklenemedi (HTTP ${res.status}).`);
         setIsLoading(false);
@@ -292,7 +291,6 @@ export function ScormPlayer({
         }
       } catch {}
 
-      // Inject <base> tag and SCORM API script
       const scormScript = buildScormApiScript(initialData);
       const baseTag = `<base href="${baseUrl}">`;
 
@@ -304,7 +302,6 @@ export function ScormPlayer({
         html = `<!DOCTYPE html><html><head>${baseTag}\n${scormScript}</head><body>${html}</body></html>`;
       }
 
-      // Create Blob URL — renders as proper HTML with correct MIME type
       const blob = new Blob([html], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       blobUrlRef.current = url;
