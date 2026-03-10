@@ -154,7 +154,8 @@ export default function CoursesManagement() {
         category_id: data.category_id || null,
         is_active: data.is_active,
         thumbnail_url: data.thumbnail_url || null,
-      });
+        require_sequential: data.require_sequential,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
