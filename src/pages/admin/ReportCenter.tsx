@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import {
   FileText, FileSpreadsheet, Users, BookOpen, Search,
-  CheckCircle,
+  CheckCircle, Video,
 } from "lucide-react";
 import { exportToPDF, exportToExcel, formatDuration, formatDateTR } from "@/lib/reportExport";
 import { ManualCompletionDialog } from "@/components/admin/ManualCompletionDialog";
@@ -94,6 +94,27 @@ export default function ReportCenter() {
     queryKey: ["report-exams"],
     queryFn: async () => {
       const { data } = await supabase.from("exams").select("id, title, course_id, exam_type, passing_score");
+      return data || [];
+    },
+  });
+
+  const { data: liveTracking } = useQuery({
+    queryKey: ["report-live-tracking"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("live_session_tracking")
+        .select("id, live_session_id, user_id, joined_at, left_at, duration_seconds")
+        .order("joined_at", { ascending: false });
+      return data || [];
+    },
+  });
+
+  const { data: liveSessions } = useQuery({
+    queryKey: ["report-live-sessions"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("live_sessions")
+        .select("id, lesson_id, room_url, is_active, created_at");
       return data || [];
     },
   });
@@ -213,6 +234,41 @@ export default function ReportCenter() {
     return rows;
   }, [lessons, lessonProgress, enrollments, profiles, courseFilter, firmFilter, searchQuery, courseMap, profileMap]);
 
+  // --- LIVE SESSION REPORT DATA ---
+  const liveReportData = useMemo(() => {
+    if (!liveTracking || !liveSessions || !lessons || !profiles) return [];
+
+    const sessionMap = new Map(liveSessions?.map((s) => [s.id, s]) || []);
+    const lessonMap = new Map(lessons?.map((l) => [l.id, l]) || []);
+
+    return liveTracking
+      .map((t) => {
+        const session = sessionMap.get(t.live_session_id);
+        if (!session) return null;
+        const lesson = lessonMap.get(session.lesson_id);
+        if (!lesson) return null;
+        const course = courseMap.get(lesson.course_id);
+        const profile = profileMap.get(t.user_id);
+
+        if (courseFilter !== "all" && lesson.course_id !== courseFilter) return null;
+        if (firmFilter !== "all" && profile?.firm_id !== firmFilter) return null;
+
+        const userName = profile ? `${profile.first_name} ${profile.last_name}` : "Bilinmiyor";
+        if (searchQuery && !userName.toLowerCase().includes(searchQuery.toLowerCase())) return null;
+
+        return {
+          userName,
+          tcIdentity: profile?.tc_identity || "-",
+          courseName: course?.title || "-",
+          lessonTitle: lesson.title,
+          joinedAt: t.joined_at,
+          leftAt: t.left_at,
+          durationSeconds: t.duration_seconds || 0,
+        };
+      })
+      .filter(Boolean) as any[];
+  }, [liveTracking, liveSessions, lessons, profiles, courseFilter, firmFilter, searchQuery, courseMap, profileMap]);
+
   // --- EXPORT HANDLERS ---
   const statusLabel = (s: string | null) => {
     const map: Record<string, string> = {
@@ -277,6 +333,31 @@ export default function ReportCenter() {
       headers,
       rows,
       fileName: `ders_raporu_${new Date().toISOString().slice(0, 10)}`,
+    };
+
+    format === "pdf" ? exportToPDF(opts) : exportToExcel(opts);
+  };
+
+  const handleExportLiveReport = (format: "pdf" | "excel") => {
+    const headers = [
+      "Ad Soyad", "TC Kimlik", "Eğitim", "Ders", "Giriş Zamanı",
+      "Çıkış Zamanı", "Katılım Süresi",
+    ];
+    const rows = liveReportData.map((r: any) => [
+      r.userName,
+      r.tcIdentity !== "-" ? `${r.tcIdentity.slice(0, 3)}***${r.tcIdentity.slice(-2)}` : "-",
+      r.courseName,
+      r.lessonTitle,
+      formatDateTR(r.joinedAt),
+      r.leftAt ? formatDateTR(r.leftAt) : "Devam ediyor",
+      formatDuration(r.durationSeconds),
+    ]);
+
+    const opts = {
+      title: "Canlı Ders Katılım Raporu",
+      headers,
+      rows,
+      fileName: `canli_ders_raporu_${new Date().toISOString().slice(0, 10)}`,
     };
 
     format === "pdf" ? exportToPDF(opts) : exportToExcel(opts);
@@ -354,12 +435,15 @@ export default function ReportCenter() {
           </div>
         ) : (
           <Tabs defaultValue="users" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
               <TabsTrigger value="users" className="gap-2">
                 <Users className="h-4 w-4" /> Kullanıcı Raporu
               </TabsTrigger>
               <TabsTrigger value="lessons" className="gap-2">
                 <BookOpen className="h-4 w-4" /> Ders Raporu
+              </TabsTrigger>
+              <TabsTrigger value="live" className="gap-2">
+                <Video className="h-4 w-4" /> Canlı Ders
               </TabsTrigger>
             </TabsList>
 
@@ -535,6 +619,116 @@ export default function ReportCenter() {
                     <div className="text-center py-12 text-muted-foreground">Filtrelerinize uygun kayıt bulunamadı</div>
                   )}
                   {lessonReportData.length > 50 && (
+                    <div className="text-center py-3 text-sm text-muted-foreground border-t">
+                      İlk 50 kayıt gösteriliyor. Tamamı için PDF veya Excel olarak indirin.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* LIVE SESSION REPORT TAB */}
+            <TabsContent value="live" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  <Badge variant="secondary">{liveReportData.length}</Badge> katılım kaydı
+                </p>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => handleExportLiveReport("pdf")}>
+                    <FileText className="mr-2 h-4 w-4 text-destructive" /> PDF İndir
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => handleExportLiveReport("excel")}>
+                    <FileSpreadsheet className="mr-2 h-4 w-4 text-success" /> Excel İndir
+                  </Button>
+                </div>
+              </div>
+
+              {/* Summary cards */}
+              {liveReportData.length > 0 && (() => {
+                const totalDuration = liveReportData.reduce((s: number, r: any) => s + r.durationSeconds, 0);
+                const uniqueUsers = new Set(liveReportData.map((r: any) => r.userName)).size;
+                const avgDuration = Math.round(totalDuration / liveReportData.length);
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card>
+                      <CardContent className="p-4 flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                          <Users className="h-5 w-5 text-accent" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-foreground">{uniqueUsers}</p>
+                          <p className="text-xs text-muted-foreground">Benzersiz Katılımcı</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4 flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center">
+                          <Video className="h-5 w-5 text-success" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-foreground">{formatDuration(totalDuration)}</p>
+                          <p className="text-xs text-muted-foreground">Toplam Katılım Süresi</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4 flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                          <Video className="h-5 w-5 text-warning" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold text-foreground">{formatDuration(avgDuration)}</p>
+                          <p className="text-xs text-muted-foreground">Ortalama Katılım Süresi</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                );
+              })()}
+
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Ad Soyad</TableHead>
+                          <TableHead className="hidden md:table-cell">TC Kimlik</TableHead>
+                          <TableHead>Eğitim</TableHead>
+                          <TableHead className="hidden lg:table-cell">Ders</TableHead>
+                          <TableHead className="text-center">Giriş</TableHead>
+                          <TableHead className="text-center hidden md:table-cell">Çıkış</TableHead>
+                          <TableHead className="text-center">Süre</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {liveReportData.slice(0, 50).map((r: any, i: number) => (
+                          <TableRow key={i}>
+                            <TableCell className="font-medium">{r.userName}</TableCell>
+                            <TableCell className="hidden md:table-cell text-muted-foreground text-sm font-mono">
+                              {r.tcIdentity !== "-" ? `${r.tcIdentity.slice(0, 3)}***${r.tcIdentity.slice(-2)}` : "-"}
+                            </TableCell>
+                            <TableCell className="max-w-[140px] truncate">{r.courseName}</TableCell>
+                            <TableCell className="hidden lg:table-cell max-w-[140px] truncate">{r.lessonTitle}</TableCell>
+                            <TableCell className="text-center text-sm text-muted-foreground">
+                              {formatDateTR(r.joinedAt)}
+                            </TableCell>
+                            <TableCell className="text-center hidden md:table-cell text-sm text-muted-foreground">
+                              {r.leftAt ? formatDateTR(r.leftAt) : <Badge variant="success">Devam ediyor</Badge>}
+                            </TableCell>
+                            <TableCell className="text-center text-sm font-medium">
+                              {formatDuration(r.durationSeconds)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {liveReportData.length === 0 && (
+                    <div className="text-center py-12 text-muted-foreground">Canlı ders katılım kaydı bulunamadı</div>
+                  )}
+                  {liveReportData.length > 50 && (
                     <div className="text-center py-3 text-sm text-muted-foreground border-t">
                       İlk 50 kayıt gösteriliyor. Tamamı için PDF veya Excel olarak indirin.
                     </div>
