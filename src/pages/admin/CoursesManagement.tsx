@@ -644,6 +644,19 @@ export default function CoursesManagement() {
               />
             </div>
             <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="require_sequential">Sıralı Ders İlerlemesi</Label>
+                <p className="text-xs text-muted-foreground">Öğrenciler dersleri sırayla tamamlamak zorunda olsun</p>
+              </div>
+              <Switch
+                id="require_sequential"
+                checked={formData.require_sequential}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, require_sequential: checked })
+                }
+              />
+            </div>
+            <div className="flex items-center justify-between">
               <Label htmlFor="is_active">Aktif</Label>
               <Switch
                 id="is_active"
