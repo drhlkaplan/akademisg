@@ -3,10 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge-custom";
 import { useToast } from "@/hooks/use-toast";
-import { Video, Key, ExternalLink, Clock, Users } from "lucide-react";
+import { Video, Key, Clock, Maximize2, Minimize2 } from "lucide-react";
 
 interface LiveSessionJoinProps {
   lessonId: string;
@@ -22,6 +21,7 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
   const [joined, setJoined] = useState(false);
   const [trackingId, setTrackingId] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     fetchSession();
@@ -40,6 +40,13 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
       if (trackingId) leaveSession(trackingId);
     };
   }, [trackingId]);
+
+  // Fullscreen change listener
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
 
   const fetchSession = async () => {
     const { data } = await supabase
@@ -60,7 +67,6 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
 
     setIsJoining(true);
     try {
-      // Use SECURITY DEFINER RPC instead of direct insert
       const { data: trackingIdResult, error } = await supabase.rpc("join_live_session", {
         _live_session_id: session.id,
       });
@@ -68,9 +74,6 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
       if (error) throw error;
       setTrackingId(trackingIdResult);
       setJoined(true);
-
-      // Open BBB in new tab
-      window.open(session.room_url, "_blank");
     } catch {
       toast({ title: "Hata", description: "Oturuma katılınamadı.", variant: "destructive" });
     } finally {
@@ -79,7 +82,6 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
   };
 
   const leaveSession = async (id: string) => {
-    // Use SECURITY DEFINER RPC instead of direct update
     await supabase.rpc("leave_live_session", {
       _tracking_id: id,
       _duration_seconds: elapsed,
@@ -93,7 +95,6 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
       setTrackingId(null);
       setElapsed(0);
 
-      // Mark lesson as completed via SECURITY DEFINER RPC
       await supabase.rpc("record_lesson_progress", {
         _enrollment_id: enrollmentId,
         _lesson_id: lessonId,
@@ -102,6 +103,13 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
 
       toast({ title: "Ayrıldınız", description: "Canlı oturumdan ayrıldınız." });
     }
+  };
+
+  const toggleFullscreen = () => {
+    const container = document.getElementById("live-session-container");
+    if (!container) return;
+    if (!isFullscreen) container.requestFullscreen?.();
+    else document.exitFullscreen?.();
   };
 
   const formatTime = (s: number) => {
@@ -124,33 +132,36 @@ export function LiveSessionJoin({ lessonId, enrollmentId }: LiveSessionJoinProps
 
   if (joined) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-6 p-8">
-        <div className="relative">
-          <div className="h-20 w-20 rounded-full bg-success/10 flex items-center justify-center">
-            <Video className="h-10 w-10 text-success" />
+      <div id="live-session-container" className="flex flex-col h-full bg-background">
+        {/* Header bar */}
+        <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className="h-2.5 w-2.5 rounded-full bg-success animate-pulse" />
+              <span className="text-sm font-medium text-foreground">Canlı Oturum</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Clock className="h-3.5 w-3.5" />
+              <span className="font-mono">{formatTime(elapsed)}</span>
+            </div>
           </div>
-          <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-success animate-pulse" />
-        </div>
-        <div className="text-center space-y-2">
-          <h3 className="text-lg font-semibold text-foreground">Canlı Oturumda</h3>
-          <p className="text-sm text-muted-foreground">BBB oturumu ayrı sekmede açık</p>
-        </div>
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2 text-sm">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <span className="font-mono text-lg">{formatTime(elapsed)}</span>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleFullscreen} title={isFullscreen ? "Küçült" : "Tam ekran"}>
+              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleLeave}>
+              Oturumdan Ayrıl
+            </Button>
           </div>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" asChild>
-            <a href={session.room_url} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="mr-2 h-4 w-4" /> Odayı Tekrar Aç
-            </a>
-          </Button>
-          <Button variant="destructive" onClick={handleLeave}>
-            Oturumdan Ayrıl
-          </Button>
-        </div>
+        {/* BBB iframe */}
+        <iframe
+          src={session.room_url}
+          className="flex-1 w-full border-0"
+          allow="camera; microphone; fullscreen; display-capture; autoplay"
+          allowFullScreen
+          title="Canlı Ders Oturumu"
+        />
       </div>
     );
   }
