@@ -27,6 +27,7 @@ interface CourseData {
   description: string | null;
   duration_minutes: number;
   auto_certificate?: boolean | null;
+  require_sequential?: boolean | null;
   category: { danger_class: DangerClass; name: string } | null;
 }
 
