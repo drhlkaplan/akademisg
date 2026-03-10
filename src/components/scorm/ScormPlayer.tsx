@@ -43,11 +43,11 @@ interface StorageItem {
 }
 
 const PRIORITY_FILES = [
-  "story_html5.html",
   "index_lms_html5.html",
   "index.html",
-  "story.html",
   "index_lms.html",
+  "story_html5.html",
+  "story.html",
 ];
 
 async function listFiles(folderPath: string): Promise<StorageItem[]> {
