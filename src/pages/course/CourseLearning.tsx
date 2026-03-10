@@ -27,6 +27,7 @@ interface CourseData {
   description: string | null;
   duration_minutes: number;
   auto_certificate?: boolean | null;
+  require_sequential?: boolean | null;
   category: { danger_class: DangerClass; name: string } | null;
 }
 
@@ -72,7 +73,7 @@ export default function CourseLearning() {
       const [courseRes, lessonsRes, scormRes] = await Promise.all([
         supabase
           .from("courses")
-          .select("id, title, description, duration_minutes, auto_certificate, category:course_categories(danger_class, name)")
+          .select("id, title, description, duration_minutes, auto_certificate, require_sequential, category:course_categories(danger_class, name)")
           .eq("id", courseId!)
           .single(),
         supabase
@@ -291,6 +292,7 @@ export default function CourseLearning() {
               lessonProgress={lessonProgress}
               activeLessonId={activeLessonId}
               overallProgress={progress}
+              requireSequential={course.require_sequential !== false}
               onSelectLesson={(id) => {
                 setActiveLessonId(id);
                 // auto-close on mobile

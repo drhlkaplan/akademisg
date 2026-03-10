@@ -214,6 +214,7 @@ export type Database = {
           duration_minutes: number
           id: string
           is_active: boolean | null
+          require_sequential: boolean
           thumbnail_url: string | null
           title: string
           updated_at: string | null
@@ -227,6 +228,7 @@ export type Database = {
           duration_minutes?: number
           id?: string
           is_active?: boolean | null
+          require_sequential?: boolean
           thumbnail_url?: string | null
           title: string
           updated_at?: string | null
@@ -240,6 +242,7 @@ export type Database = {
           duration_minutes?: number
           id?: string
           is_active?: boolean | null
+          require_sequential?: boolean
           thumbnail_url?: string | null
           title?: string
           updated_at?: string | null

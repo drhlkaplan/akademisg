@@ -107,6 +107,7 @@ export default function CoursesManagement() {
     category_id: "",
     is_active: true,
     thumbnail_url: "",
+    require_sequential: true,
   });
 
   const { toast } = useToast();
@@ -153,7 +154,8 @@ export default function CoursesManagement() {
         category_id: data.category_id || null,
         is_active: data.is_active,
         thumbnail_url: data.thumbnail_url || null,
-      });
+        require_sequential: data.require_sequential,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -183,7 +185,8 @@ export default function CoursesManagement() {
           category_id: data.category_id || null,
           is_active: data.is_active,
           thumbnail_url: data.thumbnail_url || null,
-        })
+          require_sequential: data.require_sequential,
+        } as any)
         .eq("id", data.id);
       if (error) throw error;
     },
@@ -261,6 +264,7 @@ export default function CoursesManagement() {
       category_id: "",
       is_active: true,
       thumbnail_url: "",
+      require_sequential: true,
     });
     setDialogOpen(true);
   };
@@ -275,6 +279,7 @@ export default function CoursesManagement() {
       category_id: course.category_id || "",
       is_active: course.is_active ?? true,
       thumbnail_url: course.thumbnail_url || "",
+      require_sequential: (course as any).require_sequential !== false,
     });
     setDialogOpen(true);
   };
@@ -294,6 +299,7 @@ export default function CoursesManagement() {
       category_id: "",
       is_active: true,
       thumbnail_url: "",
+      require_sequential: true,
     });
   };
 
@@ -635,6 +641,19 @@ export default function CoursesManagement() {
                   setFormData({ ...formData, thumbnail_url: e.target.value })
                 }
                 placeholder="https://example.com/image.jpg"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="require_sequential">Sıralı Ders İlerlemesi</Label>
+                <p className="text-xs text-muted-foreground">Öğrenciler dersleri sırayla tamamlamak zorunda olsun</p>
+              </div>
+              <Switch
+                id="require_sequential"
+                checked={formData.require_sequential}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, require_sequential: checked })
+                }
               />
             </div>
             <div className="flex items-center justify-between">

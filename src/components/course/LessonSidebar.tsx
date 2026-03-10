@@ -13,6 +13,7 @@ import {
   ChevronLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Database } from "@/integrations/supabase/types";
 
 type LessonType = Database["public"]["Enums"]["lesson_type"];
@@ -44,6 +45,7 @@ interface LessonSidebarProps {
   onBack: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  requireSequential?: boolean;
 }
 
 const lessonTypeIcon: Record<LessonType, typeof BookOpen> = {
@@ -77,10 +79,23 @@ export function LessonSidebar({
   overallProgress,
   onSelectLesson,
   onBack,
+  requireSequential = false,
 }: LessonSidebarProps) {
-  const completedCount = lessons.filter((l) =>
+  const sortedLessons = [...lessons].sort((a, b) => a.sort_order - b.sort_order);
+
+  const completedCount = sortedLessons.filter((l) =>
     isLessonCompleted(getLessonStatus(l.id, lessonProgress))
   ).length;
+
+  // Build locked state: a lesson is locked if requireSequential is true
+  // and the previous lesson is not completed
+  const isLessonLocked = (index: number): boolean => {
+    if (!requireSequential) return false;
+    if (index === 0) return false; // First lesson is always accessible
+    const prevLesson = sortedLessons[index - 1];
+    const prevStatus = getLessonStatus(prevLesson.id, lessonProgress);
+    return !isLessonCompleted(prevStatus);
+  };
 
   return (
     <div className="flex flex-col h-full bg-card border-r border-border">
@@ -101,7 +116,7 @@ export function LessonSidebar({
           </h2>
           <div className="flex items-center justify-between mt-2">
             <span className="text-xs text-muted-foreground">
-              {completedCount}/{lessons.length} ders
+              {completedCount}/{sortedLessons.length} ders
             </span>
             <span className="text-xs font-medium text-foreground">%{overallProgress}</span>
           </div>
@@ -111,29 +126,37 @@ export function LessonSidebar({
 
       {/* Lesson List */}
       <ScrollArea className="flex-1">
-        <div className="p-2 space-y-0.5">
-          {lessons
-            .sort((a, b) => a.sort_order - b.sort_order)
-            .map((lesson, index) => {
+        <TooltipProvider delayDuration={300}>
+          <div className="p-2 space-y-0.5">
+            {sortedLessons.map((lesson, index) => {
               const status = getLessonStatus(lesson.id, lessonProgress);
               const completed = isLessonCompleted(status);
               const isActive = lesson.id === activeLessonId;
+              const locked = isLessonLocked(index);
               const Icon = lessonTypeIcon[lesson.type];
 
-              return (
+              const button = (
                 <button
                   key={lesson.id}
-                  onClick={() => onSelectLesson(lesson.id)}
+                  onClick={() => !locked && onSelectLesson(lesson.id)}
+                  disabled={locked}
                   className={cn(
                     "w-full flex items-start gap-3 p-3 rounded-lg text-left transition-colors",
-                    isActive
+                    locked
+                      ? "opacity-50 cursor-not-allowed"
+                      : isActive
                       ? "bg-accent/10 border border-accent/30"
                       : "hover:bg-muted/50 border border-transparent",
+                    !locked && !isActive && "border border-transparent",
                   )}
                 >
                   {/* Status indicator */}
                   <div className="flex-shrink-0 mt-0.5">
-                    {completed ? (
+                    {locked ? (
+                      <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center">
+                        <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                    ) : completed ? (
                       <div className="h-7 w-7 rounded-full bg-success/10 flex items-center justify-center">
                         <CheckCircle className="h-4 w-4 text-success" />
                       </div>
@@ -155,7 +178,9 @@ export function LessonSidebar({
                     <p
                       className={cn(
                         "text-sm leading-tight line-clamp-2",
-                        isActive
+                        locked
+                          ? "text-muted-foreground"
+                          : isActive
                           ? "font-medium text-foreground"
                           : completed
                           ? "text-muted-foreground"
@@ -180,8 +205,22 @@ export function LessonSidebar({
                   </div>
                 </button>
               );
+
+              if (locked) {
+                return (
+                  <Tooltip key={lesson.id}>
+                    <TooltipTrigger asChild>{button}</TooltipTrigger>
+                    <TooltipContent side="right">
+                      <p>Önceki dersi tamamlamanız gerekiyor</p>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }
+
+              return button;
             })}
-        </div>
+          </div>
+        </TooltipProvider>
       </ScrollArea>
     </div>
   );
