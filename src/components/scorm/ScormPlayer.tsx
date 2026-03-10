@@ -336,7 +336,7 @@ export const ScormPlayer = ({
           onLoad={handleIframeLoad}
           onError={() => { setIsLoading(false); setError("Eğitim içeriği yüklenemedi."); }}
           allow="fullscreen"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
           title="SCORM Eğitim İçeriği"
         />
       )}
