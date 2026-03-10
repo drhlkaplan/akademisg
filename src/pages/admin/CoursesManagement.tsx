@@ -264,6 +264,7 @@ export default function CoursesManagement() {
       category_id: "",
       is_active: true,
       thumbnail_url: "",
+      require_sequential: true,
     });
     setDialogOpen(true);
   };
@@ -278,6 +279,7 @@ export default function CoursesManagement() {
       category_id: course.category_id || "",
       is_active: course.is_active ?? true,
       thumbnail_url: course.thumbnail_url || "",
+      require_sequential: (course as any).require_sequential !== false,
     });
     setDialogOpen(true);
   };
