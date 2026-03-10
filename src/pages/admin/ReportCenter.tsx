@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import {
   FileText, FileSpreadsheet, Users, BookOpen, Search,
-  CheckCircle,
+  CheckCircle, Video,
 } from "lucide-react";
 import { exportToPDF, exportToExcel, formatDuration, formatDateTR } from "@/lib/reportExport";
 import { ManualCompletionDialog } from "@/components/admin/ManualCompletionDialog";
