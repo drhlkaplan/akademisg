@@ -60,7 +60,6 @@ async function listFiles(folderPath: string): Promise<StorageItem[]> {
   }
 }
 
-/** Find a launchable HTML file by listing directory contents */
 async function resolveEntryFile(folderPath: string, entryPoint: string): Promise<string | null> {
   const rootFiles = await listFiles(folderPath);
   const rootFileNames = new Set(rootFiles.map(f => f.name));
@@ -175,16 +174,17 @@ function buildScormApiScript(initialData: Record<string, string>): string {
 <\/script>`;
 }
 
-export const ScormPlayer = ({
+export function ScormPlayer({
   packageUrl, entryPoint, enrollmentId, scormPackageId, lessonId, userId, onComplete,
-}: ScormPlayerProps) => {
+}: ScormPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [srcdocContent, setSrcdocContent] = useState<string>("");
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const blobUrlRef = useRef<string | null>(null);
 
   const persistProgress = useCallback(async (data: Record<string, string>, method: string) => {
     try {
@@ -234,7 +234,13 @@ export const ScormPlayer = ({
   const loadContent = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    setSrcdocContent("");
+
+    // Revoke previous blob URL
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+    setBlobUrl(null);
 
     const folderPath = extractFolderPath(packageUrl);
     if (!folderPath) {
@@ -243,7 +249,6 @@ export const ScormPlayer = ({
       return;
     }
 
-    // Resolve entry file path
     const entryFile = await resolveEntryFile(folderPath, entryPoint);
     if (!entryFile) {
       setError("SCORM başlangıç dosyası bulunamadı. Lütfen paketi silip yeniden yükleyin.");
@@ -251,18 +256,14 @@ export const ScormPlayer = ({
       return;
     }
 
-    // Build public URL and base URL
     const publicUrl = buildPublicUrl(folderPath, entryFile);
-    // Base URL should point to the directory containing the entry file
     const entryDir = entryFile.includes("/") ? entryFile.substring(0, entryFile.lastIndexOf("/") + 1) : "";
     const baseUrl = entryDir
       ? `${buildPublicBaseUrl(folderPath)}${entryDir}`
       : buildPublicBaseUrl(folderPath);
 
-    console.log("SCORM Player: fetching HTML from public URL:", publicUrl);
-    console.log("SCORM Player: base URL for relative paths:", baseUrl);
+    console.log("SCORM Player: loading from:", publicUrl);
 
-    // Fetch HTML content from public storage (correct MIME type)
     try {
       const res = await fetch(publicUrl);
       if (!res.ok) {
@@ -272,7 +273,7 @@ export const ScormPlayer = ({
       }
       let html = await res.text();
 
-      // Fetch existing progress to pre-populate SCORM API
+      // Fetch existing progress
       const initialData: Record<string, string> = {};
       try {
         const { data: progress } = await supabase
@@ -285,13 +286,13 @@ export const ScormPlayer = ({
         if (progress) {
           if (progress.lesson_status) initialData.lesson_status = progress.lesson_status;
           if (progress.lesson_location) initialData.lesson_location = progress.lesson_location;
-          if (progress.suspend_data && progress.suspend_data.length < 2000) initialData.suspend_data = progress.suspend_data;
+          if (progress.suspend_data && progress.suspend_data.length < 4000) initialData.suspend_data = progress.suspend_data;
           if (progress.score_raw != null) initialData.score_raw = String(progress.score_raw);
           if (progress.total_time != null) initialData.total_time = formatTime(progress.total_time);
         }
       } catch {}
 
-      // Inject <base> tag and SCORM API script into <head>
+      // Inject <base> tag and SCORM API script
       const scormScript = buildScormApiScript(initialData);
       const baseTag = `<base href="${baseUrl}">`;
 
@@ -300,10 +301,14 @@ export const ScormPlayer = ({
       } else if (html.match(/<html[^>]*>/i)) {
         html = html.replace(/<html[^>]*>/i, `$&\n<head>${baseTag}\n${scormScript}</head>`);
       } else {
-        html = `<head>${baseTag}\n${scormScript}</head>\n${html}`;
+        html = `<!DOCTYPE html><html><head>${baseTag}\n${scormScript}</head><body>${html}</body></html>`;
       }
 
-      setSrcdocContent(html);
+      // Create Blob URL — renders as proper HTML with correct MIME type
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      blobUrlRef.current = url;
+      setBlobUrl(url);
     } catch (err: any) {
       console.error("SCORM fetch error:", err);
       setError("Eğitim içeriği yüklenirken bir hata oluştu.");
@@ -311,7 +316,15 @@ export const ScormPlayer = ({
     }
   }, [packageUrl, entryPoint, enrollmentId, lessonId]);
 
-  useEffect(() => { loadContent(); }, [loadContent]);
+  useEffect(() => {
+    loadContent();
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
+  }, [loadContent]);
 
   const handleIframeLoad = useCallback(() => { setIsLoading(false); }, []);
 
@@ -344,9 +357,9 @@ export const ScormPlayer = ({
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <div className="h-2.5 w-2.5 rounded-full bg-success animate-pulse" />
-            <span className="text-sm font-medium text-foreground">SCORM İçerik Oynatıcı</span>
+            <span className="text-sm font-medium text-foreground">SCORM Eğitim</span>
           </div>
-          <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded font-mono">SCORM 1.2</span>
+          <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded font-mono">1.2</span>
         </div>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" onClick={loadContent} className="h-8 w-8" title="Yeniden yükle">
@@ -365,10 +378,10 @@ export const ScormPlayer = ({
           </div>
         </div>
       )}
-      {srcdocContent && (
+      {blobUrl && (
         <iframe
           ref={iframeRef}
-          srcDoc={srcdocContent}
+          src={blobUrl}
           className="flex-1 w-full border-0"
           style={{ minHeight: "500px" }}
           onLoad={handleIframeLoad}
@@ -380,4 +393,4 @@ export const ScormPlayer = ({
       )}
     </div>
   );
-};
+}
