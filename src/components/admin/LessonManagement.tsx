@@ -549,8 +549,10 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
                       size="sm"
                       className="h-7 gap-1 text-xs"
                       onClick={() => {
-                        const entryPoint = pkg.entry_point || "index.html";
-                        window.open(`${pkg.package_url}/${entryPoint}`, "_blank");
+                        // Use story_html5.html for Articulate, otherwise entry_point
+                        const ep = pkg.entry_point || "index.html";
+                        const preferredEntry = ep === "story.html" ? "story_html5.html" : ep;
+                        window.open(`${pkg.package_url}/${preferredEntry}`, "_blank");
                       }}
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
