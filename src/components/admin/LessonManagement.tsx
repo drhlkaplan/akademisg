@@ -999,13 +999,28 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
 
             {/* Live type */}
             {formData.type === "live" && (
-              <div className="space-y-2">
-                <Label>Canlı Oturum URL'si</Label>
-                <Input
-                  value={formData.content_url}
-                  onChange={(e) => setFormData({ ...formData, content_url: e.target.value })}
-                  placeholder="https://bbb.example.com/room/..."
-                />
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Canlı Oturum URL'si</Label>
+                  <Input
+                    value={formData.content_url}
+                    onChange={(e) => setFormData({ ...formData, content_url: e.target.value })}
+                    placeholder="https://bbb.example.com/room/..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Minimum Katılım Süresi (dakika)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={formData.min_live_duration_minutes}
+                    onChange={(e) => setFormData({ ...formData, min_live_duration_minutes: parseInt(e.target.value) || 0 })}
+                    placeholder="0 = zorunlu değil"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Öğrencinin dersi tamamlanmış sayılması için gereken minimum katılım süresi. 0 ise süre kontrolü yapılmaz.
+                  </p>
+                </div>
               </div>
             )}
           </div>

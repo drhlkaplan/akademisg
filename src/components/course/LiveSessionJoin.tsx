@@ -98,21 +98,37 @@ export function LiveSessionJoin({ lessonId, enrollmentId, minDurationMinutes = 0
     });
   }, [elapsed]);
 
+  const minDurationSeconds = minDurationMinutes * 60;
+  const hasMeetMinDuration = minDurationMinutes <= 0 || elapsed >= minDurationSeconds;
+
   const handleLeave = async () => {
     if (trackingId) {
       await leaveSession(trackingId);
       setJoined(false);
       setTrackingId(null);
-      setElapsed(0);
       popupRef.current = null;
 
-      await supabase.rpc("record_lesson_progress", {
-        _enrollment_id: enrollmentId,
-        _lesson_id: lessonId,
-        _lesson_status: "completed",
-      });
-
-      toast({ title: "Ayrıldınız", description: "Canlı oturumdan ayrıldınız." });
+      if (hasMeetMinDuration) {
+        await supabase.rpc("record_lesson_progress", {
+          _enrollment_id: enrollmentId,
+          _lesson_id: lessonId,
+          _lesson_status: "completed",
+        });
+        toast({ title: "Ayrıldınız", description: "Canlı oturum tamamlandı." });
+      } else {
+        const remainingMin = Math.ceil((minDurationSeconds - elapsed) / 60);
+        await supabase.rpc("record_lesson_progress", {
+          _enrollment_id: enrollmentId,
+          _lesson_id: lessonId,
+          _lesson_status: "incomplete",
+        });
+        toast({
+          title: "Süre Yetersiz",
+          description: `Dersin tamamlanması için en az ${remainingMin} dakika daha katılım gerekiyor.`,
+          variant: "destructive",
+        });
+      }
+      setElapsed(0);
     }
   };
 
