@@ -1,0 +1,1 @@
+ALTER TABLE public.courses ADD COLUMN require_sequential boolean NOT NULL DEFAULT true;
