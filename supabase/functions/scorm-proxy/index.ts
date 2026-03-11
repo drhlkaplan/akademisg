@@ -73,6 +73,27 @@ function buildScormApiScript(parentOrigin: string, initialData: Record<string, s
 <\/script>`;
 }
 
+/**
+ * Authenticate the request: extract JWT from Authorization header,
+ * verify via Supabase auth, and return the user ID.
+ * Returns null if unauthenticated.
+ */
+async function authenticateRequest(req: Request): Promise<string | null> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+  const userClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+
+  const { data, error } = await userClient.auth.getUser();
+  if (error || !data?.user) return null;
+  return data.user.id;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -82,6 +103,15 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !serviceRoleKey) {
       return new Response("Server misconfiguration", { status: 500, headers: corsHeaders });
+    }
+
+    // --- Authentication: require a valid user session ---
+    const userId = await authenticateRequest(req);
+    if (!userId) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const reqUrl = new URL(req.url);
@@ -101,9 +131,34 @@ Deno.serve(async (req) => {
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
+    // --- Enrollment check: verify user is enrolled in the course that owns this SCORM package ---
+    // Extract courseId from the path (first segment is typically the course ID)
+    const pathSegments = objectPath.split("/");
+    const courseIdCandidate = pathSegments[0];
+
+    if (courseIdCandidate) {
+      const { data: enrollment } = await adminClient
+        .from("enrollments")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("course_id", courseIdCandidate)
+        .in("status", ["active", "pending", "completed"])
+        .limit(1)
+        .maybeSingle();
+
+      // Also check if user is admin (admins can access all content)
+      const { data: isAdmin } = await adminClient.rpc("is_admin", { _user_id: userId });
+
+      if (!enrollment && !isAdmin) {
+        return new Response(JSON.stringify({ error: "Not enrolled in this course" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // --- LIST MODE: return directory listing as JSON ---
     if (reqUrl.searchParams.get("list") === "1") {
-      // Remove trailing slash for listing
       const listPath = objectPath.replace(/\/+$/, "");
       const { data, error } = await adminClient.storage.from("scorm-packages").list(listPath, { limit: 500 });
       if (error) {
@@ -116,7 +171,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // --- FILE MODE: serve file ---
+    // --- FILE MODE: serve file via signed URL (bucket is now private) ---
     const { data: signedUrlData, error: signedUrlError } = await adminClient.storage
       .from("scorm-packages").createSignedUrl(objectPath, 300);
 
