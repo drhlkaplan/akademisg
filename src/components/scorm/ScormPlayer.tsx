@@ -16,7 +16,7 @@ interface ScormPlayerProps {
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
 /**
- * Extract the storage folder path from a public package URL.
+ * Extract the storage folder path from a package URL.
  * e.g. "https://xxx.supabase.co/storage/v1/object/public/scorm-packages/courseId/timestamp"
  *   → "courseId/timestamp"
  */
@@ -28,22 +28,37 @@ function extractFolderPath(packageUrl: string): string | null {
   return raw.replace(/^\/+|\/+$/g, "") || null;
 }
 
-/** Build a direct public storage URL (correct MIME types, no gateway override) */
-function buildPublicUrl(folderPath: string, filePath: string): string {
-  return `${supabaseUrl}/storage/v1/object/public/scorm-packages/${folderPath}/${filePath}`;
+/** Build authenticated proxy URL for file access */
+function buildProxyUrl(folderPath: string, filePath: string): string {
+  return `${supabaseUrl}/functions/v1/scorm-proxy/${folderPath}/${filePath}`;
 }
 
-/** Build a public base URL for the <base> tag so relative resources load from storage */
-function buildPublicBaseUrl(folderPath: string, entryDir: string): string {
+/** Build proxy base URL for the <base> tag so relative resources load through the proxy */
+function buildProxyBaseUrl(folderPath: string, entryDir: string): string {
   const base = entryDir
-    ? `${supabaseUrl}/storage/v1/object/public/scorm-packages/${folderPath}/${entryDir}`
-    : `${supabaseUrl}/storage/v1/object/public/scorm-packages/${folderPath}/`;
+    ? `${supabaseUrl}/functions/v1/scorm-proxy/${folderPath}/${entryDir}`
+    : `${supabaseUrl}/functions/v1/scorm-proxy/${folderPath}/`;
   return base.endsWith("/") ? base : base + "/";
 }
 
-/** Use the proxy only for directory listing (JSON, unaffected by gateway) */
+/** Build proxy URL for directory listing */
 function buildListUrl(folderPath: string): string {
   return `${supabaseUrl}/functions/v1/scorm-proxy/${folderPath}?list=1`;
+}
+
+/** Get current auth session token */
+async function getAuthToken(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
+}
+
+/** Fetch with auth header */
+async function authFetch(url: string, token: string): Promise<Response> {
+  return fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 }
 
 interface StorageItem {
@@ -60,9 +75,9 @@ const PRIORITY_FILES = [
   "story.html",
 ];
 
-async function listFiles(folderPath: string): Promise<StorageItem[]> {
+async function listFiles(folderPath: string, token: string): Promise<StorageItem[]> {
   try {
-    const res = await fetch(buildListUrl(folderPath));
+    const res = await authFetch(buildListUrl(folderPath), token);
     if (!res.ok) return [];
     return await res.json();
   } catch {
@@ -70,8 +85,8 @@ async function listFiles(folderPath: string): Promise<StorageItem[]> {
   }
 }
 
-async function resolveEntryFile(folderPath: string, entryPoint: string): Promise<string | null> {
-  const rootFiles = await listFiles(folderPath);
+async function resolveEntryFile(folderPath: string, entryPoint: string, token: string): Promise<string | null> {
+  const rootFiles = await listFiles(folderPath, token);
   const rootFileNames = new Set(rootFiles.map(f => f.name));
 
   for (const file of PRIORITY_FILES) {
@@ -79,7 +94,7 @@ async function resolveEntryFile(folderPath: string, entryPoint: string): Promise
   }
 
   if (rootFileNames.has("scormcontent")) {
-    const subFiles = await listFiles(`${folderPath}/scormcontent`);
+    const subFiles = await listFiles(`${folderPath}/scormcontent`, token);
     if (subFiles.some(f => f.name === "index.html")) return "scormcontent/index.html";
   }
 
@@ -88,7 +103,7 @@ async function resolveEntryFile(folderPath: string, entryPoint: string): Promise
   if (entryParts.length > 1) {
     for (let depth = entryParts.length - 1; depth >= 1; depth--) {
       const subPath = entryParts.slice(0, depth).join("/");
-      const subFiles = await listFiles(`${folderPath}/${subPath}`);
+      const subFiles = await listFiles(`${folderPath}/${subPath}`, token);
       const subFileNames = new Set(subFiles.map(f => f.name));
       for (const file of PRIORITY_FILES) {
         if (subFileNames.has(file)) return `${subPath}/${file}`;
@@ -98,7 +113,7 @@ async function resolveEntryFile(folderPath: string, entryPoint: string): Promise
 
   const subfolders = rootFiles.filter(f => f.id === null);
   for (const folder of subfolders) {
-    const subFiles = await listFiles(`${folderPath}/${folder.name}`);
+    const subFiles = await listFiles(`${folderPath}/${folder.name}`, token);
     const subFileNames = new Set(subFiles.map(f => f.name));
     for (const file of PRIORITY_FILES) {
       if (subFileNames.has(file)) return `${folder.name}/${file}`;
@@ -106,9 +121,9 @@ async function resolveEntryFile(folderPath: string, entryPoint: string): Promise
   }
 
   if (rootFileNames.has("imsmanifest.xml")) {
-    const manifestUrl = buildPublicUrl(folderPath, "imsmanifest.xml");
+    const manifestUrl = buildProxyUrl(folderPath, "imsmanifest.xml");
     try {
-      const res = await fetch(manifestUrl);
+      const res = await authFetch(manifestUrl, token);
       if (res.ok) {
         const xml = await res.text();
         const doc = new DOMParser().parseFromString(xml, "text/xml");
@@ -249,6 +264,13 @@ export function ScormPlayer({
     }
     setBlobUrl(null);
 
+    const token = await getAuthToken();
+    if (!token) {
+      setError("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
+      setIsLoading(false);
+      return;
+    }
+
     const folderPath = extractFolderPath(packageUrl);
     if (!folderPath) {
       setError("Paket yolu çözümlenemedi.");
@@ -256,25 +278,31 @@ export function ScormPlayer({
       return;
     }
 
-    const entryFile = await resolveEntryFile(folderPath, entryPoint);
+    const entryFile = await resolveEntryFile(folderPath, entryPoint, token);
     if (!entryFile) {
       setError("SCORM başlangıç dosyası bulunamadı.");
       setIsLoading(false);
       return;
     }
 
-    // Use PUBLIC storage URL directly (correct MIME types, no gateway override)
-    const publicUrl = buildPublicUrl(folderPath, entryFile);
+    // All requests now go through the authenticated proxy
+    const proxyFileUrl = buildProxyUrl(folderPath, entryFile);
     const entryDir = entryFile.includes("/") ? entryFile.substring(0, entryFile.lastIndexOf("/") + 1) : "";
-    const baseUrl = buildPublicBaseUrl(folderPath, entryDir);
+    const baseUrl = buildProxyBaseUrl(folderPath, entryDir);
 
-    console.log("SCORM Player: loading from public URL:", publicUrl);
+    console.log("SCORM Player: loading via authenticated proxy:", proxyFileUrl);
     console.log("SCORM Player: base URL for resources:", baseUrl);
 
     try {
-      const res = await fetch(publicUrl);
+      const res = await authFetch(proxyFileUrl, token);
       if (!res.ok) {
-        setError(`İçerik dosyası yüklenemedi (HTTP ${res.status}).`);
+        if (res.status === 401) {
+          setError("Oturumunuz sona ermiş. Lütfen sayfayı yenileyip tekrar giriş yapın.");
+        } else if (res.status === 403) {
+          setError("Bu eğitim içeriğine erişim yetkiniz yok.");
+        } else {
+          setError(`İçerik dosyası yüklenemedi (HTTP ${res.status}).`);
+        }
         setIsLoading(false);
         return;
       }
