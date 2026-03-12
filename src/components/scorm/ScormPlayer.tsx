@@ -401,7 +401,7 @@ export function ScormPlayer({
         // xAPI tracking is non-critical
       }
 
-      if (method === "LMSFinish" && (status === "completed" || status === "passed")) {
+      if ((method === "LMSFinish" || method === "Terminate") && (status === "completed" || status === "passed")) {
         onComplete?.();
       }
     } catch (err) {
