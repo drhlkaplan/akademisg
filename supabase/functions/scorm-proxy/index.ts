@@ -209,7 +209,7 @@ Deno.serve(async (req) => {
       return new Response("Server misconfiguration", { status: 500, headers: corsHeaders });
     }
 
-    /*// --- Authentication: require a valid user session ---
+    // --- Authentication: require a valid user session ---
     const userId = await authenticateRequest(req);
     if (!userId) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -217,7 +217,7 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-*/
+
     const reqUrl = new URL(req.url);
     const { pathname } = reqUrl;
     const marker = "/scorm-proxy/";
