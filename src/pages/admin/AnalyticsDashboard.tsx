@@ -431,11 +431,15 @@ export default function AnalyticsDashboard() {
         </div>
 
         <Tabs defaultValue="courses" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
             <TabsTrigger value="courses">Eğitimler</TabsTrigger>
             <TabsTrigger value="firms">Firmalar</TabsTrigger>
             <TabsTrigger value="groups">Gruplar</TabsTrigger>
             <TabsTrigger value="trends">Trendler</TabsTrigger>
+            <TabsTrigger value="xapi" className="gap-1">
+              <Activity className="h-3.5 w-3.5" />
+              xAPI
+            </TabsTrigger>
           </TabsList>
 
           {/* COURSES TAB */}
