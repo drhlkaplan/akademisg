@@ -22,9 +22,10 @@ import {
 } from "recharts";
 import {
   BarChart3, Users, BookOpen, Building2, Award, GraduationCap,
-  TrendingUp, Clock, Target, Layers, KeyRound,
+  TrendingUp, Clock, Target, Layers, KeyRound, Activity, Zap,
+  MousePointerClick, Timer,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 const COLORS = [
   "hsl(25, 95%, 53%)", "hsl(199, 89%, 48%)", "hsl(142, 71%, 45%)",
@@ -101,6 +102,18 @@ export default function AnalyticsDashboard() {
     queryKey: ["analytics-lesson-progress"],
     queryFn: async () => {
       const { data } = await supabase.from("lesson_progress").select("id, enrollment_id, lesson_id, lesson_status, total_time, score_raw");
+      return data || [];
+    },
+  });
+
+  const { data: xapiStatements } = useQuery({
+    queryKey: ["analytics-xapi"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("xapi_statements")
+        .select("id, user_id, verb, object_type, object_id, result, context, created_at")
+        .order("created_at", { ascending: false })
+        .limit(1000);
       return data || [];
     },
   });
@@ -247,11 +260,127 @@ export default function AnalyticsDashboard() {
     }));
   }, [lessons]);
 
+  // xAPI Analytics
+  const xapiVerbDistribution = useMemo(() => {
+    if (!xapiStatements) return [];
+    const counts: Record<string, number> = {};
+    const verbLabels: Record<string, string> = {
+      launched: "Başlatıldı", progressed: "İlerledi", terminated: "Sonlandırıldı",
+      interacted: "Etkileşim", completed: "Tamamlandı", passed: "Geçti", failed: "Başarısız",
+    };
+    xapiStatements.forEach(s => {
+      counts[s.verb] = (counts[s.verb] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([key, value], i) => ({
+        name: verbLabels[key] || key, verb: key, value, color: COLORS[i % COLORS.length],
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [xapiStatements]);
+
+  const xapiDailyActivity = useMemo(() => {
+    if (!xapiStatements) return [];
+    const days: Record<string, { events: number; users: Set<string> }> = {};
+    const now = new Date();
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const key = d.toLocaleDateString("tr-TR", { day: "2-digit", month: "short" });
+      days[key] = { events: 0, users: new Set() };
+    }
+    xapiStatements.forEach(s => {
+      const d = new Date(s.created_at);
+      const key = d.toLocaleDateString("tr-TR", { day: "2-digit", month: "short" });
+      if (days[key]) {
+        days[key].events++;
+        days[key].users.add(s.user_id);
+      }
+    });
+    return Object.entries(days).map(([day, data]) => ({
+      day, events: data.events, users: data.users.size,
+    }));
+  }, [xapiStatements]);
+
+  const xapiLessonTimeAnalysis = useMemo(() => {
+    if (!xapiStatements || !lessons) return [];
+    const lessonTimes: Record<string, { totalSeconds: number; count: number; title: string }> = {};
+    xapiStatements.forEach(s => {
+      if (s.verb === "terminated" && s.result && s.object_type === "scorm_lesson") {
+        const result = s.result as any;
+        const context = s.context as any;
+        const duration = result?.duration;
+        if (duration) {
+          const match = duration.match(/PT(\d+)S/);
+          if (match) {
+            const seconds = parseInt(match[1]);
+            const lessonId = s.object_id;
+            if (!lessonTimes[lessonId]) {
+              const lesson = lessons.find(l => l.id === lessonId);
+              lessonTimes[lessonId] = { totalSeconds: 0, count: 0, title: context?.lesson_title || lesson?.title || "Bilinmeyen" };
+            }
+            lessonTimes[lessonId].totalSeconds += seconds;
+            lessonTimes[lessonId].count++;
+          }
+        }
+      }
+    });
+    return Object.entries(lessonTimes)
+      .map(([id, data]) => ({
+        name: data.title.length > 25 ? data.title.substring(0, 25) + "..." : data.title,
+        fullName: data.title,
+        avgMinutes: Math.round((data.totalSeconds / data.count) / 60 * 10) / 10,
+        sessions: data.count,
+        totalMinutes: Math.round(data.totalSeconds / 60),
+      }))
+      .sort((a, b) => b.sessions - a.sessions)
+      .slice(0, 10);
+  }, [xapiStatements, lessons]);
+
+  const xapiCompletionFunnel = useMemo(() => {
+    if (!xapiStatements) return [];
+    const launched = xapiStatements.filter(s => s.verb === "launched").length;
+    const progressed = xapiStatements.filter(s => s.verb === "progressed").length;
+    const terminated = xapiStatements.filter(s => s.verb === "terminated").length;
+    const completedEvents = xapiStatements.filter(s => {
+      const result = s.result as any;
+      return s.verb === "terminated" && result?.completion === true;
+    }).length;
+    return [
+      { stage: "Başlatılan", value: launched, color: COLORS[0] },
+      { stage: "İlerleyen", value: progressed, color: COLORS[1] },
+      { stage: "Sonlanan", value: terminated, color: COLORS[2] },
+      { stage: "Tamamlanan", value: completedEvents, color: COLORS[3] },
+    ];
+  }, [xapiStatements]);
+
+  const xapiTopUsers = useMemo(() => {
+    if (!xapiStatements || !profiles) return [];
+    const userEvents: Record<string, number> = {};
+    xapiStatements.forEach(s => {
+      userEvents[s.user_id] = (userEvents[s.user_id] || 0) + 1;
+    });
+    return Object.entries(userEvents)
+      .map(([userId, count]) => {
+        const profile = profiles.find(p => p.user_id === userId);
+        return {
+          name: profile ? `${profile.first_name} ${profile.last_name}` : "Bilinmeyen",
+          events: count,
+        };
+      })
+      .sort((a, b) => b.events - a.events)
+      .slice(0, 10);
+  }, [xapiStatements, profiles]);
+
   const chartConfig = {
     completed: { label: "Tamamlanan", color: "hsl(142, 71%, 45%)" },
     active: { label: "Devam Eden", color: "hsl(199, 89%, 48%)" },
     enrolled: { label: "Kayıt", color: "hsl(25, 95%, 53%)" },
     total: { label: "Toplam", color: "hsl(222, 47%, 40%)" },
+    events: { label: "Olaylar", color: "hsl(25, 95%, 53%)" },
+    users: { label: "Kullanıcılar", color: "hsl(199, 89%, 48%)" },
+    avgMinutes: { label: "Ort. Dakika", color: "hsl(142, 71%, 45%)" },
+    sessions: { label: "Oturum", color: "hsl(38, 92%, 50%)" },
+    value: { label: "Sayı", color: "hsl(25, 95%, 53%)" },
   };
 
   if (isLoading) {
@@ -302,11 +431,15 @@ export default function AnalyticsDashboard() {
         </div>
 
         <Tabs defaultValue="courses" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
             <TabsTrigger value="courses">Eğitimler</TabsTrigger>
             <TabsTrigger value="firms">Firmalar</TabsTrigger>
             <TabsTrigger value="groups">Gruplar</TabsTrigger>
             <TabsTrigger value="trends">Trendler</TabsTrigger>
+            <TabsTrigger value="xapi" className="gap-1">
+              <Activity className="h-3.5 w-3.5" />
+              xAPI
+            </TabsTrigger>
           </TabsList>
 
           {/* COURSES TAB */}
@@ -610,6 +743,273 @@ export default function AnalyticsDashboard() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          {/* xAPI ANALYTICS TAB */}
+          <TabsContent value="xapi" className="space-y-6">
+            {/* xAPI Overview Stats */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { label: "Toplam Olay", value: xapiStatements?.length || 0, icon: Activity, color: "text-accent", bg: "bg-accent/10" },
+                { label: "Benzersiz Kullanıcı", value: new Set(xapiStatements?.map(s => s.user_id) || []).size, icon: Users, color: "text-info", bg: "bg-info/10" },
+                { label: "Başlatılan Ders", value: xapiStatements?.filter(s => s.verb === "launched").length || 0, icon: Zap, color: "text-warning", bg: "bg-warning/10" },
+                { label: "Tamamlanan", value: xapiStatements?.filter(s => { const r = s.result as any; return s.verb === "terminated" && r?.completion; }).length || 0, icon: Target, color: "text-success", bg: "bg-success/10" },
+              ].map((s, i) => (
+                <Card key={i}>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className={`h-10 w-10 rounded-lg ${s.bg} flex items-center justify-center flex-shrink-0`}>
+                      <s.icon className={`h-5 w-5 ${s.color}`} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">{s.label}</p>
+                      <p className="text-xl font-bold text-foreground">{s.value}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <div className="grid lg:grid-cols-3 gap-6">
+              {/* Daily Activity Chart */}
+              <Card className="lg:col-span-2">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-accent" />
+                    Günlük Öğrenme Aktivitesi (Son 14 Gün)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {xapiDailyActivity.length > 0 ? (
+                    <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                      <AreaChart data={xapiDailyActivity}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                        <XAxis dataKey="day" className="text-xs" />
+                        <YAxis className="text-xs" allowDecimals={false} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Area type="monotone" dataKey="events" fill="hsl(25, 95%, 53%)" fillOpacity={0.2} stroke="hsl(25, 95%, 53%)" strokeWidth={2} name="Olaylar" />
+                        <Area type="monotone" dataKey="users" fill="hsl(199, 89%, 48%)" fillOpacity={0.2} stroke="hsl(199, 89%, 48%)" strokeWidth={2} name="Kullanıcılar" />
+                      </AreaChart>
+                    </ChartContainer>
+                  ) : (
+                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                      <div className="text-center">
+                        <Activity className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                        <p>Henüz xAPI verisi yok</p>
+                        <p className="text-xs mt-1">Öğrenciler SCORM içeriklerini açtığında veriler burada görünecek</p>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Verb Distribution Pie */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <MousePointerClick className="h-5 w-5 text-info" />
+                    Olay Türü Dağılımı
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {xapiVerbDistribution.length > 0 ? (
+                    <div className="flex flex-col items-center">
+                      <ResponsiveContainer width="100%" height={220}>
+                        <PieChart>
+                          <Pie data={xapiVerbDistribution} cx="50%" cy="50%" innerRadius={45} outerRadius={80} dataKey="value" strokeWidth={2}>
+                            {xapiVerbDistribution.map((entry, idx) => (
+                              <Cell key={idx} fill={entry.color} stroke="hsl(var(--card))" />
+                            ))}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="flex flex-wrap gap-3 mt-2">
+                        {xapiVerbDistribution.map(item => (
+                          <div key={item.verb} className="flex items-center gap-1.5 text-xs">
+                            <div className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: item.color }} />
+                            <span className="text-muted-foreground">{item.name}: {item.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="h-[280px] flex items-center justify-center text-muted-foreground">Veri yok</div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Completion Funnel */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-success" />
+                    Tamamlama Hunisi
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {xapiCompletionFunnel.some(f => f.value > 0) ? (
+                    <ChartContainer config={chartConfig} className="h-[280px] w-full">
+                      <BarChart data={xapiCompletionFunnel}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                        <XAxis dataKey="stage" className="text-xs" />
+                        <YAxis className="text-xs" allowDecimals={false} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Bar dataKey="value" name="Sayı" radius={[6, 6, 0, 0]}>
+                          {xapiCompletionFunnel.map((entry, idx) => (
+                            <Cell key={idx} fill={entry.color} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ChartContainer>
+                  ) : (
+                    <div className="h-[280px] flex items-center justify-center text-muted-foreground">Veri yok</div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Lesson Time Analysis */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Timer className="h-5 w-5 text-warning" />
+                    Ders Bazlı Süre Analizi
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {xapiLessonTimeAnalysis.length > 0 ? (
+                    <ChartContainer config={chartConfig} className="h-[280px] w-full">
+                      <BarChart data={xapiLessonTimeAnalysis} layout="vertical" margin={{ left: 10 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                        <XAxis type="number" className="text-xs" />
+                        <YAxis type="category" dataKey="name" width={140} className="text-xs" />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Bar dataKey="avgMinutes" fill="hsl(142, 71%, 45%)" radius={[0, 4, 4, 0]} name="Ort. Dakika" />
+                      </BarChart>
+                    </ChartContainer>
+                  ) : (
+                    <div className="h-[280px] flex items-center justify-center text-muted-foreground">Veri yok</div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Top Active Users */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Users className="h-5 w-5 text-accent" />
+                  En Aktif Öğrenciler (xAPI Olaylarına Göre)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {xapiTopUsers.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Sıra</TableHead>
+                        <TableHead>Öğrenci</TableHead>
+                        <TableHead className="text-right">Toplam Olay</TableHead>
+                        <TableHead className="w-[200px]">Aktivite</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {xapiTopUsers.map((u, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="font-medium">
+                            {i < 3 ? (
+                              <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full text-xs font-bold ${
+                                i === 0 ? "bg-warning/20 text-warning" : i === 1 ? "bg-muted text-muted-foreground" : "bg-accent/10 text-accent"
+                              }`}>
+                                {i + 1}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">{i + 1}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="font-medium">{u.name}</TableCell>
+                          <TableCell className="text-right font-semibold">{u.events}</TableCell>
+                          <TableCell>
+                            <Progress value={Math.min(100, (u.events / (xapiTopUsers[0]?.events || 1)) * 100)} className="h-2" />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="py-8 text-center text-muted-foreground">
+                    <Users className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                    <p>Henüz xAPI kullanıcı verisi yok</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Recent xAPI Events */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-warning" />
+                  Son Öğrenme Olayları
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {xapiStatements && xapiStatements.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Zaman</TableHead>
+                        <TableHead>Kullanıcı</TableHead>
+                        <TableHead>Olay</TableHead>
+                        <TableHead>Ders</TableHead>
+                        <TableHead>Sonuç</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {xapiStatements.slice(0, 15).map(s => {
+                        const profile = profiles?.find(p => p.user_id === s.user_id);
+                        const context = s.context as any;
+                        const result = s.result as any;
+                        const verbColors: Record<string, string> = {
+                          launched: "info", progressed: "accent", terminated: "default",
+                          completed: "success", passed: "success", failed: "destructive",
+                        };
+                        return (
+                          <TableRow key={s.id}>
+                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                              {new Date(s.created_at).toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {profile ? `${profile.first_name} ${profile.last_name}` : "—"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={(verbColors[s.verb] as any) || "default"} className="text-xs">
+                                {s.verb}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                              {context?.lesson_title || "—"}
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              {result?.completion ? (
+                                <Badge variant="success" className="text-xs">Tamamlandı</Badge>
+                              ) : result?.score?.raw != null ? (
+                                <span className="font-medium">{result.score.raw}%</span>
+                              ) : "—"}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="py-8 text-center text-muted-foreground">
+                    <Zap className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                    <p>Henüz olay kaydı yok</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
