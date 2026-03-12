@@ -470,7 +470,7 @@ export function ScormPlayer({
         }
       } catch {}
 
-      const scormScript = buildScormApiScript(initialData);
+      const scormScript = buildScormApiScript(initialData, scormVersion);
       const baseTag = `<base href="${baseUrl}">`;
 
       if (html.match(/<head[^>]*>/i)) {
