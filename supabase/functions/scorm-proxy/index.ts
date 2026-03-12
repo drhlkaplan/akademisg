@@ -279,7 +279,8 @@ Deno.serve(async (req) => {
         const val = reqUrl.searchParams.get(key);
         if (val) initialData[key] = val;
       }
-      const scormScript = buildScormApiScript(parentOrigin, initialData);
+      const scormVersionParam = reqUrl.searchParams.get("scorm_version") || undefined;
+      const scormScript = buildScormApiScript(parentOrigin, initialData, scormVersionParam);
       let modifiedHtml: string;
       if (htmlText.match(/<head[^>]*>/i)) {
         modifiedHtml = htmlText.replace(/<head[^>]*>/i, `$&\n${scormScript}`);
