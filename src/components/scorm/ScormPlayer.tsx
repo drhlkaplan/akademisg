@@ -380,7 +380,8 @@ export function ScormPlayer({
       try {
         await supabase.from("xapi_statements").insert({
           user_id: userId,
-          verb: method === "LMSFinish" ? "terminated" : method === "LMSCommit" ? "progressed" : "interacted",
+          verb: (method === "LMSFinish" || method === "Terminate") ? "terminated"
+            : (method === "LMSCommit" || method === "Commit") ? "progressed" : "interacted",
           object_type: "scorm_lesson",
           object_id: lessonId,
           result: {
