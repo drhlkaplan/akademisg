@@ -406,13 +406,18 @@ export function ScormPlayer({
     const handler = (event: MessageEvent) => {
       if (!event.data || event.data.type !== "scorm_api_event") return;
       const { method, data } = event.data;
-      if (method === "LMSCommit") {
+      const is2004 = event.data.scormVersion === "2004";
+      // Normalize SCORM 2004 methods to unified handlers
+      const commitMethods = ["LMSCommit", "Commit"];
+      const finishMethods = ["LMSFinish", "Terminate"];
+      const initMethods = ["LMSInitialize", "Initialize"];
+      if (commitMethods.includes(method)) {
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = setTimeout(() => persistProgress(data, method), 2000);
-      } else if (method === "LMSFinish") {
+      } else if (finishMethods.includes(method)) {
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
         persistProgress(data, method);
-      } else if (method === "LMSInitialize") {
+      } else if (initMethods.includes(method)) {
         setLessonStatus(data.lesson_status || "not attempted");
       }
     };
