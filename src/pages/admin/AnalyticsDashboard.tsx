@@ -260,11 +260,127 @@ export default function AnalyticsDashboard() {
     }));
   }, [lessons]);
 
+  // xAPI Analytics
+  const xapiVerbDistribution = useMemo(() => {
+    if (!xapiStatements) return [];
+    const counts: Record<string, number> = {};
+    const verbLabels: Record<string, string> = {
+      launched: "Başlatıldı", progressed: "İlerledi", terminated: "Sonlandırıldı",
+      interacted: "Etkileşim", completed: "Tamamlandı", passed: "Geçti", failed: "Başarısız",
+    };
+    xapiStatements.forEach(s => {
+      counts[s.verb] = (counts[s.verb] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([key, value], i) => ({
+        name: verbLabels[key] || key, verb: key, value, color: COLORS[i % COLORS.length],
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [xapiStatements]);
+
+  const xapiDailyActivity = useMemo(() => {
+    if (!xapiStatements) return [];
+    const days: Record<string, { events: number; users: Set<string> }> = {};
+    const now = new Date();
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const key = d.toLocaleDateString("tr-TR", { day: "2-digit", month: "short" });
+      days[key] = { events: 0, users: new Set() };
+    }
+    xapiStatements.forEach(s => {
+      const d = new Date(s.created_at);
+      const key = d.toLocaleDateString("tr-TR", { day: "2-digit", month: "short" });
+      if (days[key]) {
+        days[key].events++;
+        days[key].users.add(s.user_id);
+      }
+    });
+    return Object.entries(days).map(([day, data]) => ({
+      day, events: data.events, users: data.users.size,
+    }));
+  }, [xapiStatements]);
+
+  const xapiLessonTimeAnalysis = useMemo(() => {
+    if (!xapiStatements || !lessons) return [];
+    const lessonTimes: Record<string, { totalSeconds: number; count: number; title: string }> = {};
+    xapiStatements.forEach(s => {
+      if (s.verb === "terminated" && s.result && s.object_type === "scorm_lesson") {
+        const result = s.result as any;
+        const context = s.context as any;
+        const duration = result?.duration;
+        if (duration) {
+          const match = duration.match(/PT(\d+)S/);
+          if (match) {
+            const seconds = parseInt(match[1]);
+            const lessonId = s.object_id;
+            if (!lessonTimes[lessonId]) {
+              const lesson = lessons.find(l => l.id === lessonId);
+              lessonTimes[lessonId] = { totalSeconds: 0, count: 0, title: context?.lesson_title || lesson?.title || "Bilinmeyen" };
+            }
+            lessonTimes[lessonId].totalSeconds += seconds;
+            lessonTimes[lessonId].count++;
+          }
+        }
+      }
+    });
+    return Object.entries(lessonTimes)
+      .map(([id, data]) => ({
+        name: data.title.length > 25 ? data.title.substring(0, 25) + "..." : data.title,
+        fullName: data.title,
+        avgMinutes: Math.round((data.totalSeconds / data.count) / 60 * 10) / 10,
+        sessions: data.count,
+        totalMinutes: Math.round(data.totalSeconds / 60),
+      }))
+      .sort((a, b) => b.sessions - a.sessions)
+      .slice(0, 10);
+  }, [xapiStatements, lessons]);
+
+  const xapiCompletionFunnel = useMemo(() => {
+    if (!xapiStatements) return [];
+    const launched = xapiStatements.filter(s => s.verb === "launched").length;
+    const progressed = xapiStatements.filter(s => s.verb === "progressed").length;
+    const terminated = xapiStatements.filter(s => s.verb === "terminated").length;
+    const completedEvents = xapiStatements.filter(s => {
+      const result = s.result as any;
+      return s.verb === "terminated" && result?.completion === true;
+    }).length;
+    return [
+      { stage: "Başlatılan", value: launched, color: COLORS[0] },
+      { stage: "İlerleyen", value: progressed, color: COLORS[1] },
+      { stage: "Sonlanan", value: terminated, color: COLORS[2] },
+      { stage: "Tamamlanan", value: completedEvents, color: COLORS[3] },
+    ];
+  }, [xapiStatements]);
+
+  const xapiTopUsers = useMemo(() => {
+    if (!xapiStatements || !profiles) return [];
+    const userEvents: Record<string, number> = {};
+    xapiStatements.forEach(s => {
+      userEvents[s.user_id] = (userEvents[s.user_id] || 0) + 1;
+    });
+    return Object.entries(userEvents)
+      .map(([userId, count]) => {
+        const profile = profiles.find(p => p.user_id === userId);
+        return {
+          name: profile ? `${profile.first_name} ${profile.last_name}` : "Bilinmeyen",
+          events: count,
+        };
+      })
+      .sort((a, b) => b.events - a.events)
+      .slice(0, 10);
+  }, [xapiStatements, profiles]);
+
   const chartConfig = {
     completed: { label: "Tamamlanan", color: "hsl(142, 71%, 45%)" },
     active: { label: "Devam Eden", color: "hsl(199, 89%, 48%)" },
     enrolled: { label: "Kayıt", color: "hsl(25, 95%, 53%)" },
     total: { label: "Toplam", color: "hsl(222, 47%, 40%)" },
+    events: { label: "Olaylar", color: "hsl(25, 95%, 53%)" },
+    users: { label: "Kullanıcılar", color: "hsl(199, 89%, 48%)" },
+    avgMinutes: { label: "Ort. Dakika", color: "hsl(142, 71%, 45%)" },
+    sessions: { label: "Oturum", color: "hsl(38, 92%, 50%)" },
+    value: { label: "Sayı", color: "hsl(25, 95%, 53%)" },
   };
 
   if (isLoading) {
