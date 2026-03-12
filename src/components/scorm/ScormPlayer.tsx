@@ -16,6 +16,7 @@ interface ScormPlayerProps {
   scormPackageId: string;
   lessonId: string;
   userId: string;
+  scormVersion?: string;
   onComplete?: () => void;
   onPrevious?: () => void;
   onNext?: () => void;
