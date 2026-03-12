@@ -1011,7 +1011,7 @@ export default function AnalyticsDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
-
+        </Tabs>
       </div>
     </DashboardLayout>
   );
