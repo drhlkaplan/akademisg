@@ -577,7 +577,9 @@ export function ScormPlayer({
           <div className="flex items-center gap-3 min-w-0">
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-[hsl(var(--success))] animate-pulse" />
-              <span className="text-xs font-medium text-white/90 tracking-wide uppercase">SCORM 1.2</span>
+              <span className="text-xs font-medium text-white/90 tracking-wide uppercase">
+                {scormVersion?.startsWith('2004') ? 'SCORM 2004' : 'SCORM 1.2'}
+              </span>
             </div>
             {lessonTitle && (
               <>
