@@ -969,6 +969,39 @@ export type Database = {
           },
         ]
       }
+      xapi_statements: {
+        Row: {
+          context: Json | null
+          created_at: string
+          id: string
+          object_id: string
+          object_type: string
+          result: Json | null
+          user_id: string
+          verb: string
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          object_id: string
+          object_type: string
+          result?: Json | null
+          user_id: string
+          verb: string
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          object_id?: string
+          object_type?: string
+          result?: Json | null
+          user_id?: string
+          verb?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       public_certificates: {

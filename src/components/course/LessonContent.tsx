@@ -25,6 +25,11 @@ interface LessonContentProps {
   enrollmentId: string;
   userId: string;
   onScormComplete: () => void;
+  onPrevious?: () => void;
+  onNext?: () => void;
+  hasPrevious?: boolean;
+  hasNext?: boolean;
+  courseTitle?: string;
 }
 
 export function LessonContent({
@@ -33,6 +38,11 @@ export function LessonContent({
   enrollmentId,
   userId,
   onScormComplete,
+  onPrevious,
+  onNext,
+  hasPrevious = false,
+  hasNext = false,
+  courseTitle,
 }: LessonContentProps) {
   if (!lesson) {
     return (
@@ -45,6 +55,15 @@ export function LessonContent({
       </div>
     );
   }
+
+  const scormProps = {
+    onPrevious,
+    onNext,
+    hasPrevious,
+    hasNext,
+    lessonTitle: lesson.title,
+    courseTitle,
+  };
 
   switch (lesson.type) {
     case "scorm": {
@@ -61,12 +80,12 @@ export function LessonContent({
           lessonId={lesson.id}
           userId={userId}
           onComplete={onScormComplete}
+          {...scormProps}
         />
       );
     }
 
     case "exam": {
-      // If exam lesson has a SCORM package, render it as SCORM content
       if (lesson.scorm_package_id) {
         const pkg = scormPackages[lesson.scorm_package_id];
         if (pkg) {
@@ -79,12 +98,12 @@ export function LessonContent({
               lessonId={lesson.id}
               userId={userId}
               onComplete={onScormComplete}
+              {...scormProps}
             />
           );
         }
       }
 
-      // Platform exam
       if (!lesson.exam_id) {
         return <EmptyState icon={FileQuestion} title="Sınav Henüz Atanmamış" description="Bu ders için sınav henüz oluşturulmamıştır." />;
       }

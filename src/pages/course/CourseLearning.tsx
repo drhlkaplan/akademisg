@@ -69,7 +69,6 @@ export default function CourseLearning() {
   const fetchCourseData = async () => {
     setIsLoading(true);
     try {
-      // Parallel fetches
       const [courseRes, lessonsRes, scormRes] = await Promise.all([
         supabase
           .from("courses")
@@ -92,14 +91,10 @@ export default function CourseLearning() {
       setCourse(courseRes.data as CourseData);
       setLessons((lessonsRes.data as LessonItem[]) || []);
 
-      // Index scorm packages by id
       const pkgMap: Record<string, ScormPackageData> = {};
-      scormRes.data?.forEach((p) => {
-        pkgMap[p.id] = p as ScormPackageData;
-      });
+      scormRes.data?.forEach((p) => { pkgMap[p.id] = p as ScormPackageData; });
       setScormPackages(pkgMap);
 
-      // Fetch or create enrollment
       let { data: enrollData } = await supabase
         .from("enrollments")
         .select("id, progress_percent, status, started_at")
@@ -110,13 +105,7 @@ export default function CourseLearning() {
       if (!enrollData) {
         const { data: newEnroll, error: enrollError } = await supabase
           .from("enrollments")
-          .insert({
-            user_id: user!.id,
-            course_id: courseId!,
-            status: "active",
-            started_at: new Date().toISOString(),
-            progress_percent: 0,
-          })
+          .insert({ user_id: user!.id, course_id: courseId!, status: "active", started_at: new Date().toISOString(), progress_percent: 0 })
           .select("id, progress_percent, status, started_at")
           .single();
         if (enrollError) throw enrollError;
@@ -132,7 +121,6 @@ export default function CourseLearning() {
 
       setEnrollment(enrollData);
 
-      // Fetch lesson progress
       if (enrollData) {
         const { data: progressData } = await supabase
           .from("lesson_progress")
@@ -141,10 +129,7 @@ export default function CourseLearning() {
         setLessonProgress((progressData as LessonProgressItem[]) || []);
       }
 
-      // Auto-select first incomplete lesson
-      const sortedLessons = (lessonsRes.data as LessonItem[] || []).sort(
-        (a, b) => a.sort_order - b.sort_order
-      );
+      const sortedLessons = (lessonsRes.data as LessonItem[] || []).sort((a, b) => a.sort_order - b.sort_order);
       if (sortedLessons.length > 0) {
         const progressData = await supabase
           .from("lesson_progress")
@@ -169,70 +154,50 @@ export default function CourseLearning() {
   };
 
   const checkAndCompleteCourse = useCallback(async (enrollId: string) => {
-    // Check if all lessons are completed
     const { data: allLessons } = await supabase
-      .from("lessons")
-      .select("id")
-      .eq("course_id", courseId!)
-      .eq("is_active", true);
-
+      .from("lessons").select("id").eq("course_id", courseId!).eq("is_active", true);
     const { data: progressData } = await supabase
-      .from("lesson_progress")
-      .select("lesson_id, lesson_status")
-      .eq("enrollment_id", enrollId);
+      .from("lesson_progress").select("lesson_id, lesson_status").eq("enrollment_id", enrollId);
 
     if (progressData) setLessonProgress(progressData as LessonProgressItem[]);
 
     const completedIds = new Set(
-      progressData
-        ?.filter((p) => p.lesson_status === "completed" || p.lesson_status === "passed")
-        .map((p) => p.lesson_id) || []
+      progressData?.filter((p) => p.lesson_status === "completed" || p.lesson_status === "passed").map((p) => p.lesson_id) || []
     );
 
     const allCompleted = allLessons?.every((l) => completedIds.has(l.id)) ?? false;
 
     if (allCompleted) {
-      // Mark enrollment as completed via RPC
-      await supabase.rpc("update_enrollment_progress", {
-        _enrollment_id: enrollId,
-        _progress_percent: 100,
-      });
-      // Admin-level completion status change - use edge function or let server handle
-      // For now, the progress is set to 100; actual status change to 'completed' 
-      // needs a server-side function
+      await supabase.rpc("update_enrollment_progress", { _enrollment_id: enrollId, _progress_percent: 100 });
       await supabase.rpc("complete_enrollment", { _enrollment_id: enrollId });
-
-      setEnrollment((prev) =>
-        prev ? { ...prev, progress_percent: 100, status: "completed" } : prev
-      );
-
-      // Auto-generate certificate only if course has auto_certificate enabled
+      setEnrollment((prev) => prev ? { ...prev, progress_percent: 100, status: "completed" } : prev);
       const autoCert = course?.auto_certificate !== false;
-      if (autoCert) {
-        await generateCertificate(enrollId);
-      }
+      if (autoCert) await generateCertificate(enrollId);
     } else {
-      // Update progress percentage via RPC
       const total = allLessons?.length || 1;
       const completed = completedIds.size;
       const pct = Math.round((completed / total) * 100);
-
-      await supabase.rpc("update_enrollment_progress", {
-        _enrollment_id: enrollId,
-        _progress_percent: pct,
-      });
-
+      await supabase.rpc("update_enrollment_progress", { _enrollment_id: enrollId, _progress_percent: pct });
       setEnrollment((prev) => (prev ? { ...prev, progress_percent: pct } : prev));
     }
-  }, [courseId, generateCertificate]);
+  }, [courseId, generateCertificate, course]);
 
   const handleScormComplete = useCallback(() => {
-    if (enrollment) {
-      checkAndCompleteCourse(enrollment.id);
-    }
+    if (enrollment) checkAndCompleteCourse(enrollment.id);
   }, [enrollment, checkAndCompleteCourse]);
 
-  const activeLesson = lessons.find((l) => l.id === activeLessonId) || null;
+  // Navigation helpers
+  const sortedLessons = [...lessons].sort((a, b) => a.sort_order - b.sort_order);
+  const activeIndex = sortedLessons.findIndex((l) => l.id === activeLessonId);
+  const activeLesson = sortedLessons[activeIndex] || null;
+
+  const handlePrevious = useCallback(() => {
+    if (activeIndex > 0) setActiveLessonId(sortedLessons[activeIndex - 1].id);
+  }, [activeIndex, sortedLessons]);
+
+  const handleNext = useCallback(() => {
+    if (activeIndex < sortedLessons.length - 1) setActiveLessonId(sortedLessons[activeIndex + 1].id);
+  }, [activeIndex, sortedLessons]);
 
   if (isLoading) {
     return (
@@ -263,21 +228,15 @@ export default function CourseLearning() {
   return (
     <DashboardLayout userRole="student">
       <div className="h-[calc(100vh-130px)] flex rounded-lg border border-border overflow-hidden bg-background">
-        {/* Sidebar toggle for mobile */}
         <Button
           variant="ghost"
           size="icon"
           className="absolute top-20 left-4 z-20 lg:hidden"
           onClick={() => setSidebarOpen(!sidebarOpen)}
         >
-          {sidebarOpen ? (
-            <PanelLeftClose className="h-5 w-5" />
-          ) : (
-            <PanelLeftOpen className="h-5 w-5" />
-          )}
+          {sidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
         </Button>
 
-        {/* Lesson Sidebar */}
         <div
           className={cn(
             "transition-all duration-300 flex-shrink-0 overflow-hidden",
@@ -295,7 +254,6 @@ export default function CourseLearning() {
               requireSequential={course.require_sequential !== false}
               onSelectLesson={(id) => {
                 setActiveLessonId(id);
-                // auto-close on mobile
                 if (window.innerWidth < 1024) setSidebarOpen(false);
               }}
               onBack={() => navigate("/dashboard")}
@@ -303,7 +261,6 @@ export default function CourseLearning() {
           </div>
         </div>
 
-        {/* Desktop toggle */}
         <div className="hidden lg:flex items-start pt-2">
           <Button
             variant="ghost"
@@ -311,15 +268,10 @@ export default function CourseLearning() {
             className="h-8 w-8 rounded-none rounded-r-md"
             onClick={() => setSidebarOpen(!sidebarOpen)}
           >
-            {sidebarOpen ? (
-              <PanelLeftClose className="h-4 w-4" />
-            ) : (
-              <PanelLeftOpen className="h-4 w-4" />
-            )}
+            {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
           </Button>
         </div>
 
-        {/* Content Area */}
         <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
           <div className="flex-1 min-h-0 overflow-auto">
             <LessonContent
@@ -328,6 +280,11 @@ export default function CourseLearning() {
               enrollmentId={enrollment!.id}
               userId={user!.id}
               onScormComplete={handleScormComplete}
+              onPrevious={handlePrevious}
+              onNext={handleNext}
+              hasPrevious={activeIndex > 0}
+              hasNext={activeIndex < sortedLessons.length - 1}
+              courseTitle={course.title}
             />
           </div>
           <LessonTabs
