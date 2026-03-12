@@ -127,6 +127,12 @@ async function resolveEntryFile(folderPath: string, entryPoint: string, token: s
 }
 
 function parseTimeToSeconds(timeStr: string): number {
+  // Handle ISO 8601 duration (SCORM 2004): PT#H#M#S or PT#S
+  const isoMatch = timeStr.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?$/);
+  if (isoMatch) {
+    return (parseInt(isoMatch[1] || '0') * 3600) + (parseInt(isoMatch[2] || '0') * 60) + Math.round(parseFloat(isoMatch[3] || '0'));
+  }
+  // Handle SCORM 1.2 format: HHHH:MM:SS
   const parts = timeStr.split(":");
   if (parts.length === 3) return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
   return 0;
