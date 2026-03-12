@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Maximize2, Minimize2, AlertTriangle, RefreshCw } from "lucide-react";
+import {
+  Loader2, Maximize2, Minimize2, AlertTriangle, RefreshCw,
+  SkipBack, SkipForward, Pause, Play, Volume2, Settings,
+  Clock, Award,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 interface ScormPlayerProps {
   packageUrl: string;
@@ -11,15 +17,16 @@ interface ScormPlayerProps {
   lessonId: string;
   userId: string;
   onComplete?: () => void;
+  onPrevious?: () => void;
+  onNext?: () => void;
+  lessonTitle?: string;
+  courseTitle?: string;
+  hasPrevious?: boolean;
+  hasNext?: boolean;
 }
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
-/**
- * Extract the storage folder path from a package URL.
- * e.g. "https://xxx.supabase.co/storage/v1/object/public/scorm-packages/courseId/timestamp"
- *   → "courseId/timestamp"
- */
 function extractFolderPath(packageUrl: string): string | null {
   const marker = "scorm-packages/";
   const idx = packageUrl.indexOf(marker);
@@ -28,12 +35,10 @@ function extractFolderPath(packageUrl: string): string | null {
   return raw.replace(/^\/+|\/+$/g, "") || null;
 }
 
-/** Build authenticated proxy URL for file access */
 function buildProxyUrl(folderPath: string, filePath: string): string {
   return `${supabaseUrl}/functions/v1/scorm-proxy/${folderPath}/${filePath}`;
 }
 
-/** Build proxy base URL for the <base> tag so relative resources load through the proxy */
 function buildProxyBaseUrl(folderPath: string, entryDir: string): string {
   const base = entryDir
     ? `${supabaseUrl}/functions/v1/scorm-proxy/${folderPath}/${entryDir}`
@@ -41,24 +46,17 @@ function buildProxyBaseUrl(folderPath: string, entryDir: string): string {
   return base.endsWith("/") ? base : base + "/";
 }
 
-/** Build proxy URL for directory listing */
 function buildListUrl(folderPath: string): string {
   return `${supabaseUrl}/functions/v1/scorm-proxy/${folderPath}?list=1`;
 }
 
-/** Get current auth session token */
 async function getAuthToken(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
   return data.session?.access_token ?? null;
 }
 
-/** Fetch with auth header */
 async function authFetch(url: string, token: string): Promise<Response> {
-  return fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  return fetch(url, { headers: { Authorization: `Bearer ${token}` } });
 }
 
 interface StorageItem {
@@ -68,11 +66,8 @@ interface StorageItem {
 }
 
 const PRIORITY_FILES = [
-  "index_lms_html5.html",
-  "story_html5.html",
-  "index.html",
-  "index_lms.html",
-  "story.html",
+  "index_lms_html5.html", "story_html5.html", "index.html",
+  "index_lms.html", "story.html",
 ];
 
 async function listFiles(folderPath: string, token: string): Promise<StorageItem[]> {
@@ -80,24 +75,19 @@ async function listFiles(folderPath: string, token: string): Promise<StorageItem
     const res = await authFetch(buildListUrl(folderPath), token);
     if (!res.ok) return [];
     return await res.json();
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 }
 
 async function resolveEntryFile(folderPath: string, entryPoint: string, token: string): Promise<string | null> {
   const rootFiles = await listFiles(folderPath, token);
   const rootFileNames = new Set(rootFiles.map(f => f.name));
-
   for (const file of PRIORITY_FILES) {
     if (rootFileNames.has(file)) return file;
   }
-
   if (rootFileNames.has("scormcontent")) {
     const subFiles = await listFiles(`${folderPath}/scormcontent`, token);
     if (subFiles.some(f => f.name === "index.html")) return "scormcontent/index.html";
   }
-
   const sanitizedEntry = entryPoint.replace(/&/g, "_").replace(/ /g, "_");
   const entryParts = sanitizedEntry.split("/");
   if (entryParts.length > 1) {
@@ -110,7 +100,6 @@ async function resolveEntryFile(folderPath: string, entryPoint: string, token: s
       }
     }
   }
-
   const subfolders = rootFiles.filter(f => f.id === null);
   for (const folder of subfolders) {
     const subFiles = await listFiles(`${folderPath}/${folder.name}`, token);
@@ -119,7 +108,6 @@ async function resolveEntryFile(folderPath: string, entryPoint: string, token: s
       if (subFileNames.has(file)) return `${folder.name}/${file}`;
     }
   }
-
   if (rootFileNames.has("imsmanifest.xml")) {
     const manifestUrl = buildProxyUrl(folderPath, "imsmanifest.xml");
     try {
@@ -134,7 +122,6 @@ async function resolveEntryFile(folderPath: string, entryPoint: string, token: s
       }
     } catch {}
   }
-
   return null;
 }
 
@@ -151,6 +138,15 @@ function formatTime(seconds: number): string {
   return `${String(h).padStart(4, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+function formatDisplayTime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}s ${m}dk`;
+  if (m > 0) return `${m}dk ${s}sn`;
+  return `${s}sn`;
+}
+
 function buildScormApiScript(initialData: Record<string, string>): string {
   return `<script>
 (function() {
@@ -160,8 +156,7 @@ function buildScormApiScript(initialData: Record<string, string>): string {
     'cmi.core.lesson_location': ${JSON.stringify(initialData.lesson_location || '')},
     'cmi.suspend_data': ${JSON.stringify(initialData.suspend_data || '')},
     'cmi.core.score.raw': ${JSON.stringify(initialData.score_raw || '')},
-    'cmi.core.score.min': '0',
-    'cmi.core.score.max': '100',
+    'cmi.core.score.min': '0', 'cmi.core.score.max': '100',
     'cmi.core.total_time': ${JSON.stringify(initialData.total_time || '0000:00:00')},
     'cmi.core.session_time': '0000:00:00',
     'cmi.core.student_id': '', 'cmi.core.student_name': '',
@@ -201,6 +196,7 @@ function buildScormApiScript(initialData: Record<string, string>): string {
 
 export function ScormPlayer({
   packageUrl, entryPoint, enrollmentId, scormPackageId, lessonId, userId, onComplete,
+  onPrevious, onNext, lessonTitle, courseTitle, hasPrevious = false, hasNext = false,
 }: ScormPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -210,31 +206,85 @@ export function ScormPlayer({
   const containerRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const blobUrlRef = useRef<string | null>(null);
+  const sessionStartRef = useRef<number>(Date.now());
+  const [lessonStatus, setLessonStatus] = useState<string>("not attempted");
+  const [scoreRaw, setScoreRaw] = useState<string>("");
+  const [sessionSeconds, setSessionSeconds] = useState(0);
+  const [showControls, setShowControls] = useState(true);
+  const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Session timer
+  useEffect(() => {
+    sessionStartRef.current = Date.now();
+    const interval = setInterval(() => {
+      setSessionSeconds(Math.floor((Date.now() - sessionStartRef.current) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lessonId]);
+
+  // Auto-hide controls
+  const resetControlsTimer = useCallback(() => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 4000);
+  }, []);
+
+  useEffect(() => {
+    resetControlsTimer();
+    return () => { if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); };
+  }, []);
 
   const persistProgress = useCallback(async (data: Record<string, string>, method: string) => {
     try {
-      const lessonStatus = data.lesson_status || "not attempted";
-      const scoreRaw = data.score_raw ? parseFloat(data.score_raw) : null;
+      const status = data.lesson_status || "not attempted";
+      const score = data.score_raw ? parseFloat(data.score_raw) : null;
       const totalTimeSeconds = data.total_time ? parseTimeToSeconds(data.total_time) : null;
+
+      setLessonStatus(status);
+      if (data.score_raw) setScoreRaw(data.score_raw);
 
       await supabase.rpc("record_lesson_progress", {
         _enrollment_id: enrollmentId,
         _lesson_id: lessonId,
-        _lesson_status: lessonStatus,
-        _score_raw: scoreRaw,
+        _lesson_status: status,
+        _score_raw: score,
         _lesson_location: data.lesson_location || null,
         _suspend_data: data.suspend_data || null,
         _total_time: totalTimeSeconds,
         _scorm_package_id: scormPackageId,
       });
 
-      if (method === "LMSFinish" && (lessonStatus === "completed" || lessonStatus === "passed")) {
+      // Track xAPI event
+      try {
+        await supabase.from("xapi_statements").insert({
+          user_id: userId,
+          verb: method === "LMSFinish" ? "terminated" : method === "LMSCommit" ? "progressed" : "interacted",
+          object_type: "scorm_lesson",
+          object_id: lessonId,
+          result: {
+            completion: status === "completed" || status === "passed",
+            success: status === "passed",
+            score: score != null ? { raw: score, min: 0, max: 100 } : null,
+            duration: `PT${sessionSeconds}S`,
+          },
+          context: {
+            enrollment_id: enrollmentId,
+            course_title: courseTitle || "",
+            lesson_title: lessonTitle || "",
+            scorm_method: method,
+          },
+        });
+      } catch {
+        // xAPI tracking is non-critical
+      }
+
+      if (method === "LMSFinish" && (status === "completed" || status === "passed")) {
         onComplete?.();
       }
     } catch (err) {
       console.error("SCORM save error:", err);
     }
-  }, [enrollmentId, lessonId, scormPackageId, onComplete]);
+  }, [enrollmentId, lessonId, scormPackageId, onComplete, userId, sessionSeconds, courseTitle, lessonTitle]);
 
   useEffect(() => {
     const handler = (event: MessageEvent) => {
@@ -246,6 +296,8 @@ export function ScormPlayer({
       } else if (method === "LMSFinish") {
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
         persistProgress(data, method);
+      } else if (method === "LMSInitialize") {
+        setLessonStatus(data.lesson_status || "not attempted");
       }
     };
     window.addEventListener("message", handler);
@@ -265,64 +317,39 @@ export function ScormPlayer({
     setBlobUrl(null);
 
     const token = await getAuthToken();
-    if (!token) {
-      setError("Oturum bulunamadı. Lütfen tekrar giriş yapın.");
-      setIsLoading(false);
-      return;
-    }
+    if (!token) { setError("Oturum bulunamadı. Lütfen tekrar giriş yapın."); setIsLoading(false); return; }
 
     const folderPath = extractFolderPath(packageUrl);
-    if (!folderPath) {
-      setError("Paket yolu çözümlenemedi.");
-      setIsLoading(false);
-      return;
-    }
+    if (!folderPath) { setError("Paket yolu çözümlenemedi."); setIsLoading(false); return; }
 
     const entryFile = await resolveEntryFile(folderPath, entryPoint, token);
-    if (!entryFile) {
-      setError("SCORM başlangıç dosyası bulunamadı.");
-      setIsLoading(false);
-      return;
-    }
+    if (!entryFile) { setError("SCORM başlangıç dosyası bulunamadı."); setIsLoading(false); return; }
 
-    // All requests now go through the authenticated proxy
     const proxyFileUrl = buildProxyUrl(folderPath, entryFile);
     const entryDir = entryFile.includes("/") ? entryFile.substring(0, entryFile.lastIndexOf("/") + 1) : "";
     const baseUrl = buildProxyBaseUrl(folderPath, entryDir);
 
-    console.log("SCORM Player: loading via authenticated proxy:", proxyFileUrl);
-    console.log("SCORM Player: base URL for resources:", baseUrl);
-
     try {
       const res = await authFetch(proxyFileUrl, token);
       if (!res.ok) {
-        if (res.status === 401) {
-          setError("Oturumunuz sona ermiş. Lütfen sayfayı yenileyip tekrar giriş yapın.");
-        } else if (res.status === 403) {
-          setError("Bu eğitim içeriğine erişim yetkiniz yok.");
-        } else {
-          setError(`İçerik dosyası yüklenemedi (HTTP ${res.status}).`);
-        }
+        if (res.status === 401) setError("Oturumunuz sona ermiş. Lütfen sayfayı yenileyip tekrar giriş yapın.");
+        else if (res.status === 403) setError("Bu eğitim içeriğine erişim yetkiniz yok.");
+        else setError(`İçerik dosyası yüklenemedi (HTTP ${res.status}).`);
         setIsLoading(false);
         return;
       }
       let html = await res.text();
 
-      // Fetch existing progress
       const initialData: Record<string, string> = {};
       try {
         const { data: progress } = await supabase
-          .from("lesson_progress")
-          .select("*")
-          .eq("enrollment_id", enrollmentId)
-          .eq("lesson_id", lessonId)
-          .maybeSingle();
-
+          .from("lesson_progress").select("*")
+          .eq("enrollment_id", enrollmentId).eq("lesson_id", lessonId).maybeSingle();
         if (progress) {
-          if (progress.lesson_status) initialData.lesson_status = progress.lesson_status;
+          if (progress.lesson_status) { initialData.lesson_status = progress.lesson_status; setLessonStatus(progress.lesson_status); }
           if (progress.lesson_location) initialData.lesson_location = progress.lesson_location;
           if (progress.suspend_data && progress.suspend_data.length < 4000) initialData.suspend_data = progress.suspend_data;
-          if (progress.score_raw != null) initialData.score_raw = String(progress.score_raw);
+          if (progress.score_raw != null) { initialData.score_raw = String(progress.score_raw); setScoreRaw(String(progress.score_raw)); }
           if (progress.total_time != null) initialData.total_time = formatTime(progress.total_time);
         }
       } catch {}
@@ -342,12 +369,23 @@ export function ScormPlayer({
       const url = URL.createObjectURL(blob);
       blobUrlRef.current = url;
       setBlobUrl(url);
+
+      // Track lesson started xAPI event
+      try {
+        await supabase.from("xapi_statements").insert({
+          user_id: userId,
+          verb: "launched",
+          object_type: "scorm_lesson",
+          object_id: lessonId,
+          context: { enrollment_id: enrollmentId, course_title: courseTitle || "", lesson_title: lessonTitle || "" },
+        });
+      } catch {}
     } catch (err: any) {
       console.error("SCORM fetch error:", err);
       setError("Eğitim içeriği yüklenirken bir hata oluştu.");
       setIsLoading(false);
     }
-  }, [packageUrl, entryPoint, enrollmentId, lessonId]);
+  }, [packageUrl, entryPoint, enrollmentId, lessonId, userId, courseTitle, lessonTitle]);
 
   useEffect(() => {
     loadContent();
@@ -373,49 +411,103 @@ export function ScormPlayer({
     return () => document.removeEventListener("fullscreenchange", handler);
   }, []);
 
+  const statusConfig = {
+    "not attempted": { label: "Başlanmadı", color: "bg-muted text-muted-foreground" },
+    "incomplete": { label: "Devam Ediyor", color: "bg-warning/20 text-warning" },
+    "completed": { label: "Tamamlandı", color: "bg-success/20 text-success" },
+    "passed": { label: "Başarılı", color: "bg-success/20 text-success" },
+    "failed": { label: "Başarısız", color: "bg-destructive/20 text-destructive" },
+    "browsed": { label: "İncelendi", color: "bg-info/20 text-info" },
+  };
+
+  const currentStatus = statusConfig[lessonStatus as keyof typeof statusConfig] || statusConfig["not attempted"];
+
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-card rounded-lg border border-border p-8">
-        <AlertTriangle className="h-12 w-12 text-warning mb-4" />
+      <div className="flex flex-col items-center justify-center h-full bg-[hsl(var(--primary)/0.03)] rounded-xl p-8">
+        <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center mb-4">
+          <AlertTriangle className="h-8 w-8 text-destructive" />
+        </div>
         <h3 className="text-lg font-semibold text-foreground mb-2">İçerik Yüklenemedi</h3>
-        <p className="text-muted-foreground text-center mb-4">{error}</p>
-        <Button variant="outline" onClick={loadContent}><RefreshCw className="h-4 w-4 mr-2" />Tekrar Dene</Button>
+        <p className="text-muted-foreground text-center mb-6 max-w-md">{error}</p>
+        <Button onClick={loadContent} className="gap-2">
+          <RefreshCw className="h-4 w-4" />Tekrar Dene
+        </Button>
       </div>
     );
   }
 
   return (
-    <div ref={containerRef} className="relative flex flex-col h-full bg-foreground/5 rounded-lg overflow-hidden border border-border shadow-sm">
-      <div className="flex items-center justify-between px-4 py-2.5 bg-card border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className="h-2.5 w-2.5 rounded-full bg-success animate-pulse" />
-            <span className="text-sm font-medium text-foreground">SCORM Eğitim</span>
+    <div
+      ref={containerRef}
+      className="relative flex flex-col h-full bg-[hsl(222,47%,6%)] rounded-xl overflow-hidden"
+      onMouseMove={resetControlsTimer}
+      onMouseEnter={() => setShowControls(true)}
+    >
+      {/* Top Bar - Netflix style header */}
+      <div
+        className={cn(
+          "absolute top-0 left-0 right-0 z-20 transition-all duration-500",
+          "bg-gradient-to-b from-[hsl(222,47%,6%/0.95)] via-[hsl(222,47%,6%/0.6)] to-transparent",
+          showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"
+        )}
+      >
+        <div className="flex items-center justify-between px-5 py-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-[hsl(var(--success))] animate-pulse" />
+              <span className="text-xs font-medium text-white/90 tracking-wide uppercase">SCORM 1.2</span>
+            </div>
+            {lessonTitle && (
+              <>
+                <div className="w-px h-4 bg-white/20" />
+                <span className="text-sm font-medium text-white/80 truncate">{lessonTitle}</span>
+              </>
+            )}
           </div>
-          <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded font-mono">1.2</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" onClick={loadContent} className="h-8 w-8" title="Yeniden yükle">
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="h-8 w-8" title={isFullscreen ? "Küçült" : "Tam ekran"}>
-            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Status badge */}
+            <div className={cn("px-3 py-1 rounded-full text-xs font-medium", currentStatus.color)}>
+              {currentStatus.label}
+            </div>
+            {scoreRaw && (
+              <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-[hsl(var(--accent)/0.2)] text-[hsl(var(--accent))]">
+                <Award className="h-3 w-3" />
+                <span className="text-xs font-semibold">{scoreRaw}%</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-white/10 text-white/70">
+              <Clock className="h-3 w-3" />
+              <span className="text-xs font-medium">{formatDisplayTime(sessionSeconds)}</span>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Loading Overlay */}
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-card/80 z-10 mt-12">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-accent" />
-            <p className="text-sm text-muted-foreground">Eğitim içeriği yükleniyor...</p>
+        <div className="absolute inset-0 flex items-center justify-center bg-[hsl(222,47%,6%)] z-30">
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative">
+              <div className="h-16 w-16 rounded-2xl bg-[hsl(var(--accent)/0.15)] flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-[hsl(var(--accent))]" />
+              </div>
+              <div className="absolute -inset-2 rounded-2xl bg-[hsl(var(--accent)/0.1)] animate-pulse" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-white/90">Eğitim içeriği yükleniyor</p>
+              <p className="text-xs text-white/50 mt-1">Lütfen bekleyin...</p>
+            </div>
           </div>
         </div>
       )}
+
+      {/* SCORM Content iframe */}
       {blobUrl && (
         <iframe
           ref={iframeRef}
           src={blobUrl}
-          className="flex-1 w-full border-0"
+          className="flex-1 w-full border-0 bg-white"
           style={{ minHeight: "500px" }}
           onLoad={handleIframeLoad}
           onError={() => { setIsLoading(false); setError("Eğitim içeriği yüklenemedi."); }}
@@ -424,6 +516,82 @@ export function ScormPlayer({
           title="SCORM Eğitim İçeriği"
         />
       )}
+
+      {/* Bottom Controls - Netflix style */}
+      <div
+        className={cn(
+          "absolute bottom-0 left-0 right-0 z-20 transition-all duration-500",
+          "bg-gradient-to-t from-[hsl(222,47%,6%/0.95)] via-[hsl(222,47%,6%/0.6)] to-transparent",
+          showControls ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
+        )}
+      >
+        {/* Progress bar */}
+        <div className="px-5 pt-6">
+          <div className="h-1 bg-white/10 rounded-full overflow-hidden group cursor-pointer">
+            <div
+              className="h-full bg-[hsl(var(--accent))] rounded-full transition-all duration-300 group-hover:h-1.5 relative"
+              style={{
+                width: `${lessonStatus === "completed" || lessonStatus === "passed" ? 100 : lessonStatus === "incomplete" ? 50 : 0}%`,
+              }}
+            >
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-[hsl(var(--accent))] opacity-0 group-hover:opacity-100 transition-opacity shadow-lg" />
+            </div>
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className="flex items-center justify-between px-5 py-3">
+          <div className="flex items-center gap-1">
+            {/* Previous */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onPrevious}
+              disabled={!hasPrevious}
+              className="h-9 w-9 text-white/80 hover:text-white hover:bg-white/10 disabled:opacity-30"
+              title="Önceki ders"
+            >
+              <SkipBack className="h-5 w-5" />
+            </Button>
+
+            {/* Reload/Resume */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={loadContent}
+              className="h-10 w-10 text-white hover:text-white hover:bg-white/10"
+              title="Yeniden yükle"
+            >
+              <RefreshCw className="h-5 w-5" />
+            </Button>
+
+            {/* Next */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onNext}
+              disabled={!hasNext}
+              className="h-9 w-9 text-white/80 hover:text-white hover:bg-white/10 disabled:opacity-30"
+              title="Sonraki ders"
+            >
+              <SkipForward className="h-5 w-5" />
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-1">
+            {/* Fullscreen */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleFullscreen}
+              className="h-9 w-9 text-white/80 hover:text-white hover:bg-white/10"
+              title={isFullscreen ? "Küçült" : "Tam ekran"}
+            >
+              {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
