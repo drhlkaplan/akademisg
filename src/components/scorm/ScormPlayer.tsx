@@ -16,6 +16,7 @@ interface ScormPlayerProps {
   scormPackageId: string;
   lessonId: string;
   userId: string;
+  scormVersion?: string;
   onComplete?: () => void;
   onPrevious?: () => void;
   onNext?: () => void;
@@ -126,6 +127,12 @@ async function resolveEntryFile(folderPath: string, entryPoint: string, token: s
 }
 
 function parseTimeToSeconds(timeStr: string): number {
+  // Handle ISO 8601 duration (SCORM 2004): PT#H#M#S or PT#S
+  const isoMatch = timeStr.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?$/);
+  if (isoMatch) {
+    return (parseInt(isoMatch[1] || '0') * 3600) + (parseInt(isoMatch[2] || '0') * 60) + Math.round(parseFloat(isoMatch[3] || '0'));
+  }
+  // Handle SCORM 1.2 format: HHHH:MM:SS
   const parts = timeStr.split(":");
   if (parts.length === 3) return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
   return 0;
@@ -147,7 +154,7 @@ function formatDisplayTime(seconds: number): string {
   return `${s}sn`;
 }
 
-function buildScormApiScript(initialData: Record<string, string>): string {
+function buildScorm12ApiScript(initialData: Record<string, string>): string {
   return `<script>
 (function() {
   var _initialized = false, _finished = false, _lastError = '0';
@@ -189,14 +196,129 @@ function buildScormApiScript(initialData: Record<string, string>): string {
     LMSGetDiagnostic: function(c) { return c||''; }
   };
   window.API = API;
-  window.API_1484_11 = API;
 })();
 <\/script>`;
 }
 
+function buildScorm2004ApiScript(initialData: Record<string, string>): string {
+  // Map saved progress to SCORM 2004 CMI model
+  const completionStatus = initialData.lesson_status === 'completed' || initialData.lesson_status === 'passed'
+    ? 'completed' : initialData.lesson_status === 'incomplete' ? 'incomplete' : 'unknown';
+  const successStatus = initialData.lesson_status === 'passed' ? 'passed'
+    : initialData.lesson_status === 'failed' ? 'failed' : 'unknown';
+  // Convert SCORM 1.2 time (HHHH:MM:SS) to ISO 8601 duration (PT#H#M#S)
+  const totalTime12 = initialData.total_time || '0000:00:00';
+  const tp = totalTime12.split(':');
+  const isoTotal = tp.length === 3 ? 'PT' + parseInt(tp[0]) + 'H' + parseInt(tp[1]) + 'M' + parseInt(tp[2]) + 'S' : 'PT0S';
+
+  return `<script>
+(function() {
+  var _initialized = false, _terminated = false, _lastError = '0';
+  var cmiData = {
+    'cmi.completion_status': ${JSON.stringify(completionStatus)},
+    'cmi.success_status': ${JSON.stringify(successStatus)},
+    'cmi.location': ${JSON.stringify(initialData.lesson_location || '')},
+    'cmi.suspend_data': ${JSON.stringify(initialData.suspend_data || '')},
+    'cmi.score.raw': ${JSON.stringify(initialData.score_raw || '')},
+    'cmi.score.min': '0',
+    'cmi.score.max': '100',
+    'cmi.score.scaled': ${JSON.stringify(initialData.score_raw ? (parseFloat(initialData.score_raw) / 100).toString() : '')},
+    'cmi.total_time': ${JSON.stringify(isoTotal)},
+    'cmi.session_time': 'PT0S',
+    'cmi.learner_id': '',
+    'cmi.learner_name': '',
+    'cmi.credit': 'credit',
+    'cmi.entry': ${JSON.stringify(completionStatus !== 'unknown' ? 'resume' : 'ab-initio')},
+    'cmi.exit': '',
+    'cmi.mode': 'normal',
+    'cmi.launch_data': '',
+    'cmi.comments_from_learner._count': '0',
+    'cmi.comments_from_lms._count': '0',
+    'cmi.interactions._count': '0',
+    'cmi.objectives._count': '0',
+    'cmi.learner_preference.audio_level': '1',
+    'cmi.learner_preference.language': '',
+    'cmi.learner_preference.delivery_speed': '1',
+    'cmi.learner_preference.audio_captioning': '0',
+    'cmi.completion_threshold': '',
+    'cmi.scaled_passing_score': '',
+    'cmi.progress_measure': '',
+    'adl.nav.request': '_none_'
+  };
+  // Track dynamic _count elements (interactions, objectives, comments)
+  var _counters = { interactions: 0, objectives: 0, comments_from_learner: 0 };
+  function sendToParent(method) {
+    try {
+      // Normalize to same format as SCORM 1.2 for unified handling
+      var ls = cmiData['cmi.completion_status'] || 'unknown';
+      var ss = cmiData['cmi.success_status'] || 'unknown';
+      var normalizedStatus = ss === 'passed' ? 'passed' : ss === 'failed' ? 'failed' : ls === 'completed' ? 'completed' : ls === 'incomplete' ? 'incomplete' : 'not attempted';
+      window.parent.postMessage({ type: 'scorm_api_event', method: method, scormVersion: '2004', data: {
+        lesson_status: normalizedStatus,
+        lesson_location: cmiData['cmi.location'] || '',
+        suspend_data: cmiData['cmi.suspend_data'] || '',
+        score_raw: cmiData['cmi.score.raw'] || '',
+        total_time: cmiData['cmi.total_time'] || 'PT0S',
+        session_time: cmiData['cmi.session_time'] || 'PT0S',
+        exit: cmiData['cmi.exit'] || '',
+        completion_status: cmiData['cmi.completion_status'],
+        success_status: cmiData['cmi.success_status'],
+        progress_measure: cmiData['cmi.progress_measure'] || '',
+        nav_request: cmiData['adl.nav.request'] || '_none_'
+      }}, '*');
+    } catch(e) {}
+  }
+  var API_1484_11 = {
+    Initialize: function(p) { if (_initialized) { _lastError = '103'; return 'false'; } _initialized = true; _terminated = false; _lastError = '0'; sendToParent('Initialize'); return 'true'; },
+    Terminate: function(p) { if (!_initialized) { _lastError = '112'; return 'false'; } if (_terminated) { _lastError = '113'; return 'false'; } _terminated = true; _initialized = false; _lastError = '0'; sendToParent('Terminate'); return 'true'; },
+    GetValue: function(el) {
+      if (!_initialized) { _lastError = '122'; return ''; }
+      _lastError = '0';
+      if (el in cmiData) return cmiData[el];
+      // Handle _count for dynamic children
+      if (el.match(/\\._count$/)) return '0';
+      // Handle individual interaction/objective elements
+      var match = el.match(/^cmi\\.(interactions|objectives|comments_from_learner)\\.(\\d+)\\./);
+      if (match && cmiData[el] !== undefined) return cmiData[el];
+      if (match) return '';
+      _lastError = '401';
+      return '';
+    },
+    SetValue: function(el, val) {
+      if (!_initialized) { _lastError = '132'; return 'false'; }
+      _lastError = '0';
+      cmiData[el] = val;
+      // Auto-increment _count for new indexed elements
+      var cMatch = el.match(/^cmi\\.(interactions|objectives|comments_from_learner)\\.(\\d+)\\./);
+      if (cMatch) {
+        var key = cMatch[1];
+        var idx = parseInt(cMatch[2]);
+        var countKey = 'cmi.' + key + '._count';
+        var current = parseInt(cmiData[countKey] || '0');
+        if (idx >= current) cmiData[countKey] = String(idx + 1);
+      }
+      return 'true';
+    },
+    Commit: function(p) { if (!_initialized) { _lastError = '142'; return 'false'; } _lastError = '0'; sendToParent('Commit'); return 'true'; },
+    GetLastError: function() { return _lastError; },
+    GetErrorString: function(c) { var m = {'0':'No Error','101':'General Exception','102':'General Init Failure','103':'Already Initialized','104':'Content Instance Terminated','111':'General Termination Failure','112':'Termination Before Init','113':'Termination After Termination','122':'Retrieve Data Before Init','123':'Retrieve Data After Termination','132':'Store Data Before Init','133':'Store Data After Termination','142':'Commit Before Init','143':'Commit After Termination','201':'General Argument Error','301':'General Get Failure','351':'General Set Failure','391':'General Commit Failure','401':'Undefined Data Model','402':'Unimplemented Data Model','403':'Data Model Element Value Not Initialized','404':'Data Model Element Is Read Only','405':'Data Model Element Is Write Only','406':'Data Model Element Type Mismatch','407':'Data Model Element Value Out Of Range','408':'Data Model Dependency Not Established'}; return m[c] || 'Unknown Error'; },
+    GetDiagnostic: function(c) { return c || ''; }
+  };
+  window.API_1484_11 = API_1484_11;
+})();
+<\/script>`;
+}
+
+function buildScormApiScript(initialData: Record<string, string>, version?: string): string {
+  if (version && version.startsWith('2004')) {
+    return buildScorm2004ApiScript(initialData);
+  }
+  return buildScorm12ApiScript(initialData);
+}
+
 export function ScormPlayer({
-  packageUrl, entryPoint, enrollmentId, scormPackageId, lessonId, userId, onComplete,
-  onPrevious, onNext, lessonTitle, courseTitle, hasPrevious = false, hasNext = false,
+  packageUrl, entryPoint, enrollmentId, scormPackageId, lessonId, userId, scormVersion,
+  onComplete, onPrevious, onNext, lessonTitle, courseTitle, hasPrevious = false, hasNext = false,
 }: ScormPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -258,7 +380,8 @@ export function ScormPlayer({
       try {
         await supabase.from("xapi_statements").insert({
           user_id: userId,
-          verb: method === "LMSFinish" ? "terminated" : method === "LMSCommit" ? "progressed" : "interacted",
+          verb: (method === "LMSFinish" || method === "Terminate") ? "terminated"
+            : (method === "LMSCommit" || method === "Commit") ? "progressed" : "interacted",
           object_type: "scorm_lesson",
           object_id: lessonId,
           result: {
@@ -278,7 +401,7 @@ export function ScormPlayer({
         // xAPI tracking is non-critical
       }
 
-      if (method === "LMSFinish" && (status === "completed" || status === "passed")) {
+      if ((method === "LMSFinish" || method === "Terminate") && (status === "completed" || status === "passed")) {
         onComplete?.();
       }
     } catch (err) {
@@ -290,13 +413,18 @@ export function ScormPlayer({
     const handler = (event: MessageEvent) => {
       if (!event.data || event.data.type !== "scorm_api_event") return;
       const { method, data } = event.data;
-      if (method === "LMSCommit") {
+      const is2004 = event.data.scormVersion === "2004";
+      // Normalize SCORM 2004 methods to unified handlers
+      const commitMethods = ["LMSCommit", "Commit"];
+      const finishMethods = ["LMSFinish", "Terminate"];
+      const initMethods = ["LMSInitialize", "Initialize"];
+      if (commitMethods.includes(method)) {
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = setTimeout(() => persistProgress(data, method), 2000);
-      } else if (method === "LMSFinish") {
+      } else if (finishMethods.includes(method)) {
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
         persistProgress(data, method);
-      } else if (method === "LMSInitialize") {
+      } else if (initMethods.includes(method)) {
         setLessonStatus(data.lesson_status || "not attempted");
       }
     };
@@ -354,7 +482,7 @@ export function ScormPlayer({
         }
       } catch {}
 
-      const scormScript = buildScormApiScript(initialData);
+      const scormScript = buildScormApiScript(initialData, scormVersion);
       const baseTag = `<base href="${baseUrl}">`;
 
       if (html.match(/<head[^>]*>/i)) {
@@ -456,7 +584,9 @@ export function ScormPlayer({
           <div className="flex items-center gap-3 min-w-0">
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-[hsl(var(--success))] animate-pulse" />
-              <span className="text-xs font-medium text-white/90 tracking-wide uppercase">SCORM 1.2</span>
+              <span className="text-xs font-medium text-white/90 tracking-wide uppercase">
+                {scormVersion?.startsWith('2004') ? 'SCORM 2004' : 'SCORM 1.2'}
+              </span>
             </div>
             {lessonTitle && (
               <>
