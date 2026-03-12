@@ -79,7 +79,7 @@ interface StorageItem {
   metadata: Record<string, unknown> | null;
 }
 
-const PRIORITY_FILES = ["index_lms_html5.html", "story.html", "story_html5.html", "index.html", "index_lms.html"];
+const PRIORITY_FILES = ["index.html", "index_lms.html", "index_lms_html5.html", "story.html", "story_html5.html"];
 
 async function listFiles(folderPath: string, token: string): Promise<StorageItem[]> {
   try {
