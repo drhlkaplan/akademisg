@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge-custom";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileText, MessageSquare, HelpCircle, Sparkles, Loader2 } from "lucide-react";
+import { FileText, MessageSquare, HelpCircle, Sparkles, Loader2, Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { AiTutorChat } from "./AiTutorChat";
 import type { LessonItem } from "./LessonSidebar";
 
 interface LessonTabsProps {
@@ -60,8 +61,16 @@ export function LessonTabs({ lesson, courseTitle, category, dangerClass }: Lesso
 
   return (
     <div className="border-t border-border bg-card">
-      <Tabs defaultValue="notes" className="w-full">
+      <Tabs defaultValue="ai-tutor" className="w-full">
         <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent h-auto p-0">
+          <TabsTrigger
+            value="ai-tutor"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-4 py-3 gap-2"
+          >
+            <Bot className="h-4 w-4" />
+            AI Tutor
+            <Badge variant="warning" className="text-[10px] px-1.5 py-0">YENİ</Badge>
+          </TabsTrigger>
           <TabsTrigger
             value="notes"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-4 py-3 gap-2"
@@ -86,6 +95,15 @@ export function LessonTabs({ lesson, courseTitle, category, dangerClass }: Lesso
         </TabsList>
 
         <div className="p-4">
+          <TabsContent value="ai-tutor" className="mt-0">
+            <AiTutorChat
+              lesson={lesson}
+              courseTitle={courseTitle}
+              category={category}
+              dangerClass={dangerClass}
+            />
+          </TabsContent>
+
           <TabsContent value="notes" className="mt-0">
             {/* AI Summary */}
             <div className="mb-4">
