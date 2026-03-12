@@ -106,6 +106,18 @@ export default function AnalyticsDashboard() {
     },
   });
 
+  const { data: xapiStatements } = useQuery({
+    queryKey: ["analytics-xapi"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("xapi_statements")
+        .select("id, user_id, verb, object_type, object_id, result, context, created_at")
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      return data || [];
+    },
+  });
+
   const isLoading = !courses || !enrollments || !profiles || !firms;
 
   // --- Computed Stats ---
