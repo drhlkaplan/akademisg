@@ -311,8 +311,8 @@ function buildScormApiScript(initialData: Record<string, string>, version?: stri
 }
 
 export function ScormPlayer({
-  packageUrl, entryPoint, enrollmentId, scormPackageId, lessonId, userId, onComplete,
-  onPrevious, onNext, lessonTitle, courseTitle, hasPrevious = false, hasNext = false,
+  packageUrl, entryPoint, enrollmentId, scormPackageId, lessonId, userId, scormVersion,
+  onComplete, onPrevious, onNext, lessonTitle, courseTitle, hasPrevious = false, hasNext = false,
 }: ScormPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoading, setIsLoading] = useState(true);
