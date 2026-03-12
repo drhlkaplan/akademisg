@@ -98,6 +98,7 @@ export function LessonContent({
               scormPackageId={pkg.id}
               lessonId={lesson.id}
               userId={userId}
+              scormVersion={pkg.scorm_version || "1.2"}
               onComplete={onScormComplete}
               {...scormProps}
             />
