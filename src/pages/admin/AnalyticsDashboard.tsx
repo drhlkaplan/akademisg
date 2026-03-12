@@ -22,9 +22,10 @@ import {
 } from "recharts";
 import {
   BarChart3, Users, BookOpen, Building2, Award, GraduationCap,
-  TrendingUp, Clock, Target, Layers, KeyRound,
+  TrendingUp, Clock, Target, Layers, KeyRound, Activity, Zap,
+  MousePointerClick, Timer,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 const COLORS = [
   "hsl(25, 95%, 53%)", "hsl(199, 89%, 48%)", "hsl(142, 71%, 45%)",
