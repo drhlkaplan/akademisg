@@ -6,210 +6,159 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-function getContentTypeByPath(path: string, upstreamContentType?: string | null): string {
-  const extension = path.split(".").pop()?.split("?")[0]?.toLowerCase() ?? "";
-  const mimeMap: Record<string, string> = {
-    html: "text/html; charset=utf-8",
-    htm: "text/html; charset=utf-8",
-    js: "application/javascript; charset=utf-8",
-    mjs: "application/javascript; charset=utf-8",
-    css: "text/css; charset=utf-8",
-    json: "application/json; charset=utf-8",
-    xml: "application/xml; charset=utf-8",
-    svg: "image/svg+xml",
-    png: "image/png",
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    gif: "image/gif",
-    webp: "image/webp",
-    ico: "image/x-icon",
-    woff: "font/woff",
-    woff2: "font/woff2",
-    ttf: "font/ttf",
-    otf: "font/otf",
-    eot: "application/vnd.ms-fontobject",
-    mp4: "video/mp4",
-    webm: "video/webm",
-    mp3: "audio/mpeg",
-    wav: "audio/wav",
-    ogg: "audio/ogg",
-    pdf: "application/pdf",
-    txt: "text/plain; charset=utf-8",
-    swf: "application/x-shockwave-flash",
-  };
-  if (mimeMap[extension]) return mimeMap[extension];
-  if (upstreamContentType && upstreamContentType !== "application/octet-stream") return upstreamContentType;
-  return "application/octet-stream";
+// ─── Stateless session token (HMAC-SHA256) ───────────────────────────────────
+
+async function createSessionToken(
+  payload: { userId: string; courseId: string; folderPath: string; exp: number },
+  secret: string,
+): Promise<string> {
+  const payloadStr = JSON.stringify(payload);
+  const payloadB64 = btoa(payloadStr);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payloadB64));
+  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig)));
+  return `${payloadB64}.${sigB64}`;
 }
 
-function buildScorm12ApiScript(parentOrigin: string, initialData: Record<string, string>): string {
-  return `<script>
-(function() {
-  var _initialized = false, _finished = false, _lastError = '0';
-  var _parentOrigin = ${JSON.stringify(parentOrigin)};
-  var cmiData = {
-    'cmi.core.lesson_status': ${JSON.stringify(initialData.lesson_status || "not attempted")},
-    'cmi.core.lesson_location': ${JSON.stringify(initialData.lesson_location || "")},
-    'cmi.suspend_data': ${JSON.stringify(initialData.suspend_data || "")},
-    'cmi.core.score.raw': ${JSON.stringify(initialData.score_raw || "")},
-    'cmi.core.score.min': ${JSON.stringify(initialData.score_min || "0")},
-    'cmi.core.score.max': ${JSON.stringify(initialData.score_max || "100")},
-    'cmi.core.total_time': ${JSON.stringify(initialData.total_time || "0000:00:00")},
-    'cmi.core.session_time': '0000:00:00',
-    'cmi.core.student_id': '', 'cmi.core.student_name': '',
-    'cmi.core.credit': 'credit',
-    'cmi.core.entry': ${JSON.stringify(initialData.lesson_status && initialData.lesson_status !== "not attempted" ? "resume" : "ab-initio")},
-    'cmi.core.exit': '', 'cmi.core.lesson_mode': 'normal',
-    'cmi.launch_data': '', 'cmi.comments': '', 'cmi.comments_from_lms': ''
-  };
-  function sendToParent(method) {
-    try {
-      window.parent.postMessage({ type: 'scorm_api_event', method: method, data: {
-        lesson_status: cmiData['cmi.core.lesson_status'],
-        lesson_location: cmiData['cmi.core.lesson_location'],
-        suspend_data: cmiData['cmi.suspend_data'],
-        score_raw: cmiData['cmi.core.score.raw'],
-        total_time: cmiData['cmi.core.total_time'],
-        session_time: cmiData['cmi.core.session_time'],
-        exit: cmiData['cmi.core.exit']
-      }}, _parentOrigin);
-    } catch(e) {}
+async function verifySessionToken(
+  token: string,
+  secret: string,
+): Promise<{ userId: string; courseId: string; folderPath: string; exp: number } | null> {
+  const parts = token.split(".");
+  if (parts.length !== 2) return null;
+  const [payloadB64, sigB64] = parts;
+  try {
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["verify"],
+    );
+    const sigBytes = Uint8Array.from(atob(sigB64), (c) => c.charCodeAt(0));
+    const valid = await crypto.subtle.verify("HMAC", key, sigBytes, new TextEncoder().encode(payloadB64));
+    if (!valid) return null;
+    const payload = JSON.parse(atob(payloadB64));
+    if (payload.exp < Date.now()) return null;
+    return payload;
+  } catch {
+    return null;
   }
-  var API = {
-    LMSInitialize: function() { _initialized = true; _finished = false; _lastError = '0'; sendToParent('LMSInitialize'); return 'true'; },
-    LMSFinish: function() { if (!_initialized) { _lastError = '301'; return 'false'; } _finished = true; _initialized = false; _lastError = '0'; sendToParent('LMSFinish'); return 'true'; },
-    LMSGetValue: function(el) { if (!_initialized) { _lastError = '301'; return ''; } _lastError = '0'; if (el in cmiData) return cmiData[el]; if (el.match(/_count$/)) return '0'; return ''; },
-    LMSSetValue: function(el, val) { if (!_initialized) { _lastError = '301'; return 'false'; } _lastError = '0'; cmiData[el] = val; return 'true'; },
-    LMSCommit: function() { if (!_initialized) { _lastError = '301'; return 'false'; } _lastError = '0'; sendToParent('LMSCommit'); return 'true'; },
-    LMSGetLastError: function() { return _lastError; },
-    LMSGetErrorString: function(c) { return {'0':'No Error','101':'General Exception','301':'Not initialized','401':'Not implemented'}[c]||'Unknown'; },
-    LMSGetDiagnostic: function(c) { return c||''; }
-  };
-  window.API = API;
-})();
-<\/script>`;
 }
 
-function buildScorm2004ApiScript(parentOrigin: string, initialData: Record<string, string>): string {
-  const completionStatus =
-    initialData.lesson_status === "completed" || initialData.lesson_status === "passed"
-      ? "completed"
-      : initialData.lesson_status === "incomplete"
-        ? "incomplete"
-        : "unknown";
-  const successStatus =
-    initialData.lesson_status === "passed" ? "passed" : initialData.lesson_status === "failed" ? "failed" : "unknown";
-  const totalTime12 = initialData.total_time || "0000:00:00";
-  const tp = totalTime12.split(":");
-  const isoTotal =
-    tp.length === 3 ? "PT" + parseInt(tp[0]) + "H" + parseInt(tp[1]) + "M" + parseInt(tp[2]) + "S" : "PT0S";
+// ─── Auth helper ─────────────────────────────────────────────────────────────
 
-  return `<script>
-(function() {
-  var _initialized = false, _terminated = false, _lastError = '0';
-  var _parentOrigin = ${JSON.stringify(parentOrigin)};
-  var cmiData = {
-    'cmi.completion_status': ${JSON.stringify(completionStatus)},
-    'cmi.success_status': ${JSON.stringify(successStatus)},
-    'cmi.location': ${JSON.stringify(initialData.lesson_location || "")},
-    'cmi.suspend_data': ${JSON.stringify(initialData.suspend_data || "")},
-    'cmi.score.raw': ${JSON.stringify(initialData.score_raw || "")},
-    'cmi.score.min': '0', 'cmi.score.max': '100',
-    'cmi.score.scaled': ${JSON.stringify(initialData.score_raw ? (parseFloat(initialData.score_raw) / 100).toString() : "")},
-    'cmi.total_time': ${JSON.stringify(isoTotal)},
-    'cmi.session_time': 'PT0S',
-    'cmi.learner_id': '', 'cmi.learner_name': '',
-    'cmi.credit': 'credit',
-    'cmi.entry': ${JSON.stringify(completionStatus !== "unknown" ? "resume" : "ab-initio")},
-    'cmi.exit': '', 'cmi.mode': 'normal',
-    'cmi.launch_data': '',
-    'cmi.interactions._count': '0', 'cmi.objectives._count': '0',
-    'cmi.comments_from_learner._count': '0', 'cmi.comments_from_lms._count': '0',
-    'cmi.learner_preference.audio_level': '1', 'cmi.learner_preference.language': '',
-    'cmi.learner_preference.delivery_speed': '1', 'cmi.learner_preference.audio_captioning': '0',
-    'cmi.completion_threshold': '', 'cmi.scaled_passing_score': '', 'cmi.progress_measure': '',
-    'adl.nav.request': '_none_'
-  };
-  function sendToParent(method) {
-    try {
-      var ls = cmiData['cmi.completion_status'] || 'unknown';
-      var ss = cmiData['cmi.success_status'] || 'unknown';
-      var ns = ss === 'passed' ? 'passed' : ss === 'failed' ? 'failed' : ls === 'completed' ? 'completed' : ls === 'incomplete' ? 'incomplete' : 'not attempted';
-      window.parent.postMessage({ type: 'scorm_api_event', method: method, scormVersion: '2004', data: {
-        lesson_status: ns, lesson_location: cmiData['cmi.location'] || '',
-        suspend_data: cmiData['cmi.suspend_data'] || '',
-        score_raw: cmiData['cmi.score.raw'] || '',
-        total_time: cmiData['cmi.total_time'] || 'PT0S',
-        session_time: cmiData['cmi.session_time'] || 'PT0S',
-        exit: cmiData['cmi.exit'] || '',
-        completion_status: cmiData['cmi.completion_status'],
-        success_status: cmiData['cmi.success_status'],
-        progress_measure: cmiData['cmi.progress_measure'] || '',
-        nav_request: cmiData['adl.nav.request'] || '_none_'
-      }}, _parentOrigin);
-    } catch(e) {}
-  }
-  var API_1484_11 = {
-    Initialize: function(p) { if (_initialized) { _lastError = '103'; return 'false'; } _initialized = true; _terminated = false; _lastError = '0'; sendToParent('Initialize'); return 'true'; },
-    Terminate: function(p) { if (!_initialized) { _lastError = '112'; return 'false'; } _terminated = true; _initialized = false; _lastError = '0'; sendToParent('Terminate'); return 'true'; },
-    GetValue: function(el) { if (!_initialized) { _lastError = '122'; return ''; } _lastError = '0'; if (el in cmiData) return cmiData[el]; if (el.match(/\\._count$/)) return '0'; return ''; },
-    SetValue: function(el, val) {
-      if (!_initialized) { _lastError = '132'; return 'false'; }
-      _lastError = '0'; cmiData[el] = val;
-      var cm = el.match(/^cmi\\.(interactions|objectives|comments_from_learner)\\.(\\d+)\\./);
-      if (cm) { var ck = 'cmi.' + cm[1] + '._count'; var cv = parseInt(cmiData[ck]||'0'); if (parseInt(cm[2]) >= cv) cmiData[ck] = String(parseInt(cm[2])+1); }
-      return 'true';
-    },
-    Commit: function(p) { if (!_initialized) { _lastError = '142'; return 'false'; } _lastError = '0'; sendToParent('Commit'); return 'true'; },
-    GetLastError: function() { return _lastError; },
-    GetErrorString: function(c) { var m={'0':'No Error','101':'General Exception','103':'Already Initialized','112':'Termination Before Init','113':'Termination After Termination','122':'Retrieve Data Before Init','132':'Store Data Before Init','142':'Commit Before Init','401':'Undefined Data Model'}; return m[c]||'Unknown Error'; },
-    GetDiagnostic: function(c) { return c||''; }
-  };
-  window.API_1484_11 = API_1484_11;
-})();
-<\/script>`;
-}
-
-function buildScormApiScript(parentOrigin: string, initialData: Record<string, string>, version?: string): string {
-  if (version && version.startsWith("2004")) {
-    return buildScorm2004ApiScript(parentOrigin, initialData);
-  }
-  return buildScorm12ApiScript(parentOrigin, initialData);
-}
-
-/**
- * Authenticate the request: extract JWT from Authorization header,
- * verify via Supabase auth, and return the user ID.
- * Returns null if unauthenticated.
- */
 async function authenticateRequest(req: Request): Promise<string | null> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return null;
-
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-
   const userClient = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authHeader } },
   });
-
-  const { data, error } = await userClient.auth.getUser();
-  if (error || !data?.user) return null;
-  return data.user.id;
+  const token = authHeader.replace("Bearer ", "");
+  const { data, error } = await userClient.auth.getClaims(token);
+  if (error || !data?.claims) return null;
+  return data.claims.sub as string;
 }
+
+// ─── Enrollment verification ─────────────────────────────────────────────────
+
+async function verifyAccess(
+  adminClient: ReturnType<typeof createClient>,
+  userId: string,
+  courseId: string,
+): Promise<boolean> {
+  const { data: enrollment } = await adminClient
+    .from("enrollments")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("course_id", courseId)
+    .in("status", ["active", "pending", "completed"])
+    .limit(1)
+    .maybeSingle();
+  if (enrollment) return true;
+  const { data: isAdmin } = await adminClient.rpc("is_admin", { _user_id: userId });
+  return !!isAdmin;
+}
+
+// ─── Main handler ────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!supabaseUrl || !serviceRoleKey) {
-      return new Response("Server misconfiguration", { status: 500, headers: corsHeaders });
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceRoleKey) {
+    return new Response("Server misconfiguration", { status: 500, headers: corsHeaders });
+  }
+
+  const reqUrl = new URL(req.url);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MODE 1: Token-based redirect (GET with ?t= parameter)
+  // Used by <base> tag for sub-resource loading — NO auth header required
+  // Returns 302 redirect to a signed storage URL
+  // ═══════════════════════════════════════════════════════════════════════════
+  const sessionToken = reqUrl.searchParams.get("t");
+  if (sessionToken && req.method === "GET") {
+    const tokenPayload = await verifySessionToken(sessionToken, serviceRoleKey);
+    if (!tokenPayload) {
+      return new Response(JSON.stringify({ error: "Invalid or expired session" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // --- Authentication: require a valid user session ---
+    // Extract the sub-resource path from the URL
+    const marker = "/scorm-proxy/";
+    const markerIndex = reqUrl.pathname.indexOf(marker);
+    let subPath = "";
+    if (markerIndex !== -1) {
+      subPath = decodeURIComponent(reqUrl.pathname.slice(markerIndex + marker.length));
+      subPath = subPath.replace(/^\/?(?:___\/)+/, "");
+    }
+
+    // Build full storage path
+    const storagePath = subPath
+      ? `${tokenPayload.folderPath}/${subPath}`
+      : tokenPayload.folderPath;
+
+    console.log("scorm-proxy redirect:", storagePath);
+
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const { data: signedUrlData, error: signedUrlError } = await adminClient.storage
+      .from("scorm-packages")
+      .createSignedUrl(storagePath, 300);
+
+    if (signedUrlError || !signedUrlData?.signedUrl) {
+      return new Response("File not found", { status: 404, headers: corsHeaders });
+    }
+
+    // 302 redirect — no file streaming
+    return new Response(null, {
+      status: 302,
+      headers: {
+        ...corsHeaders,
+        Location: signedUrlData.signedUrl,
+        "Cache-Control": "private, max-age=240",
+      },
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MODE 2: Authenticated JSON API (POST with Authorization header)
+  // Returns signed URL + session token for SCORM player initialization
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (req.method === "POST") {
     const userId = await authenticateRequest(req);
     if (!userId) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -218,131 +167,104 @@ Deno.serve(async (req) => {
       });
     }
 
-    const reqUrl = new URL(req.url);
-    const { pathname } = reqUrl;
-    const marker = "/scorm-proxy/";
-    const markerIndex = pathname.indexOf(marker);
-    if (markerIndex === -1) {
-      return new Response("Invalid path", { status: 400, headers: corsHeaders });
-    }
-
-    let objectPath = decodeURIComponent(pathname.slice(markerIndex + marker.length));
-    objectPath = objectPath.replace(/^\/?(?:___\/)+/, "");
-    console.log("scorm-proxy resolved path:", objectPath);
-    if (!objectPath) {
-      return new Response("Missing object path", { status: 400, headers: corsHeaders });
+    let body: {
+      action: string;
+      folderPath: string;
+      filePath?: string;
+      courseId: string;
+    };
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid request body" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // --- Enrollment check: verify user is enrolled in the course that owns this SCORM package ---
-    // Extract courseId from the path (first segment is typically the course ID)
-    const pathSegments = objectPath.split("/");
-    const courseIdCandidate = pathSegments[0];
+    // Verify enrollment
+    const hasAccess = await verifyAccess(adminClient, userId, body.courseId);
+    if (!hasAccess) {
+      return new Response(JSON.stringify({ error: "Not enrolled in this course" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    if (courseIdCandidate) {
-      const { data: enrollment } = await adminClient
-        .from("enrollments")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("course_id", courseIdCandidate)
-        .in("status", ["active", "pending", "completed"])
-        .limit(1)
-        .maybeSingle();
+    // ── ACTION: sign — return signed URL for a specific file ──
+    if (body.action === "sign") {
+      const storagePath = body.filePath
+        ? `${body.folderPath}/${body.filePath}`
+        : body.folderPath;
 
-      // Also check if user is admin (admins can access all content)
-      const { data: isAdmin } = await adminClient.rpc("is_admin", { _user_id: userId });
+      const { data, error } = await adminClient.storage
+        .from("scorm-packages")
+        .createSignedUrl(storagePath, 300);
 
-      if (!enrollment && !isAdmin) {
-        return new Response(JSON.stringify({ error: "Not enrolled in this course" }), {
-          status: 403,
+      if (error || !data?.signedUrl) {
+        return new Response(JSON.stringify({ error: "File not found" }), {
+          status: 404,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+
+      // Generate session token for sub-resource loading (5 min expiry)
+      const token = await createSessionToken(
+        {
+          userId,
+          courseId: body.courseId,
+          folderPath: body.folderPath,
+          exp: Date.now() + 5 * 60 * 1000,
+        },
+        serviceRoleKey,
+      );
+
+      const proxyBase = `${supabaseUrl}/functions/v1/scorm-proxy`;
+
+      return new Response(
+        JSON.stringify({
+          signedUrl: data.signedUrl,
+          sessionToken: token,
+          baseRedirectUrl: proxyBase,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
-    // --- LIST MODE: return directory listing as JSON ---
-    if (reqUrl.searchParams.get("list") === "1") {
-      const listPath = objectPath.replace(/\/+$/, "");
-      const { data, error } = await adminClient.storage.from("scorm-packages").list(listPath, { limit: 500 });
+    // ── ACTION: list — return directory listing ──
+    if (body.action === "list") {
+      const listPath = body.folderPath.replace(/\/+$/, "");
+      const subPath = body.filePath ? `${listPath}/${body.filePath}` : listPath;
+      const { data, error } = await adminClient.storage
+        .from("scorm-packages")
+        .list(subPath, { limit: 500 });
+
       if (error) {
         return new Response(JSON.stringify({ error: error.message }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+
       return new Response(JSON.stringify(data || []), {
         status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=300" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // --- FILE MODE: serve file via signed URL (bucket is now private) ---
-    const { data: signedUrlData, error: signedUrlError } = await adminClient.storage
-      .from("scorm-packages")
-      .createSignedUrl(objectPath, 300);
-
-    if (signedUrlError || !signedUrlData?.signedUrl) {
-      return new Response("File not found", { status: 404, headers: corsHeaders });
-    }
-
-    const upstream = await fetch(signedUrlData.signedUrl, { method: "GET" });
-    if (!upstream.ok) {
-      const body = await upstream.arrayBuffer();
-      return new Response(body, {
-        status: upstream.status,
-        headers: { ...corsHeaders, "Content-Type": upstream.headers.get("Content-Type") ?? "text/plain" },
-      });
-    }
-
-    const contentType = getContentTypeByPath(objectPath, upstream.headers.get("Content-Type"));
-    let body = await upstream.arrayBuffer();
-
-    // Inject SCORM API into HTML when requested
-    const shouldInjectScorm = reqUrl.searchParams.get("scorm") === "1" && contentType.includes("text/html");
-    if (shouldInjectScorm) {
-      const htmlText = new TextDecoder().decode(body);
-      const parentOrigin = reqUrl.searchParams.get("origin") || "*";
-      const initialData: Record<string, string> = {};
-      for (const key of [
-        "lesson_status",
-        "lesson_location",
-        "suspend_data",
-        "score_raw",
-        "score_min",
-        "score_max",
-        "total_time",
-      ]) {
-        const val = reqUrl.searchParams.get(key);
-        if (val) initialData[key] = val;
-      }
-      const scormVersionParam = reqUrl.searchParams.get("scorm_version") || undefined;
-      const scormScript = buildScormApiScript(parentOrigin, initialData, scormVersionParam);
-      let modifiedHtml: string;
-      if (htmlText.match(/<head[^>]*>/i)) {
-        modifiedHtml = htmlText.replace(/<head[^>]*>/i, `$&\n${scormScript}`);
-      } else {
-        modifiedHtml = scormScript + htmlText;
-      }
-      body = new TextEncoder().encode(modifiedHtml).buffer;
-    }
-
-    return new Response(body, {
-      status: 200,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": contentType,
-        "Content-Security-Policy":
-          "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data: blob:; media-src * data: blob:; font-src * data:",
-        "X-Content-Type-Options": "nosniff",
-        "Cache-Control": shouldInjectScorm ? "no-cache" : "public, max-age=3600",
-      },
-    });
-  } catch (error) {
-    console.error("scorm-proxy error", error);
-    return new Response("Internal server error", {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "text/plain" },
+    return new Response(JSON.stringify({ error: "Unknown action" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
+
+  return new Response(JSON.stringify({ error: "Method not allowed" }), {
+    status: 405,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 });
