@@ -88,6 +88,115 @@ async function verifyAccess(
   return !!isAdmin;
 }
 
+// ─── Manifest parser ─────────────────────────────────────────────────────────
+
+interface ParsedSco {
+  identifier: string;
+  title: string;
+  launchPath: string;
+  parameters?: string;
+  orderIndex: number;
+  scormType: string;
+}
+
+interface ParsedManifest {
+  version: string;
+  defaultOrganization: string;
+  scos: ParsedSco[];
+  title: string;
+}
+
+function parseManifestXml(xmlContent: string): ParsedManifest | null {
+  try {
+    // Use a simple regex-based parser since DOMParser isn't available in Deno
+    const version = detectScormVersion(xmlContent);
+    const title = extractTag(xmlContent, "organization", "title") || "Untitled";
+    const defaultOrg = extractAttr(xmlContent, "organizations", "default") || "";
+
+    // Extract resources
+    const resourceMap = new Map<string, { href: string; type: string }>();
+    const resourceRegex = /<resource\s+([^>]*)\/?>(?:[\s\S]*?<\/resource>)?/gi;
+    let match;
+    while ((match = resourceRegex.exec(xmlContent)) !== null) {
+      const attrs = match[1];
+      const id = getAttr(attrs, "identifier");
+      const href = getAttr(attrs, "href");
+      const type = getAttr(attrs, "adlcp:scormtype") || getAttr(attrs, "adlcp:scormType") || getAttr(attrs, "scormType") || "sco";
+      if (id) resourceMap.set(id, { href: href || "", type });
+    }
+
+    // Extract items
+    const scos: ParsedSco[] = [];
+    const itemRegex = /<item\s+([^>]*)>[\s\S]*?<title>([^<]*)<\/title>/gi;
+    while ((match = itemRegex.exec(xmlContent)) !== null) {
+      const attrs = match[1];
+      const itemTitle = match[2].trim();
+      const identifier = getAttr(attrs, "identifier") || `item_${scos.length}`;
+      const identifierref = getAttr(attrs, "identifierref");
+      const parameters = getAttr(attrs, "parameters");
+
+      if (identifierref && resourceMap.has(identifierref)) {
+        const resource = resourceMap.get(identifierref)!;
+        if (resource.href) {
+          scos.push({
+            identifier,
+            title: itemTitle,
+            launchPath: resource.href,
+            parameters: parameters || undefined,
+            orderIndex: scos.length,
+            scormType: resource.type === "asset" ? "asset" : "sco",
+          });
+        }
+      }
+    }
+
+    // Fallback: if no items found, use resources directly
+    if (scos.length === 0) {
+      let idx = 0;
+      for (const [id, res] of resourceMap) {
+        if (res.href && (res.href.endsWith(".html") || res.href.endsWith(".htm"))) {
+          scos.push({
+            identifier: id,
+            title: id,
+            launchPath: res.href,
+            orderIndex: idx++,
+            scormType: res.type === "asset" ? "asset" : "sco",
+          });
+        }
+      }
+    }
+
+    return { version, defaultOrganization: defaultOrg, scos, title };
+  } catch {
+    return null;
+  }
+}
+
+function detectScormVersion(xml: string): string {
+  if (xml.includes("2004")) return "2004";
+  if (xml.includes("CAM 1.3")) return "2004";
+  if (xml.includes("adlseq") || xml.includes("imsss")) return "2004";
+  return "1.2";
+}
+
+function getAttr(attrStr: string, name: string): string {
+  const regex = new RegExp(`${name}\\s*=\\s*["']([^"']*)["']`, "i");
+  const match = attrStr.match(regex);
+  return match ? match[1] : "";
+}
+
+function extractTag(xml: string, parent: string, child: string): string {
+  const regex = new RegExp(`<${parent}[^>]*>[\\s\\S]*?<${child}>([^<]*)<\\/${child}>`, "i");
+  const match = xml.match(regex);
+  return match ? match[1].trim() : "";
+}
+
+function extractAttr(xml: string, tag: string, attr: string): string {
+  const regex = new RegExp(`<${tag}\\s+[^>]*${attr}\\s*=\\s*["']([^"']*)["']`, "i");
+  const match = xml.match(regex);
+  return match ? match[1] : "";
+}
+
 // ─── Main handler ────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -105,8 +214,7 @@ Deno.serve(async (req) => {
 
   // ═══════════════════════════════════════════════════════════════════════════
   // MODE 1: Token-based redirect (GET with ?t= parameter)
-  // Used by <base> tag for sub-resource loading — NO auth header required
-  // Returns 302 redirect to a signed storage URL
+  // Sub-resource loading — NO auth header required
   // ═══════════════════════════════════════════════════════════════════════════
   const sessionToken = reqUrl.searchParams.get("t");
   if (sessionToken && req.method === "GET") {
@@ -118,7 +226,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Extract the sub-resource path from the URL
     const marker = "/scorm-proxy/";
     const markerIndex = reqUrl.pathname.indexOf(marker);
     let subPath = "";
@@ -127,12 +234,9 @@ Deno.serve(async (req) => {
       subPath = subPath.replace(/^\/?(?:___\/)+/, "");
     }
 
-    // Build full storage path
     const storagePath = subPath
       ? `${tokenPayload.folderPath}/${subPath}`
       : tokenPayload.folderPath;
-
-    console.log("scorm-proxy redirect:", storagePath);
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
     const { data: signedUrlData, error: signedUrlError } = await adminClient.storage
@@ -143,7 +247,6 @@ Deno.serve(async (req) => {
       return new Response("File not found", { status: 404, headers: corsHeaders });
     }
 
-    // 302 redirect — no file streaming
     return new Response(null, {
       status: 302,
       headers: {
@@ -156,7 +259,6 @@ Deno.serve(async (req) => {
 
   // ═══════════════════════════════════════════════════════════════════════════
   // MODE 2: Authenticated JSON API (POST with Authorization header)
-  // Returns signed URL + session token for SCORM player initialization
   // ═══════════════════════════════════════════════════════════════════════════
   if (req.method === "POST") {
     const userId = await authenticateRequest(req);
@@ -172,6 +274,7 @@ Deno.serve(async (req) => {
       folderPath: string;
       filePath?: string;
       courseId: string;
+      packageId?: string;
     };
     try {
       body = await req.json();
@@ -184,7 +287,6 @@ Deno.serve(async (req) => {
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Verify enrollment
     const hasAccess = await verifyAccess(adminClient, userId, body.courseId);
     if (!hasAccess) {
       return new Response(JSON.stringify({ error: "Not enrolled in this course" }), {
@@ -193,7 +295,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── ACTION: sign — return signed URL for a specific file ──
+    // ── ACTION: sign ──
     if (body.action === "sign") {
       const storagePath = body.filePath
         ? `${body.folderPath}/${body.filePath}`
@@ -210,7 +312,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Generate session token for sub-resource loading (5 min expiry)
       const token = await createSessionToken(
         {
           userId,
@@ -236,7 +337,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ── ACTION: list — return directory listing ──
+    // ── ACTION: list ──
     if (body.action === "list") {
       const listPath = body.folderPath.replace(/\/+$/, "");
       const subPath = body.filePath ? `${listPath}/${body.filePath}` : listPath;
@@ -252,6 +353,73 @@ Deno.serve(async (req) => {
       }
 
       return new Response(JSON.stringify(data || []), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── ACTION: parse-manifest ──
+    // Parses imsmanifest.xml, detects SCORM version/SCOs, optionally saves to DB
+    if (body.action === "parse-manifest") {
+      const manifestPath = `${body.folderPath}/imsmanifest.xml`;
+
+      // Download manifest from storage
+      const { data: fileData, error: downloadError } = await adminClient.storage
+        .from("scorm-packages")
+        .download(manifestPath);
+
+      if (downloadError || !fileData) {
+        return new Response(JSON.stringify({ error: "imsmanifest.xml not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const xmlContent = await fileData.text();
+      const manifest = parseManifestXml(xmlContent);
+
+      if (!manifest) {
+        return new Response(JSON.stringify({ error: "Failed to parse manifest" }), {
+          status: 422,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Save manifest data and SCOs to DB if packageId provided
+      if (body.packageId) {
+        // Update scorm_packages with manifest data and detected version
+        await adminClient
+          .from("scorm_packages")
+          .update({
+            manifest_data: manifest as any,
+            scorm_version: manifest.version,
+            entry_point: manifest.scos.length > 0 ? manifest.scos[0].launchPath : null,
+          })
+          .eq("id", body.packageId);
+
+        // Delete existing SCOs for this package
+        await adminClient
+          .from("scorm_scos")
+          .delete()
+          .eq("package_id", body.packageId);
+
+        // Insert new SCOs
+        if (manifest.scos.length > 0) {
+          const scoRows = manifest.scos.map((sco) => ({
+            package_id: body.packageId!,
+            identifier: sco.identifier,
+            title: sco.title,
+            launch_path: sco.launchPath,
+            parameters: sco.parameters || null,
+            order_index: sco.orderIndex,
+            scorm_type: sco.scormType,
+          }));
+
+          await adminClient.from("scorm_scos").insert(scoRows);
+        }
+      }
+
+      return new Response(JSON.stringify(manifest), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

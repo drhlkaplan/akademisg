@@ -890,6 +890,7 @@ export type Database = {
           created_at: string | null
           entry_point: string | null
           id: string
+          manifest_data: Json | null
           package_url: string
           scorm_version: string | null
         }
@@ -898,6 +899,7 @@ export type Database = {
           created_at?: string | null
           entry_point?: string | null
           id?: string
+          manifest_data?: Json | null
           package_url: string
           scorm_version?: string | null
         }
@@ -906,6 +908,7 @@ export type Database = {
           created_at?: string | null
           entry_point?: string | null
           id?: string
+          manifest_data?: Json | null
           package_url?: string
           scorm_version?: string | null
         }
@@ -915,6 +918,105 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scorm_runtime_data: {
+        Row: {
+          cmi_key: string
+          cmi_value: string | null
+          enrollment_id: string
+          id: string
+          lesson_id: string | null
+          sco_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          cmi_key: string
+          cmi_value?: string | null
+          enrollment_id: string
+          id?: string
+          lesson_id?: string | null
+          sco_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          cmi_key?: string
+          cmi_value?: string | null
+          enrollment_id?: string
+          id?: string
+          lesson_id?: string | null
+          sco_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scorm_runtime_data_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scorm_runtime_data_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scorm_runtime_data_sco_id_fkey"
+            columns: ["sco_id"]
+            isOneToOne: false
+            referencedRelation: "scorm_scos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scorm_scos: {
+        Row: {
+          created_at: string | null
+          id: string
+          identifier: string
+          launch_path: string
+          order_index: number
+          package_id: string
+          parameters: string | null
+          scorm_type: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          identifier: string
+          launch_path: string
+          order_index?: number
+          package_id: string
+          parameters?: string | null
+          scorm_type?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          identifier?: string
+          launch_path?: string
+          order_index?: number
+          package_id?: string
+          parameters?: string | null
+          scorm_type?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scorm_scos_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "scorm_packages"
             referencedColumns: ["id"]
           },
         ]
@@ -1105,6 +1207,15 @@ export type Database = {
           _total_time?: number
         }
         Returns: string
+      }
+      save_scorm_runtime_data: {
+        Args: {
+          _cmi_data?: Json
+          _enrollment_id: string
+          _lesson_id: string
+          _sco_id?: string
+        }
+        Returns: undefined
       }
       update_enrollment_progress: {
         Args: {

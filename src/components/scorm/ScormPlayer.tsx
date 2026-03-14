@@ -1,18 +1,33 @@
+/**
+ * ScormPlayer — Production-grade SCORM 1.2 & 2004 player.
+ * Uses modular architecture: ScormApiAdapter, ScormProgressService,
+ * ScormManifestParser, and ScormControls.
+ *
+ * Features:
+ * - Signed URL + HMAC token based content delivery
+ * - postMessage-based SCORM API communication
+ * - Auto-resume from suspend_data
+ * - Netflix-style auto-hiding controls
+ * - Manifest parsing for entry point detection
+ * - Granular CMI runtime data persistence
+ */
+
 import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Loader2,
-  Maximize2,
-  Minimize2,
-  AlertTriangle,
-  RefreshCw,
-  SkipBack,
-  SkipForward,
-  Clock,
-  Award,
-} from "lucide-react";
+import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { buildScormApiScript, type ScormInitialData } from "./ScormApiAdapter";
+import {
+  persistScormProgress,
+  loadScormProgress,
+  trackLessonLaunch,
+  formatTime,
+  type ScormEventData,
+} from "./ScormProgressService";
+import { parseManifest, PRIORITY_ENTRY_FILES } from "./ScormManifestParser";
+import { ScormTopBar, ScormBottomBar } from "./ScormControls";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface ScormPlayerProps {
   packageUrl: string;
@@ -30,6 +45,8 @@ interface ScormPlayerProps {
   hasPrevious?: boolean;
   hasNext?: boolean;
 }
+
+// ─── Constants ───────────────────────────────────────────────────────────────
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const proxyUrl = `${supabaseUrl}/functions/v1/scorm-proxy`;
@@ -53,7 +70,6 @@ async function getAuthToken(): Promise<string | null> {
   return data.session?.access_token ?? null;
 }
 
-// Authenticated POST to proxy — returns JSON
 async function proxyPost(
   token: string,
   body: { action: string; folderPath: string; filePath?: string; courseId: string },
@@ -73,19 +89,12 @@ async function proxyPost(
   return res.json();
 }
 
-// ─── File resolution ─────────────────────────────────────────────────────────
+// ─── Entry file resolution ───────────────────────────────────────────────────
 
 interface StorageItem {
   name: string;
   id: string | null;
 }
-
-const PRIORITY_FILES = [
-  "story.html",
-  "index_lms.html",
-  "index_lms_html5.html",
-  "story_html5.html",
-];
 
 async function listFiles(
   token: string,
@@ -94,13 +103,12 @@ async function listFiles(
   courseId: string,
 ): Promise<StorageItem[]> {
   try {
-    const data = await proxyPost(token, {
+    return (await proxyPost(token, {
       action: "list",
       folderPath,
       filePath: subPath || undefined,
       courseId,
-    });
-    return data || [];
+    })) || [];
   } catch {
     return [];
   }
@@ -111,42 +119,11 @@ async function resolveEntryFile(
   folderPath: string,
   entryPoint: string,
   courseId: string,
-): Promise<string | null> {
+): Promise<{ entryFile: string | null; detectedVersion?: string }> {
   const rootFiles = await listFiles(token, folderPath, "", courseId);
   const rootFileNames = new Set(rootFiles.map((f) => f.name));
 
-  for (const file of PRIORITY_FILES) {
-    if (rootFileNames.has(file)) return file;
-  }
-
-  if (rootFileNames.has("scormcontent")) {
-    const subFiles = await listFiles(token, folderPath, "scormcontent", courseId);
-    if (subFiles.some((f) => f.name === "index.html")) return "scormcontent/index.html";
-  }
-
-  const sanitizedEntry = entryPoint.replace(/&/g, "_").replace(/ /g, "_");
-  const entryParts = sanitizedEntry.split("/");
-  if (entryParts.length > 1) {
-    for (let depth = entryParts.length - 1; depth >= 1; depth--) {
-      const subPath = entryParts.slice(0, depth).join("/");
-      const subFiles = await listFiles(token, folderPath, subPath, courseId);
-      const subFileNames = new Set(subFiles.map((f) => f.name));
-      for (const file of PRIORITY_FILES) {
-        if (subFileNames.has(file)) return `${subPath}/${file}`;
-      }
-    }
-  }
-
-  const subfolders = rootFiles.filter((f) => f.id === null);
-  for (const folder of subfolders) {
-    const subFiles = await listFiles(token, folderPath, folder.name, courseId);
-    const subFileNames = new Set(subFiles.map((f) => f.name));
-    for (const file of PRIORITY_FILES) {
-      if (subFileNames.has(file)) return `${folder.name}/${file}`;
-    }
-  }
-
-  // Try manifest parsing via signed URL
+  // 1. Try manifest parsing first for accurate detection
   if (rootFileNames.has("imsmanifest.xml")) {
     try {
       const { signedUrl } = await proxyPost(token, {
@@ -158,211 +135,56 @@ async function resolveEntryFile(
       const res = await fetch(signedUrl);
       if (res.ok) {
         const xml = await res.text();
-        const doc = new DOMParser().parseFromString(xml, "text/xml");
-        for (const resource of doc.querySelectorAll("resource")) {
-          const href = resource.getAttribute("href");
-          if (href?.endsWith(".html") && !href.toLowerCase().includes("aicccomm"))
-            return href;
+        const manifest = parseManifest(xml);
+        if (manifest && manifest.scos.length > 0) {
+          return {
+            entryFile: manifest.scos[0].launchPath,
+            detectedVersion: manifest.version,
+          };
         }
       }
-    } catch {}
+    } catch {
+      // Manifest parsing failed, continue with heuristics
+    }
   }
 
-  return null;
-}
-
-// ─── Time helpers ────────────────────────────────────────────────────────────
-
-function parseTimeToSeconds(timeStr: string): number {
-  const isoMatch = timeStr.match(
-    /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?$/,
-  );
-  if (isoMatch) {
-    return (
-      parseInt(isoMatch[1] || "0") * 3600 +
-      parseInt(isoMatch[2] || "0") * 60 +
-      Math.round(parseFloat(isoMatch[3] || "0"))
-    );
+  // 2. Priority file detection
+  for (const file of PRIORITY_ENTRY_FILES) {
+    if (rootFileNames.has(file)) return { entryFile: file };
   }
-  const parts = timeStr.split(":");
-  if (parts.length === 3)
-    return (
-      parseInt(parts[0]) * 3600 +
-      parseInt(parts[1]) * 60 +
-      parseInt(parts[2])
-    );
-  return 0;
-}
 
-function formatTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  return `${String(h).padStart(4, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-function formatDisplayTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) return `${h}s ${m}dk`;
-  if (m > 0) return `${m}dk ${s}sn`;
-  return `${s}sn`;
-}
-
-// ─── SCORM API scripts (injected into entry HTML) ────────────────────────────
-
-function buildScorm12ApiScript(initialData: Record<string, string>): string {
-  return `<script>
-(function() {
-  var _initialized = false, _finished = false, _lastError = '0';
-  var cmiData = {
-    'cmi.core.lesson_status': ${JSON.stringify(initialData.lesson_status || "not attempted")},
-    'cmi.core.lesson_location': ${JSON.stringify(initialData.lesson_location || "")},
-    'cmi.suspend_data': ${JSON.stringify(initialData.suspend_data || "")},
-    'cmi.core.score.raw': ${JSON.stringify(initialData.score_raw || "")},
-    'cmi.core.score.min': '0', 'cmi.core.score.max': '100',
-    'cmi.core.total_time': ${JSON.stringify(initialData.total_time || "0000:00:00")},
-    'cmi.core.session_time': '0000:00:00',
-    'cmi.core.student_id': '', 'cmi.core.student_name': '',
-    'cmi.core.credit': 'credit',
-    'cmi.core.entry': ${JSON.stringify(initialData.lesson_status && initialData.lesson_status !== "not attempted" ? "resume" : "ab-initio")},
-    'cmi.core.exit': '', 'cmi.core.lesson_mode': 'normal',
-    'cmi.launch_data': '', 'cmi.comments': '', 'cmi.comments_from_lms': ''
-  };
-  function sendToParent(method) {
-    try {
-      window.parent.postMessage({ type: 'scorm_api_event', method: method, data: {
-        lesson_status: cmiData['cmi.core.lesson_status'],
-        lesson_location: cmiData['cmi.core.lesson_location'],
-        suspend_data: cmiData['cmi.suspend_data'],
-        score_raw: cmiData['cmi.core.score.raw'],
-        total_time: cmiData['cmi.core.total_time'],
-        session_time: cmiData['cmi.core.session_time'],
-        exit: cmiData['cmi.core.exit']
-      }}, '*');
-    } catch(e) {}
+  // 3. Check scormcontent subfolder (Articulate Rise)
+  if (rootFileNames.has("scormcontent")) {
+    const subFiles = await listFiles(token, folderPath, "scormcontent", courseId);
+    if (subFiles.some((f) => f.name === "index.html"))
+      return { entryFile: "scormcontent/index.html" };
   }
-  var API = {
-    LMSInitialize: function() { _initialized = true; _finished = false; _lastError = '0'; sendToParent('LMSInitialize'); return 'true'; },
-    LMSFinish: function() { if (!_initialized) { _lastError = '301'; return 'false'; } _finished = true; _initialized = false; _lastError = '0'; sendToParent('LMSFinish'); return 'true'; },
-    LMSGetValue: function(el) { if (!_initialized) { _lastError = '301'; return ''; } _lastError = '0'; if (el in cmiData) return cmiData[el]; if (el.match(/_count$/)) return '0'; return ''; },
-    LMSSetValue: function(el, val) { if (!_initialized) { _lastError = '301'; return 'false'; } _lastError = '0'; cmiData[el] = val; return 'true'; },
-    LMSCommit: function() { if (!_initialized) { _lastError = '301'; return 'false'; } _lastError = '0'; sendToParent('LMSCommit'); return 'true'; },
-    LMSGetLastError: function() { return _lastError; },
-    LMSGetErrorString: function(c) { return {'0':'No Error','101':'General Exception','301':'Not initialized','401':'Not implemented'}[c]||'Unknown'; },
-    LMSGetDiagnostic: function(c) { return c||''; }
-  };
-  window.API = API;
-})();
-<\/script>`;
-}
 
-function buildScorm2004ApiScript(initialData: Record<string, string>): string {
-  const completionStatus =
-    initialData.lesson_status === "completed" || initialData.lesson_status === "passed"
-      ? "completed"
-      : initialData.lesson_status === "incomplete"
-        ? "incomplete"
-        : "unknown";
-  const successStatus =
-    initialData.lesson_status === "passed"
-      ? "passed"
-      : initialData.lesson_status === "failed"
-        ? "failed"
-        : "unknown";
-  const totalTime12 = initialData.total_time || "0000:00:00";
-  const tp = totalTime12.split(":");
-  const isoTotal =
-    tp.length === 3
-      ? "PT" + parseInt(tp[0]) + "H" + parseInt(tp[1]) + "M" + parseInt(tp[2]) + "S"
-      : "PT0S";
-
-  return `<script>
-(function() {
-  var _initialized = false, _terminated = false, _lastError = '0';
-  var cmiData = {
-    'cmi.completion_status': ${JSON.stringify(completionStatus)},
-    'cmi.success_status': ${JSON.stringify(successStatus)},
-    'cmi.location': ${JSON.stringify(initialData.lesson_location || "")},
-    'cmi.suspend_data': ${JSON.stringify(initialData.suspend_data || "")},
-    'cmi.score.raw': ${JSON.stringify(initialData.score_raw || "")},
-    'cmi.score.min': '0', 'cmi.score.max': '100',
-    'cmi.score.scaled': ${JSON.stringify(initialData.score_raw ? (parseFloat(initialData.score_raw) / 100).toString() : "")},
-    'cmi.total_time': ${JSON.stringify(isoTotal)},
-    'cmi.session_time': 'PT0S',
-    'cmi.learner_id': '', 'cmi.learner_name': '',
-    'cmi.credit': 'credit',
-    'cmi.entry': ${JSON.stringify(completionStatus !== "unknown" ? "resume" : "ab-initio")},
-    'cmi.exit': '', 'cmi.mode': 'normal', 'cmi.launch_data': '',
-    'cmi.comments_from_learner._count': '0', 'cmi.comments_from_lms._count': '0',
-    'cmi.interactions._count': '0', 'cmi.objectives._count': '0',
-    'cmi.learner_preference.audio_level': '1', 'cmi.learner_preference.language': '',
-    'cmi.learner_preference.delivery_speed': '1', 'cmi.learner_preference.audio_captioning': '0',
-    'cmi.completion_threshold': '', 'cmi.scaled_passing_score': '', 'cmi.progress_measure': '',
-    'adl.nav.request': '_none_'
-  };
-  function sendToParent(method) {
-    try {
-      var ls = cmiData['cmi.completion_status'] || 'unknown';
-      var ss = cmiData['cmi.success_status'] || 'unknown';
-      var ns = ss === 'passed' ? 'passed' : ss === 'failed' ? 'failed' : ls === 'completed' ? 'completed' : ls === 'incomplete' ? 'incomplete' : 'not attempted';
-      window.parent.postMessage({ type: 'scorm_api_event', method: method, scormVersion: '2004', data: {
-        lesson_status: ns, lesson_location: cmiData['cmi.location'] || '',
-        suspend_data: cmiData['cmi.suspend_data'] || '',
-        score_raw: cmiData['cmi.score.raw'] || '',
-        total_time: cmiData['cmi.total_time'] || 'PT0S',
-        session_time: cmiData['cmi.session_time'] || 'PT0S',
-        exit: cmiData['cmi.exit'] || '',
-        completion_status: cmiData['cmi.completion_status'],
-        success_status: cmiData['cmi.success_status'],
-        progress_measure: cmiData['cmi.progress_measure'] || '',
-        nav_request: cmiData['adl.nav.request'] || '_none_'
-      }}, '*');
-    } catch(e) {}
-  }
-  var API_1484_11 = {
-    Initialize: function(p) { if (_initialized) { _lastError = '103'; return 'false'; } _initialized = true; _terminated = false; _lastError = '0'; sendToParent('Initialize'); return 'true'; },
-    Terminate: function(p) { if (!_initialized) { _lastError = '112'; return 'false'; } if (_terminated) { _lastError = '113'; return 'false'; } _terminated = true; _initialized = false; _lastError = '0'; sendToParent('Terminate'); return 'true'; },
-    GetValue: function(el) {
-      if (!_initialized) { _lastError = '122'; return ''; }
-      _lastError = '0';
-      if (el in cmiData) return cmiData[el];
-      if (el.match(/\\._count$/)) return '0';
-      var match = el.match(/^cmi\\.(interactions|objectives|comments_from_learner)\\.(\\d+)\\./);
-      if (match && cmiData[el] !== undefined) return cmiData[el];
-      if (match) return '';
-      _lastError = '401'; return '';
-    },
-    SetValue: function(el, val) {
-      if (!_initialized) { _lastError = '132'; return 'false'; }
-      _lastError = '0'; cmiData[el] = val;
-      var cMatch = el.match(/^cmi\\.(interactions|objectives|comments_from_learner)\\.(\\d+)\\./);
-      if (cMatch) {
-        var countKey = 'cmi.' + cMatch[1] + '._count';
-        var current = parseInt(cmiData[countKey] || '0');
-        if (parseInt(cMatch[2]) >= current) cmiData[countKey] = String(parseInt(cMatch[2]) + 1);
+  // 4. Try nested entry point path
+  const sanitizedEntry = entryPoint.replace(/&/g, "_").replace(/ /g, "_");
+  const entryParts = sanitizedEntry.split("/");
+  if (entryParts.length > 1) {
+    for (let depth = entryParts.length - 1; depth >= 1; depth--) {
+      const subPath = entryParts.slice(0, depth).join("/");
+      const subFiles = await listFiles(token, folderPath, subPath, courseId);
+      const subFileNames = new Set(subFiles.map((f) => f.name));
+      for (const file of PRIORITY_ENTRY_FILES) {
+        if (subFileNames.has(file)) return { entryFile: `${subPath}/${file}` };
       }
-      return 'true';
-    },
-    Commit: function(p) { if (!_initialized) { _lastError = '142'; return 'false'; } _lastError = '0'; sendToParent('Commit'); return 'true'; },
-    GetLastError: function() { return _lastError; },
-    GetErrorString: function(c) { var m = {'0':'No Error','101':'General Exception','103':'Already Initialized','112':'Termination Before Init','113':'Termination After Termination','122':'Retrieve Data Before Init','132':'Store Data Before Init','142':'Commit Before Init','401':'Undefined Data Model'}; return m[c] || 'Unknown Error'; },
-    GetDiagnostic: function(c) { return c || ''; }
-  };
-  window.API_1484_11 = API_1484_11;
-})();
-<\/script>`;
-}
-
-function buildScormApiScript(
-  initialData: Record<string, string>,
-  version?: string,
-): string {
-  if (version && version.startsWith("2004")) {
-    return buildScorm2004ApiScript(initialData);
+    }
   }
-  return buildScorm12ApiScript(initialData);
+
+  // 5. Search subfolders
+  const subfolders = rootFiles.filter((f) => f.id === null);
+  for (const folder of subfolders) {
+    const subFiles = await listFiles(token, folderPath, folder.name, courseId);
+    const subFileNames = new Set(subFiles.map((f) => f.name));
+    for (const file of PRIORITY_ENTRY_FILES) {
+      if (subFileNames.has(file)) return { entryFile: `${folder.name}/${file}` };
+    }
+  }
+
+  return { entryFile: null };
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -384,39 +206,38 @@ export function ScormPlayer({
   hasNext = false,
 }: ScormPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const blobUrlRef = useRef<string | null>(null);
   const sessionStartRef = useRef<number>(Date.now());
+  const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [lessonStatus, setLessonStatus] = useState<string>("not attempted");
   const [scoreRaw, setScoreRaw] = useState<string>("");
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [showControls, setShowControls] = useState(true);
-  const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const [effectiveVersion, setEffectiveVersion] = useState<string | undefined>(scormVersion);
 
-  // Session timer
+  // ─── Session timer ───────────────────────────────────────────────────────
+
   useEffect(() => {
     sessionStartRef.current = Date.now();
     const interval = setInterval(() => {
-      setSessionSeconds(
-        Math.floor((Date.now() - sessionStartRef.current) / 1000),
-      );
+      setSessionSeconds(Math.floor((Date.now() - sessionStartRef.current) / 1000));
     }, 1000);
     return () => clearInterval(interval);
   }, [lessonId]);
 
-  // Auto-hide controls
+  // ─── Auto-hide controls ──────────────────────────────────────────────────
+
   const resetControlsTimer = useCallback(() => {
     setShowControls(true);
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-    controlsTimeoutRef.current = setTimeout(
-      () => setShowControls(false),
-      4000,
-    );
+    controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 4000);
   }, []);
 
   useEffect(() => {
@@ -426,100 +247,46 @@ export function ScormPlayer({
     };
   }, []);
 
-  // ─── Persist progress to DB ──────────────────────────────────────────────
+  // ─── Persist progress ────────────────────────────────────────────────────
 
-  const persistProgress = useCallback(
-    async (data: Record<string, string>, method: string) => {
+  const handlePersist = useCallback(
+    async (data: ScormEventData, method: string) => {
       try {
-        const status = data.lesson_status || "not attempted";
-        const score = data.score_raw ? parseFloat(data.score_raw) : null;
-        const totalTimeSeconds = data.total_time
-          ? parseTimeToSeconds(data.total_time)
-          : null;
-
-        setLessonStatus(status);
+        setLessonStatus(data.lesson_status || "not attempted");
         if (data.score_raw) setScoreRaw(data.score_raw);
 
-        await supabase.rpc("record_lesson_progress", {
-          _enrollment_id: enrollmentId,
-          _lesson_id: lessonId,
-          _lesson_status: status,
-          _score_raw: score,
-          _lesson_location: data.lesson_location || null,
-          _suspend_data: data.suspend_data || null,
-          _total_time: totalTimeSeconds,
-          _scorm_package_id: scormPackageId,
+        const { completed } = await persistScormProgress(data, method, {
+          enrollmentId,
+          lessonId,
+          scormPackageId,
+          userId,
+          courseTitle,
+          lessonTitle,
+          sessionSeconds,
         });
 
-        // xAPI tracking
-        try {
-          await supabase.from("xapi_statements").insert({
-            user_id: userId,
-            verb:
-              method === "LMSFinish" || method === "Terminate"
-                ? "terminated"
-                : method === "LMSCommit" || method === "Commit"
-                  ? "progressed"
-                  : "interacted",
-            object_type: "scorm_lesson",
-            object_id: lessonId,
-            result: {
-              completion: status === "completed" || status === "passed",
-              success: status === "passed",
-              score:
-                score != null ? { raw: score, min: 0, max: 100 } : null,
-              duration: `PT${sessionSeconds}S`,
-            },
-            context: {
-              enrollment_id: enrollmentId,
-              course_title: courseTitle || "",
-              lesson_title: lessonTitle || "",
-              scorm_method: method,
-            },
-          });
-        } catch {}
-
-        if (
-          (method === "LMSFinish" || method === "Terminate") &&
-          (status === "completed" || status === "passed")
-        ) {
-          onComplete?.();
-        }
+        if (completed) onComplete?.();
       } catch (err) {
         console.error("SCORM save error:", err);
       }
     },
-    [
-      enrollmentId,
-      lessonId,
-      scormPackageId,
-      onComplete,
-      userId,
-      sessionSeconds,
-      courseTitle,
-      lessonTitle,
-    ],
+    [enrollmentId, lessonId, scormPackageId, onComplete, userId, sessionSeconds, courseTitle, lessonTitle],
   );
 
-  // ─── Listen for SCORM postMessage events ─────────────────────────────────
+  // ─── Listen for postMessage events ───────────────────────────────────────
 
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (!event.data || event.data.type !== "scorm_api_event") return;
       const { method, data } = event.data;
-      const commitMethods = ["LMSCommit", "Commit"];
-      const finishMethods = ["LMSFinish", "Terminate"];
-      const initMethods = ["LMSInitialize", "Initialize"];
-      if (commitMethods.includes(method)) {
+
+      if (["LMSCommit", "Commit"].includes(method)) {
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-        saveTimeoutRef.current = setTimeout(
-          () => persistProgress(data, method),
-          2000,
-        );
-      } else if (finishMethods.includes(method)) {
+        saveTimeoutRef.current = setTimeout(() => handlePersist(data, method), 2000);
+      } else if (["LMSFinish", "Terminate"].includes(method)) {
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-        persistProgress(data, method);
-      } else if (initMethods.includes(method)) {
+        handlePersist(data, method);
+      } else if (["LMSInitialize", "Initialize"].includes(method)) {
         setLessonStatus(data.lesson_status || "not attempted");
       }
     };
@@ -528,9 +295,9 @@ export function ScormPlayer({
       window.removeEventListener("message", handler);
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [persistProgress]);
+  }, [handlePersist]);
 
-  // ─── Load SCORM content via signed URLs ──────────────────────────────────
+  // ─── Load SCORM content ──────────────────────────────────────────────────
 
   const loadContent = useCallback(async () => {
     setIsLoading(true);
@@ -557,32 +324,28 @@ export function ScormPlayer({
 
     const courseId = extractCourseId(folderPath);
 
-    // 1. Resolve entry file
-    const entryFile = await resolveEntryFile(
-      token,
-      folderPath,
-      entryPoint,
-      courseId,
-    );
+    // 1. Resolve entry file (with manifest-based version detection)
+    const { entryFile, detectedVersion } = await resolveEntryFile(token, folderPath, entryPoint, courseId);
     if (!entryFile) {
       setError("SCORM başlangıç dosyası bulunamadı.");
       setIsLoading(false);
       return;
     }
 
-    try {
-      // 2. Get signed URL + session token from proxy
-      const { signedUrl, sessionToken, baseRedirectUrl } = await proxyPost(
-        token,
-        {
-          action: "sign",
-          folderPath,
-          filePath: entryFile,
-          courseId,
-        },
-      );
+    // Use detected version if no explicit version was provided
+    const activeVersion = scormVersion || detectedVersion || "1.2";
+    setEffectiveVersion(activeVersion);
 
-      // 3. Fetch entry HTML via signed URL (no auth header needed)
+    try {
+      // 2. Get signed URL + session token
+      const { signedUrl, sessionToken, baseRedirectUrl } = await proxyPost(token, {
+        action: "sign",
+        folderPath,
+        filePath: entryFile,
+        courseId,
+      });
+
+      // 3. Fetch entry HTML
       const res = await fetch(signedUrl);
       if (!res.ok) {
         setError(`İçerik dosyası yüklenemedi (HTTP ${res.status}).`);
@@ -591,117 +354,55 @@ export function ScormPlayer({
       }
       let html = await res.text();
 
-      // 4. Load previous progress
-      const initialData: Record<string, string> = {};
-      try {
-        const { data: progress } = await supabase
-          .from("lesson_progress")
-          .select("*")
-          .eq("enrollment_id", enrollmentId)
-          .eq("lesson_id", lessonId)
-          .maybeSingle();
-        if (progress) {
-          if (progress.lesson_status) {
-            initialData.lesson_status = progress.lesson_status;
-            setLessonStatus(progress.lesson_status);
-          }
-          if (progress.lesson_location)
-            initialData.lesson_location = progress.lesson_location;
-          if (progress.suspend_data && progress.suspend_data.length < 4000)
-            initialData.suspend_data = progress.suspend_data;
-          if (progress.score_raw != null) {
-            initialData.score_raw = String(progress.score_raw);
-            setScoreRaw(String(progress.score_raw));
-          }
-          if (progress.total_time != null)
-            initialData.total_time = formatTime(progress.total_time);
-        }
-      } catch {}
+      // 4. Load previous progress for resume
+      const initialData = await loadScormProgress(enrollmentId, lessonId);
+      if (initialData.lesson_status) setLessonStatus(initialData.lesson_status);
+      if (initialData.score_raw) setScoreRaw(initialData.score_raw);
 
-      // 5. Build <base> tag pointing to token-based redirect proxy
-      //    Sub-resources will hit: /scorm-proxy/{folderPath}/{entryDir}/resource.js?t=sessionToken
-      //    The proxy will verify the token and 302 redirect to a signed storage URL
+      // 5. Build base tag for sub-resource loading via redirect proxy
       const entryDir = entryFile.includes("/")
         ? entryFile.substring(0, entryFile.lastIndexOf("/") + 1)
         : "";
-      const basePath = entryDir
-        ? `${baseRedirectUrl}/${entryDir}?t=${sessionToken}&_=/`
-        : `${baseRedirectUrl}/?t=${sessionToken}&_=/`;
-
-      // We need the base tag to include the session token in sub-resource URLs.
-      // Since <base href> applies to relative URLs, we use a clever trick:
-      // The base URL includes ?t=token and sub-resources append as path segments.
-      // However, this doesn't work cleanly with <base>. Instead, we rewrite
-      // the base to the redirect proxy path and use a service worker approach...
-      //
-      // Simpler approach: base tag points to redirect proxy folder path,
-      // and we append the session token via a script that intercepts requests.
-      //
-      // Simplest working approach: base tag = redirect proxy + folder path + entryDir
-      // with session token as query param. The proxy extracts the file path from URL.
       const baseUrl = entryDir
         ? `${baseRedirectUrl}/${folderPath}/${entryDir}`
         : `${baseRedirectUrl}/${folderPath}/`;
       const baseTagUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
-      // Append session token so all sub-resource requests include it
       const baseTagWithToken = `${baseTagUrl}?t=${encodeURIComponent(sessionToken)}&_=/`;
 
-      const scormScript = buildScormApiScript(initialData, scormVersion);
+      // 6. Build SCORM API script
+      const scormScript = buildScormApiScript(
+        initialData as ScormInitialData,
+        activeVersion,
+      );
       const baseTag = `<base href="${baseTagWithToken}">`;
 
-      // 6. Inject SCORM API + base tag into HTML
+      // 7. Inject into HTML
       if (html.match(/<head[^>]*>/i)) {
         html = html.replace(/<head[^>]*>/i, `$&\n${baseTag}\n${scormScript}`);
       } else if (html.match(/<html[^>]*>/i)) {
-        html = html.replace(
-          /<html[^>]*>/i,
-          `$&\n<head>${baseTag}\n${scormScript}</head>`,
-        );
+        html = html.replace(/<html[^>]*>/i, `$&\n<head>${baseTag}\n${scormScript}</head>`);
       } else {
         html = `<!DOCTYPE html><html><head>${baseTag}\n${scormScript}</head><body>${html}</body></html>`;
       }
 
-      // 7. Create blob URL for iframe
+      // 8. Create blob URL
       const blob = new Blob([html], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       blobUrlRef.current = url;
       setBlobUrl(url);
 
-      // xAPI: lesson launched
-      try {
-        await supabase.from("xapi_statements").insert({
-          user_id: userId,
-          verb: "launched",
-          object_type: "scorm_lesson",
-          object_id: lessonId,
-          context: {
-            enrollment_id: enrollmentId,
-            course_title: courseTitle || "",
-            lesson_title: lessonTitle || "",
-          },
-        });
-      } catch {}
+      // 9. Track launch
+      await trackLessonLaunch(userId, lessonId, enrollmentId, courseTitle, lessonTitle);
     } catch (err: any) {
       console.error("SCORM load error:", err);
       if (err.message?.includes("Unauthorized"))
-        setError(
-          "Oturumunuz sona ermiş. Lütfen sayfayı yenileyip tekrar giriş yapın.",
-        );
+        setError("Oturumunuz sona ermiş. Lütfen sayfayı yenileyip tekrar giriş yapın.");
       else if (err.message?.includes("Not enrolled"))
         setError("Bu eğitim içeriğine erişim yetkiniz yok.");
       else setError("Eğitim içeriği yüklenirken bir hata oluştu.");
       setIsLoading(false);
     }
-  }, [
-    packageUrl,
-    entryPoint,
-    enrollmentId,
-    lessonId,
-    userId,
-    courseTitle,
-    lessonTitle,
-    scormVersion,
-  ]);
+  }, [packageUrl, entryPoint, enrollmentId, lessonId, userId, courseTitle, lessonTitle, scormVersion]);
 
   useEffect(() => {
     loadContent();
@@ -713,15 +414,13 @@ export function ScormPlayer({
     };
   }, [loadContent]);
 
-  const handleIframeLoad = useCallback(() => {
-    setIsLoading(false);
-  }, []);
+  // ─── Fullscreen ──────────────────────────────────────────────────────────
 
-  const toggleFullscreen = () => {
+  const toggleFullscreen = useCallback(() => {
     if (!containerRef.current) return;
     if (!isFullscreen) containerRef.current.requestFullscreen?.();
     else document.exitFullscreen?.();
-  };
+  }, [isFullscreen]);
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
@@ -729,28 +428,7 @@ export function ScormPlayer({
     return () => document.removeEventListener("fullscreenchange", handler);
   }, []);
 
-  // ─── Status display config ────────────────────────────────────────────────
-
-  const statusConfig = {
-    "not attempted": {
-      label: "Başlanmadı",
-      color: "bg-muted text-muted-foreground",
-    },
-    incomplete: { label: "Devam Ediyor", color: "bg-warning/20 text-warning" },
-    completed: { label: "Tamamlandı", color: "bg-success/20 text-success" },
-    passed: { label: "Başarılı", color: "bg-success/20 text-success" },
-    failed: {
-      label: "Başarısız",
-      color: "bg-destructive/20 text-destructive",
-    },
-    browsed: { label: "İncelendi", color: "bg-info/20 text-info" },
-  };
-
-  const currentStatus =
-    statusConfig[lessonStatus as keyof typeof statusConfig] ||
-    statusConfig["not attempted"];
-
-  // ─── Render ────────────────────────────────────────────────────────────────
+  // ─── Render ──────────────────────────────────────────────────────────────
 
   if (error) {
     return (
@@ -758,12 +436,8 @@ export function ScormPlayer({
         <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center mb-4">
           <AlertTriangle className="h-8 w-8 text-destructive" />
         </div>
-        <h3 className="text-lg font-semibold text-foreground mb-2">
-          İçerik Yüklenemedi
-        </h3>
-        <p className="text-muted-foreground text-center mb-6 max-w-md">
-          {error}
-        </p>
+        <h3 className="text-lg font-semibold text-foreground mb-2">İçerik Yüklenemedi</h3>
+        <p className="text-muted-foreground text-center mb-6 max-w-md">{error}</p>
         <Button onClick={loadContent} className="gap-2">
           <RefreshCw className="h-4 w-4" />
           Tekrar Dene
@@ -779,57 +453,14 @@ export function ScormPlayer({
       onMouseMove={resetControlsTimer}
       onMouseEnter={() => setShowControls(true)}
     >
-      {/* Top Bar */}
-      <div
-        className={cn(
-          "absolute top-0 left-0 right-0 z-20 transition-all duration-500",
-          "bg-gradient-to-b from-[hsl(222,47%,6%/0.95)] via-[hsl(222,47%,6%/0.6)] to-transparent",
-          showControls
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 -translate-y-2 pointer-events-none",
-        )}
-      >
-        <div className="flex items-center justify-between px-5 py-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-[hsl(var(--success))] animate-pulse" />
-              <span className="text-xs font-medium text-white/90 tracking-wide uppercase">
-                {scormVersion?.startsWith("2004") ? "SCORM 2004" : "SCORM 1.2"}
-              </span>
-            </div>
-            {lessonTitle && (
-              <>
-                <div className="w-px h-4 bg-white/20" />
-                <span className="text-sm font-medium text-white/80 truncate">
-                  {lessonTitle}
-                </span>
-              </>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <div
-              className={cn(
-                "px-3 py-1 rounded-full text-xs font-medium",
-                currentStatus.color,
-              )}
-            >
-              {currentStatus.label}
-            </div>
-            {scoreRaw && (
-              <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-[hsl(var(--accent)/0.2)] text-[hsl(var(--accent))]">
-                <Award className="h-3 w-3" />
-                <span className="text-xs font-semibold">{scoreRaw}%</span>
-              </div>
-            )}
-            <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-white/10 text-white/70">
-              <Clock className="h-3 w-3" />
-              <span className="text-xs font-medium">
-                {formatDisplayTime(sessionSeconds)}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ScormTopBar
+        scormVersion={effectiveVersion}
+        lessonTitle={lessonTitle}
+        lessonStatus={lessonStatus}
+        scoreRaw={scoreRaw}
+        sessionSeconds={sessionSeconds}
+        visible={showControls}
+      />
 
       {/* Loading Overlay */}
       {isLoading && (
@@ -842,9 +473,7 @@ export function ScormPlayer({
               <div className="absolute -inset-2 rounded-2xl bg-[hsl(var(--accent)/0.1)] animate-pulse" />
             </div>
             <div className="text-center">
-              <p className="text-sm font-medium text-white/90">
-                Eğitim içeriği yükleniyor
-              </p>
+              <p className="text-sm font-medium text-white/90">Eğitim içeriği yükleniyor</p>
               <p className="text-xs text-white/50 mt-1">Lütfen bekleyin...</p>
             </div>
           </div>
@@ -858,7 +487,7 @@ export function ScormPlayer({
           src={blobUrl}
           className="flex-1 w-full border-0 bg-white"
           style={{ minHeight: "500px" }}
-          onLoad={handleIframeLoad}
+          onLoad={() => setIsLoading(false)}
           onError={() => {
             setIsLoading(false);
             setError("Eğitim içeriği yüklenemedi.");
@@ -869,80 +498,17 @@ export function ScormPlayer({
         />
       )}
 
-      {/* Bottom Controls */}
-      <div
-        className={cn(
-          "absolute bottom-0 left-0 right-0 z-20 transition-all duration-500",
-          "bg-gradient-to-t from-[hsl(222,47%,6%/0.95)] via-[hsl(222,47%,6%/0.6)] to-transparent",
-          showControls
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 translate-y-2 pointer-events-none",
-        )}
-      >
-        {/* Progress bar */}
-        <div className="px-5 pt-6">
-          <div className="h-1 bg-white/10 rounded-full overflow-hidden group cursor-pointer">
-            <div
-              className="h-full bg-[hsl(var(--accent))] rounded-full transition-all duration-300 group-hover:h-1.5 relative"
-              style={{
-                width: `${lessonStatus === "completed" || lessonStatus === "passed" ? 100 : lessonStatus === "incomplete" ? 50 : 0}%`,
-              }}
-            >
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-[hsl(var(--accent))] opacity-0 group-hover:opacity-100 transition-opacity shadow-lg" />
-            </div>
-          </div>
-        </div>
-
-        {/* Controls */}
-        <div className="flex items-center justify-between px-5 py-3">
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onPrevious}
-              disabled={!hasPrevious}
-              className="h-9 w-9 text-white/80 hover:text-white hover:bg-white/10 disabled:opacity-30"
-              title="Önceki ders"
-            >
-              <SkipBack className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={loadContent}
-              className="h-10 w-10 text-white hover:text-white hover:bg-white/10"
-              title="Yeniden yükle"
-            >
-              <RefreshCw className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onNext}
-              disabled={!hasNext}
-              className="h-9 w-9 text-white/80 hover:text-white hover:bg-white/10 disabled:opacity-30"
-              title="Sonraki ders"
-            >
-              <SkipForward className="h-5 w-5" />
-            </Button>
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleFullscreen}
-              className="h-9 w-9 text-white/80 hover:text-white hover:bg-white/10"
-              title={isFullscreen ? "Küçült" : "Tam ekran"}
-            >
-              {isFullscreen ? (
-                <Minimize2 className="h-5 w-5" />
-              ) : (
-                <Maximize2 className="h-5 w-5" />
-              )}
-            </Button>
-          </div>
-        </div>
-      </div>
+      <ScormBottomBar
+        lessonStatus={lessonStatus}
+        visible={showControls}
+        isFullscreen={isFullscreen}
+        hasPrevious={hasPrevious}
+        hasNext={hasNext}
+        onPrevious={onPrevious}
+        onNext={onNext}
+        onReload={loadContent}
+        onToggleFullscreen={toggleFullscreen}
+      />
     </div>
   );
 }
