@@ -187,7 +187,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     queryFn: async () => {
       const { data, error } = await supabase
         .from("scorm_packages")
-        .select("id, package_url, entry_point, scorm_version")
+        .select("id, package_url, entry_point, scorm_version, manifest_data")
         .eq("course_id", courseId);
       if (error) throw error;
       return data;
@@ -317,7 +317,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     },
   });
 
-  // Upload SCORM package - extract zip and upload individual files
+  // Upload SCORM package - extract zip, upload files, then auto-parse manifest
   const handleScormUpload = async (file: File) => {
     setUploading(true);
     setUploadProgress(0);
@@ -349,7 +349,6 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
 
       // Upload each file from the zip
       const uploadPromises: Promise<void>[] = [];
-      let firstUploadedPath: string | null = null;
 
       for (const relativePath of fileNames) {
         const zipEntry = zip.files[relativePath];
@@ -363,8 +362,6 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
         const blob = new Blob([rawBlob], { type: mimeType });
         const storagePath = `${folderName}/${sanitizeRelativePath(cleanPath)}`;
 
-        if (!firstUploadedPath) firstUploadedPath = storagePath;
-
         uploadPromises.push(
           supabase.storage
             .from("scorm-packages")
@@ -375,18 +372,17 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
             .then(({ error }) => {
               if (error) throw new Error(`Failed to upload ${relativePath}: ${error.message}`);
               uploadedCount++;
-              setUploadProgress(Math.round((uploadedCount / totalFiles) * 100));
+              setUploadProgress(Math.round((uploadedCount / totalFiles) * 90));
             })
         );
 
-        // Upload in batches of 5 to avoid overwhelming the server
+        // Upload in batches of 5
         if (uploadPromises.length >= 5) {
           await Promise.all(uploadPromises);
           uploadPromises.length = 0;
         }
       }
 
-      // Upload remaining files
       if (uploadPromises.length > 0) {
         await Promise.all(uploadPromises);
       }
@@ -395,12 +391,13 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
         throw new Error("Zip dosyasında yüklenecek dosya bulunamadı.");
       }
 
-      // Get the base URL for the package using the folder root
+      // Get the base URL for the package
       const {
         data: { publicUrl },
       } = supabase.storage.from("scorm-packages").getPublicUrl(folderName + "/placeholder");
       const packageUrl = publicUrl.substring(0, publicUrl.lastIndexOf("/"));
 
+      // Create package record first
       const { data: pkg, error: pkgError } = await supabase
         .from("scorm_packages")
         .insert({
@@ -414,6 +411,50 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
 
       if (pkgError) throw pkgError;
 
+      setUploadProgress(95);
+
+      // Auto-parse manifest via scorm-proxy edge function
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        const authToken = session.session?.access_token;
+        if (authToken) {
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const proxyRes = await fetch(`${supabaseUrl}/functions/v1/scorm-proxy`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "parse-manifest",
+              folderPath: folderName,
+              courseId,
+              packageId: pkg.id,
+            }),
+          });
+
+          if (proxyRes.ok) {
+            const manifest = await proxyRes.json();
+            const scoCount = manifest.scos?.length || 0;
+            const detectedVersion = manifest.version || "1.2";
+            toast({
+              title: "SCORM Manifest Analizi Tamamlandı",
+              description: `Versiyon: ${detectedVersion} | ${scoCount} SCO tespit edildi | Başlık: ${manifest.title || "—"}`,
+            });
+          } else {
+            // Manifest parse failed but upload succeeded
+            toast({
+              title: "Uyarı",
+              description: "SCORM paketi yüklendi fakat imsmanifest.xml ayrıştırılamadı. Giriş noktası heuristik olarak belirlendi.",
+              variant: "destructive",
+            });
+          }
+        }
+      } catch (manifestErr) {
+        console.warn("Manifest parse warning:", manifestErr);
+      }
+
+      setUploadProgress(100);
       queryClient.invalidateQueries({ queryKey: ["course-scorm-packages", courseId] });
       toast({ title: "Başarılı", description: `SCORM paketi yüklendi (${totalFiles} dosya).` });
 
@@ -540,43 +581,56 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {scormPackages.map((pkg) => (
-                <div key={pkg.id} className="flex items-center justify-between text-sm p-2 rounded bg-muted/50">
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="h-4 w-4 text-accent" />
-                    <span className="font-mono text-xs truncate max-w-[300px]">{pkg.id.slice(0, 8)}...</span>
-                    <Badge variant="secondary">{pkg.scorm_version || "1.2"}</Badge>
-                    <span className="text-xs text-muted-foreground">{pkg.entry_point || "index.html"}</span>
+              {scormPackages.map((pkg) => {
+                const manifest = pkg.manifest_data as any;
+                const manifestTitle = manifest?.title;
+                const scoCount = manifest?.scos?.length || 0;
+                return (
+                  <div key={pkg.id} className="flex items-center justify-between text-sm p-3 rounded-lg bg-muted/50 border border-border/50">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="h-4 w-4 text-accent" />
+                        <span className="font-medium">
+                          {manifestTitle || pkg.id.slice(0, 8) + "..."}
+                        </span>
+                        <Badge variant="secondary">{pkg.scorm_version || "1.2"}</Badge>
+                        {scoCount > 0 && (
+                          <Badge variant="outline" className="text-xs">{scoCount} SCO</Badge>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground ml-6">
+                        Giriş: {pkg.entry_point || "index.html"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                        onClick={() => {
+                          const ep = pkg.entry_point || "index.html";
+                          const preferredEntry = ep === "story.html" ? "story_html5.html" : ep;
+                          window.open(`${pkg.package_url}/${preferredEntry}`, "_blank");
+                        }}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Önizleme
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 text-xs text-destructive hover:text-destructive"
+                        onClick={() => {
+                          setSelectedScormPkg(pkg.id);
+                          setDeleteScormDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 gap-1 text-xs"
-                      onClick={() => {
-                        // Use story_html5.html for Articulate, otherwise entry_point
-                        const ep = pkg.entry_point || "index.html";
-                        const preferredEntry = ep === "story.html" ? "story_html5.html" : ep;
-                        window.open(`${pkg.package_url}/${preferredEntry}`, "_blank");
-                      }}
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Önizleme
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 gap-1 text-xs text-destructive hover:text-destructive"
-                      onClick={() => {
-                        setSelectedScormPkg(pkg.id);
-                        setDeleteScormDialogOpen(true);
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -746,11 +800,15 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
                     <SelectValue placeholder="SCORM paketi seçin" />
                   </SelectTrigger>
                   <SelectContent>
-                    {scormPackages?.map((pkg) => (
-                      <SelectItem key={pkg.id} value={pkg.id}>
-                        {pkg.id.slice(0, 8)}... ({pkg.scorm_version || "1.2"})
-                      </SelectItem>
-                    ))}
+                    {scormPackages?.map((pkg) => {
+                      const manifest = pkg.manifest_data as any;
+                      const label = manifest?.title || `${pkg.id.slice(0, 8)}...`;
+                      return (
+                        <SelectItem key={pkg.id} value={pkg.id}>
+                          {label} ({pkg.scorm_version || "1.2"})
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
 
