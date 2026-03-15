@@ -28,6 +28,8 @@ import {
   FileText, Loader2, Upload, ArrowLeft, Package, ExternalLink,
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+import { ScormScoDetails } from "./ScormScoDetails";
+import { ScormProgressReport } from "./ScormProgressReport";
 
 type LessonType = Database["public"]["Enums"]["lesson_type"];
 type Lesson = Database["public"]["Tables"]["lessons"]["Row"];
