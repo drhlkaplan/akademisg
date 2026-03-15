@@ -641,6 +641,9 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
         </Card>
       )}
 
+      {/* SCO Progress Report */}
+      <ScormProgressReport courseId={courseId} />
+
       {/* Lessons Table */}
       <Card>
         <CardHeader className="pb-3">
