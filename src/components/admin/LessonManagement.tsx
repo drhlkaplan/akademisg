@@ -28,6 +28,8 @@ import {
   FileText, Loader2, Upload, ArrowLeft, Package, ExternalLink,
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+import { ScormScoDetails } from "./ScormScoDetails";
+import { ScormProgressReport } from "./ScormProgressReport";
 
 type LessonType = Database["public"]["Enums"]["lesson_type"];
 type Lesson = Database["public"]["Tables"]["lessons"]["Row"];
@@ -586,48 +588,51 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
                 const manifestTitle = manifest?.title;
                 const scoCount = manifest?.scos?.length || 0;
                 return (
-                  <div key={pkg.id} className="flex items-center justify-between text-sm p-3 rounded-lg bg-muted/50 border border-border/50">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <BookOpen className="h-4 w-4 text-accent" />
-                        <span className="font-medium">
-                          {manifestTitle || pkg.id.slice(0, 8) + "..."}
+                  <div key={pkg.id} className="text-sm p-3 rounded-lg bg-muted/50 border border-border/50 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="h-4 w-4 text-accent" />
+                          <span className="font-medium">
+                            {manifestTitle || pkg.id.slice(0, 8) + "..."}
+                          </span>
+                          <Badge variant="secondary">{pkg.scorm_version || "1.2"}</Badge>
+                          {scoCount > 0 && (
+                            <Badge variant="outline" className="text-xs">{scoCount} SCO</Badge>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground ml-6">
+                          Giriş: {pkg.entry_point || "index.html"}
                         </span>
-                        <Badge variant="secondary">{pkg.scorm_version || "1.2"}</Badge>
-                        {scoCount > 0 && (
-                          <Badge variant="outline" className="text-xs">{scoCount} SCO</Badge>
-                        )}
                       </div>
-                      <span className="text-xs text-muted-foreground ml-6">
-                        Giriş: {pkg.entry_point || "index.html"}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 text-xs"
+                          onClick={() => {
+                            const ep = pkg.entry_point || "index.html";
+                            const preferredEntry = ep === "story.html" ? "story_html5.html" : ep;
+                            window.open(`${pkg.package_url}/${preferredEntry}`, "_blank");
+                          }}
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          Önizleme
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 text-xs text-destructive hover:text-destructive"
+                          onClick={() => {
+                            setSelectedScormPkg(pkg.id);
+                            setDeleteScormDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 gap-1 text-xs"
-                        onClick={() => {
-                          const ep = pkg.entry_point || "index.html";
-                          const preferredEntry = ep === "story.html" ? "story_html5.html" : ep;
-                          window.open(`${pkg.package_url}/${preferredEntry}`, "_blank");
-                        }}
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                        Önizleme
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 gap-1 text-xs text-destructive hover:text-destructive"
-                        onClick={() => {
-                          setSelectedScormPkg(pkg.id);
-                          setDeleteScormDialogOpen(true);
-                        }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                    <ScormScoDetails packageId={pkg.id} packageUrl={pkg.package_url} />
                   </div>
                 );
               })}
@@ -635,6 +640,9 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
           </CardContent>
         </Card>
       )}
+
+      {/* SCO Progress Report */}
+      <ScormProgressReport courseId={courseId} />
 
       {/* Lessons Table */}
       <Card>
