@@ -187,7 +187,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     queryFn: async () => {
       const { data, error } = await supabase
         .from("scorm_packages")
-        .select("id, package_url, entry_point, scorm_version")
+        .select("id, package_url, entry_point, scorm_version, manifest_data")
         .eq("course_id", courseId);
       if (error) throw error;
       return data;
