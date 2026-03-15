@@ -800,11 +800,15 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
                     <SelectValue placeholder="SCORM paketi seçin" />
                   </SelectTrigger>
                   <SelectContent>
-                    {scormPackages?.map((pkg) => (
-                      <SelectItem key={pkg.id} value={pkg.id}>
-                        {pkg.id.slice(0, 8)}... ({pkg.scorm_version || "1.2"})
-                      </SelectItem>
-                    ))}
+                    {scormPackages?.map((pkg) => {
+                      const manifest = pkg.manifest_data as any;
+                      const label = manifest?.title || `${pkg.id.slice(0, 8)}...`;
+                      return (
+                        <SelectItem key={pkg.id} value={pkg.id}>
+                          {label} ({pkg.scorm_version || "1.2"})
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
 
