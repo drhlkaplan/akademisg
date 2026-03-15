@@ -581,43 +581,56 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {scormPackages.map((pkg) => (
-                <div key={pkg.id} className="flex items-center justify-between text-sm p-2 rounded bg-muted/50">
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="h-4 w-4 text-accent" />
-                    <span className="font-mono text-xs truncate max-w-[300px]">{pkg.id.slice(0, 8)}...</span>
-                    <Badge variant="secondary">{pkg.scorm_version || "1.2"}</Badge>
-                    <span className="text-xs text-muted-foreground">{pkg.entry_point || "index.html"}</span>
+              {scormPackages.map((pkg) => {
+                const manifest = pkg.manifest_data as any;
+                const manifestTitle = manifest?.title;
+                const scoCount = manifest?.scos?.length || 0;
+                return (
+                  <div key={pkg.id} className="flex items-center justify-between text-sm p-3 rounded-lg bg-muted/50 border border-border/50">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="h-4 w-4 text-accent" />
+                        <span className="font-medium">
+                          {manifestTitle || pkg.id.slice(0, 8) + "..."}
+                        </span>
+                        <Badge variant="secondary">{pkg.scorm_version || "1.2"}</Badge>
+                        {scoCount > 0 && (
+                          <Badge variant="outline" className="text-xs">{scoCount} SCO</Badge>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground ml-6">
+                        Giriş: {pkg.entry_point || "index.html"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                        onClick={() => {
+                          const ep = pkg.entry_point || "index.html";
+                          const preferredEntry = ep === "story.html" ? "story_html5.html" : ep;
+                          window.open(`${pkg.package_url}/${preferredEntry}`, "_blank");
+                        }}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Önizleme
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 text-xs text-destructive hover:text-destructive"
+                        onClick={() => {
+                          setSelectedScormPkg(pkg.id);
+                          setDeleteScormDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 gap-1 text-xs"
-                      onClick={() => {
-                        // Use story_html5.html for Articulate, otherwise entry_point
-                        const ep = pkg.entry_point || "index.html";
-                        const preferredEntry = ep === "story.html" ? "story_html5.html" : ep;
-                        window.open(`${pkg.package_url}/${preferredEntry}`, "_blank");
-                      }}
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Önizleme
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 gap-1 text-xs text-destructive hover:text-destructive"
-                      onClick={() => {
-                        setSelectedScormPkg(pkg.id);
-                        setDeleteScormDialogOpen(true);
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
