@@ -141,6 +141,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
   const [deleteScormDialogOpen, setDeleteScormDialogOpen] = useState(false);
   const [selectedScormPkg, setSelectedScormPkg] = useState<string | null>(null);
   const [examMode, setExamMode] = useState<"platform" | "scorm">("platform");
+  const [reparsingAll, setReparsingAll] = useState(false);
 
   const [formData, setFormData] = useState({
     title: "",
