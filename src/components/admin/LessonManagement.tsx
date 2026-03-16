@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import {
   Plus, Edit, Trash2, GripVertical, BookOpen, FileQuestion, Video,
-  FileText, Loader2, Upload, ArrowLeft, Package, ExternalLink,
+  FileText, Loader2, Upload, ArrowLeft, Package, ExternalLink, RefreshCw,
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { ScormScoDetails } from "./ScormScoDetails";
