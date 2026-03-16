@@ -631,10 +631,22 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       {scormPackages && scormPackages.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              SCORM Paketleri ({scormPackages.length})
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                SCORM Paketleri ({scormPackages.length})
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1 text-xs"
+                disabled={reparsingAll}
+                onClick={handleReparseAll}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${reparsingAll ? "animate-spin" : ""}`} />
+                {reparsingAll ? "Parse ediliyor..." : "Tümünü Yeniden Parse Et"}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
