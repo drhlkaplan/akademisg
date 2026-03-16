@@ -197,6 +197,60 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     },
   });
 
+  // Re-parse all SCORM manifests
+  const handleReparseAll = async () => {
+    if (!scormPackages || scormPackages.length === 0) return;
+    setReparsingAll(true);
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const pkg of scormPackages) {
+      try {
+        // Extract folder path from package_url
+        const bucketMarker = "/scorm-packages/";
+        const idx = pkg.package_url.indexOf(bucketMarker);
+        if (idx === -1) { failCount++; continue; }
+        const folderPath = pkg.package_url.slice(idx + bucketMarker.length);
+
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        if (!token) { failCount++; continue; }
+
+        const res = await fetch(`${supabaseUrl}/functions/v1/scorm-proxy`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            action: "parse-manifest",
+            folderPath,
+            courseId,
+            packageId: pkg.id,
+          }),
+        });
+
+        if (res.ok) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch {
+        failCount++;
+      }
+    }
+
+    setReparsingAll(false);
+    queryClient.invalidateQueries({ queryKey: ["scorm-packages", courseId] });
+    queryClient.invalidateQueries({ queryKey: ["scorm-scos"] });
+    queryClient.invalidateQueries({ queryKey: ["course-scos-report", courseId] });
+    toast({
+      title: "Manifest Parse Tamamlandı",
+      description: `${successCount} başarılı, ${failCount} başarısız.`,
+    });
+  };
+
   // Create lesson
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
