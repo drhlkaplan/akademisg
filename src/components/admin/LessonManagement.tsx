@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import {
   Plus, Edit, Trash2, GripVertical, BookOpen, FileQuestion, Video,
-  FileText, Loader2, Upload, ArrowLeft, Package, ExternalLink,
+  FileText, Loader2, Upload, ArrowLeft, Package, ExternalLink, RefreshCw,
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { ScormScoDetails } from "./ScormScoDetails";
@@ -141,6 +141,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
   const [deleteScormDialogOpen, setDeleteScormDialogOpen] = useState(false);
   const [selectedScormPkg, setSelectedScormPkg] = useState<string | null>(null);
   const [examMode, setExamMode] = useState<"platform" | "scorm">("platform");
+  const [reparsingAll, setReparsingAll] = useState(false);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -195,6 +196,60 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       return data;
     },
   });
+
+  // Re-parse all SCORM manifests
+  const handleReparseAll = async () => {
+    if (!scormPackages || scormPackages.length === 0) return;
+    setReparsingAll(true);
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const pkg of scormPackages) {
+      try {
+        // Extract folder path from package_url
+        const bucketMarker = "/scorm-packages/";
+        const idx = pkg.package_url.indexOf(bucketMarker);
+        if (idx === -1) { failCount++; continue; }
+        const folderPath = pkg.package_url.slice(idx + bucketMarker.length);
+
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        if (!token) { failCount++; continue; }
+
+        const res = await fetch(`${supabaseUrl}/functions/v1/scorm-proxy`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            action: "parse-manifest",
+            folderPath,
+            courseId,
+            packageId: pkg.id,
+          }),
+        });
+
+        if (res.ok) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch {
+        failCount++;
+      }
+    }
+
+    setReparsingAll(false);
+    queryClient.invalidateQueries({ queryKey: ["scorm-packages", courseId] });
+    queryClient.invalidateQueries({ queryKey: ["scorm-scos"] });
+    queryClient.invalidateQueries({ queryKey: ["course-scos-report", courseId] });
+    toast({
+      title: "Manifest Parse Tamamlandı",
+      description: `${successCount} başarılı, ${failCount} başarısız.`,
+    });
+  };
 
   // Create lesson
   const createMutation = useMutation({
@@ -576,10 +631,22 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       {scormPackages && scormPackages.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              SCORM Paketleri ({scormPackages.length})
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                SCORM Paketleri ({scormPackages.length})
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1 text-xs"
+                disabled={reparsingAll}
+                onClick={handleReparseAll}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${reparsingAll ? "animate-spin" : ""}`} />
+                {reparsingAll ? "Parse ediliyor..." : "Tümünü Yeniden Parse Et"}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
