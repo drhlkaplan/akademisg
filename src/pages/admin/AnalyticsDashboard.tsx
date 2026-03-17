@@ -23,9 +23,12 @@ import {
 import {
   BarChart3, Users, BookOpen, Building2, Award, GraduationCap,
   TrendingUp, Clock, Target, Layers, KeyRound, Activity, Zap,
-  MousePointerClick, Timer,
+  MousePointerClick, Timer, ClipboardCheck,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { ExamAnalytics } from "@/components/admin/analytics/ExamAnalytics";
+import { StudentProgressAnalytics } from "@/components/admin/analytics/StudentProgressAnalytics";
+import { FirmComparisonDashboard } from "@/components/admin/analytics/FirmComparisonDashboard";
 
 const COLORS = [
   "hsl(25, 95%, 53%)", "hsl(199, 89%, 48%)", "hsl(142, 71%, 45%)",
