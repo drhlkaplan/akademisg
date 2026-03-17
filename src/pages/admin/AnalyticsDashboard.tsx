@@ -444,9 +444,21 @@ export default function AnalyticsDashboard() {
         </div>
 
         <Tabs defaultValue="courses" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+          <TabsList className="flex flex-wrap w-full lg:w-auto lg:inline-flex gap-1">
             <TabsTrigger value="courses">Eğitimler</TabsTrigger>
+            <TabsTrigger value="exams" className="gap-1">
+              <ClipboardCheck className="h-3.5 w-3.5" />
+              Sınavlar
+            </TabsTrigger>
+            <TabsTrigger value="students" className="gap-1">
+              <GraduationCap className="h-3.5 w-3.5" />
+              Öğrenciler
+            </TabsTrigger>
             <TabsTrigger value="firms">Firmalar</TabsTrigger>
+            <TabsTrigger value="firm-compare" className="gap-1">
+              <Building2 className="h-3.5 w-3.5" />
+              Karşılaştırma
+            </TabsTrigger>
             <TabsTrigger value="groups">Gruplar</TabsTrigger>
             <TabsTrigger value="trends">Trendler</TabsTrigger>
             <TabsTrigger value="xapi" className="gap-1">
