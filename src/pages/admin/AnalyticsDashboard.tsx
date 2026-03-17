@@ -23,9 +23,12 @@ import {
 import {
   BarChart3, Users, BookOpen, Building2, Award, GraduationCap,
   TrendingUp, Clock, Target, Layers, KeyRound, Activity, Zap,
-  MousePointerClick, Timer,
+  MousePointerClick, Timer, ClipboardCheck,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { ExamAnalytics } from "@/components/admin/analytics/ExamAnalytics";
+import { StudentProgressAnalytics } from "@/components/admin/analytics/StudentProgressAnalytics";
+import { FirmComparisonDashboard } from "@/components/admin/analytics/FirmComparisonDashboard";
 
 const COLORS = [
   "hsl(25, 95%, 53%)", "hsl(199, 89%, 48%)", "hsl(142, 71%, 45%)",
@@ -114,6 +117,16 @@ export default function AnalyticsDashboard() {
         .select("id, user_id, verb, object_type, object_id, result, context, created_at")
         .order("created_at", { ascending: false })
         .limit(1000);
+      return data || [];
+    },
+  });
+
+  const { data: examResults } = useQuery({
+    queryKey: ["analytics-exam-results"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("exam_results")
+        .select("id, enrollment_id, exam_id, user_id, score, total_questions, correct_answers, status, attempt_number, completed_at");
       return data || [];
     },
   });
@@ -431,9 +444,21 @@ export default function AnalyticsDashboard() {
         </div>
 
         <Tabs defaultValue="courses" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+          <TabsList className="flex flex-wrap w-full lg:w-auto lg:inline-flex gap-1">
             <TabsTrigger value="courses">Eğitimler</TabsTrigger>
+            <TabsTrigger value="exams" className="gap-1">
+              <ClipboardCheck className="h-3.5 w-3.5" />
+              Sınavlar
+            </TabsTrigger>
+            <TabsTrigger value="students" className="gap-1">
+              <GraduationCap className="h-3.5 w-3.5" />
+              Öğrenciler
+            </TabsTrigger>
             <TabsTrigger value="firms">Firmalar</TabsTrigger>
+            <TabsTrigger value="firm-compare" className="gap-1">
+              <Building2 className="h-3.5 w-3.5" />
+              Karşılaştırma
+            </TabsTrigger>
             <TabsTrigger value="groups">Gruplar</TabsTrigger>
             <TabsTrigger value="trends">Trendler</TabsTrigger>
             <TabsTrigger value="xapi" className="gap-1">
@@ -562,6 +587,28 @@ export default function AnalyticsDashboard() {
             </div>
           </TabsContent>
 
+          {/* EXAMS TAB */}
+          <TabsContent value="exams" className="space-y-6">
+            <ExamAnalytics
+              examResults={examResults || []}
+              courses={courses || []}
+              profiles={profiles || []}
+              enrollments={enrollments || []}
+            />
+          </TabsContent>
+
+          {/* STUDENTS TAB */}
+          <TabsContent value="students" className="space-y-6">
+            <StudentProgressAnalytics
+              profiles={profiles || []}
+              enrollments={enrollments || []}
+              courses={courses || []}
+              lessonProgress={lessonProgress || []}
+              lessons={lessons || []}
+              examResults={examResults || []}
+            />
+          </TabsContent>
+
           {/* FIRMS TAB */}
           <TabsContent value="firms" className="space-y-6">
             <Card>
@@ -628,6 +675,18 @@ export default function AnalyticsDashboard() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          {/* FIRM COMPARISON TAB */}
+          <TabsContent value="firm-compare" className="space-y-6">
+            <FirmComparisonDashboard
+              firms={firms || []}
+              profiles={profiles || []}
+              enrollments={enrollments || []}
+              examResults={examResults || []}
+              certificates={certificates || []}
+              lessonProgress={lessonProgress || []}
+            />
           </TabsContent>
 
           {/* GROUPS TAB */}
