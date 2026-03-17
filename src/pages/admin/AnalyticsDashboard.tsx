@@ -587,6 +587,28 @@ export default function AnalyticsDashboard() {
             </div>
           </TabsContent>
 
+          {/* EXAMS TAB */}
+          <TabsContent value="exams" className="space-y-6">
+            <ExamAnalytics
+              examResults={examResults || []}
+              courses={courses || []}
+              profiles={profiles || []}
+              enrollments={enrollments || []}
+            />
+          </TabsContent>
+
+          {/* STUDENTS TAB */}
+          <TabsContent value="students" className="space-y-6">
+            <StudentProgressAnalytics
+              profiles={profiles || []}
+              enrollments={enrollments || []}
+              courses={courses || []}
+              lessonProgress={lessonProgress || []}
+              lessons={lessons || []}
+              examResults={examResults || []}
+            />
+          </TabsContent>
+
           {/* FIRMS TAB */}
           <TabsContent value="firms" className="space-y-6">
             <Card>
