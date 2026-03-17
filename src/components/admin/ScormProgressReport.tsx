@@ -5,11 +5,10 @@ import { Badge } from "@/components/ui/badge-custom";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import {
-  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Progress } from "@/components/ui/progress";
-import { BarChart3, Loader2, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { BarChart3, Download, FileSpreadsheet, Loader2, Users } from "lucide-react";
+import { exportToPDF, exportToExcel } from "@/lib/reportExport";
 
 interface ScormProgressReportProps {
   courseId: string;
