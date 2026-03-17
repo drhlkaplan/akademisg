@@ -5,11 +5,10 @@ import { Badge } from "@/components/ui/badge-custom";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import {
-  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Progress } from "@/components/ui/progress";
-import { BarChart3, Loader2, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { BarChart3, Download, FileSpreadsheet, Loader2, Users } from "lucide-react";
+import { exportToPDF, exportToExcel } from "@/lib/reportExport";
 
 interface ScormProgressReportProps {
   courseId: string;
@@ -118,18 +117,52 @@ export function ScormProgressReport({ courseId }: ScormProgressReportProps) {
 
   const totalEnrollments = runtimeData?.enrollmentCount || 0;
 
+  const exportHeaders = ["SCO Adı", "Identifier", "Tamamlayan", "Toplam Kullanıcı", "Tamamlama %", "Ort. Puan", "Ort. Süre", "Durum"];
+
+  const exportRows = scoProgressMap.map((sp) => {
+    const pct = sp.totalUsers > 0 ? Math.round((sp.completedUsers / sp.totalUsers) * 100) : 0;
+    return [
+      sp.scoTitle,
+      sp.identifier,
+      sp.completedUsers,
+      sp.totalUsers,
+      `%${pct}`,
+      sp.avgScore !== null ? sp.avgScore : "-",
+      sp.avgTimeSeconds > 0 ? formatDisplayTime(sp.avgTimeSeconds) : "-",
+      pct >= 80 ? "İyi" : pct >= 40 ? "Orta" : "Düşük",
+    ] as (string | number)[];
+  });
+
+  const handleExportPDF = () => {
+    exportToPDF({ title: "SCO Bazlı İlerleme Raporu", headers: exportHeaders, rows: exportRows, fileName: "sco-ilerleme-raporu" });
+  };
+
+  const handleExportExcel = () => {
+    exportToExcel({ title: "SCO İlerleme", headers: exportHeaders, rows: exportRows, fileName: "sco-ilerleme-raporu" });
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-accent" />
-          SCO Bazlı İlerleme Raporu
-          <Badge variant="secondary" className="ml-1">{scos.length} SCO</Badge>
-          <Badge variant="outline" className="ml-1">
-            <Users className="h-3 w-3 mr-1" />
-            {totalEnrollments} kayıt
-          </Badge>
-        </CardTitle>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-accent" />
+            SCO Bazlı İlerleme Raporu
+            <Badge variant="secondary" className="ml-1">{scos.length} SCO</Badge>
+            <Badge variant="outline" className="ml-1">
+              <Users className="h-3 w-3 mr-1" />
+              {totalEnrollments} kayıt
+            </Badge>
+          </CardTitle>
+          <div className="flex gap-1">
+            <Button variant="outline" size="sm" onClick={handleExportPDF} className="h-7 text-xs gap-1">
+              <Download className="h-3 w-3" /> PDF
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExportExcel} className="h-7 text-xs gap-1">
+              <FileSpreadsheet className="h-3 w-3" /> Excel
+            </Button>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
