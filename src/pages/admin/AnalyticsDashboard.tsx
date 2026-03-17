@@ -677,6 +677,18 @@ export default function AnalyticsDashboard() {
             )}
           </TabsContent>
 
+          {/* FIRM COMPARISON TAB */}
+          <TabsContent value="firm-compare" className="space-y-6">
+            <FirmComparisonDashboard
+              firms={firms || []}
+              profiles={profiles || []}
+              enrollments={enrollments || []}
+              examResults={examResults || []}
+              certificates={certificates || []}
+              lessonProgress={lessonProgress || []}
+            />
+          </TabsContent>
+
           {/* GROUPS TAB */}
           <TabsContent value="groups" className="space-y-6">
             <Card>
