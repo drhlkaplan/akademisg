@@ -121,6 +121,16 @@ export default function AnalyticsDashboard() {
     },
   });
 
+  const { data: examResults } = useQuery({
+    queryKey: ["analytics-exam-results"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("exam_results")
+        .select("id, enrollment_id, exam_id, user_id, score, total_questions, correct_answers, status, attempt_number, completed_at");
+      return data || [];
+    },
+  });
+
   const isLoading = !courses || !enrollments || !profiles || !firms;
 
   // --- Computed Stats ---
