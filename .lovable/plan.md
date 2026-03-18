@@ -42,7 +42,7 @@
 ### Öncelik 4: Seed Verileri
 - 8 kurs ve alt dersleri (Az Tehlikeli, Tehlikeli, Çok Tehlikeli kategorileri)
 
-### Öncelik 5: İyileştirmeler
-- Eğitim geçmişi detay sayfası
-- Anlık aktif kullanıcı izleme (Realtime)
-- Rate limiting (login ve API için)
+### Öncelik 5: İyileştirmeler ✅
+- ✅ Eğitim geçmişi detay sayfası (/dashboard/courses/:enrollmentId)
+- ✅ Anlık aktif kullanıcı izleme (Realtime + activity_logs)
+- ✅ Rate limiting (login için client-side)

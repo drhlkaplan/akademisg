@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Shield, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Building2, CreditCard } from "lucide-react";
+import { Shield, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Building2, CreditCard, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFirmBranding } from "@/contexts/FirmBrandingContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useRateLimit, formatCooldown } from "@/hooks/useRateLimit";
 
 export default function Login() {
   const [identifier, setIdentifier] = useState("");
@@ -16,6 +17,13 @@ export default function Login() {
   const [firmCode, setFirmCodeLocal] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [rateLimitMsg, setRateLimitMsg] = useState<string | null>(null);
+
+  const { checkLimit, recordAttempt, reset: resetRateLimit } = useRateLimit({
+    maxAttempts: 5,
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    cooldownMs: 2 * 60 * 1000, // 2 min cooldown
+  });
 
   const { signIn, isAdmin, isFirmAdmin } = useAuth();
   const { setFirmCode, branding } = useFirmBranding();
@@ -38,7 +46,17 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Rate limit check
+    const { allowed, remainingMs } = checkLimit();
+    if (!allowed) {
+      setRateLimitMsg(`Çok fazla deneme yaptınız. Lütfen ${formatCooldown(remainingMs)} bekleyin.`);
+      return;
+    }
+    setRateLimitMsg(null);
+
     setIsLoading(true);
+    recordAttempt();
 
     // Save firm code
     if (firmCode.trim()) {
@@ -80,6 +98,7 @@ export default function Login() {
       return;
     }
 
+    resetRateLimit();
     toast.success("Başarıyla giriş yapıldı!");
     // Wait for auth state to settle, then redirect based on role
     setTimeout(() => {
@@ -117,6 +136,13 @@ export default function Login() {
           {firmName && (
             <div className="mb-4 p-3 rounded-lg bg-accent/10 border border-accent/20">
               <p className="text-sm font-medium text-accent">{firmName}</p>
+            </div>
+          )}
+
+          {rateLimitMsg && (
+            <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
+              <p className="text-sm text-destructive">{rateLimitMsg}</p>
             </div>
           )}
 

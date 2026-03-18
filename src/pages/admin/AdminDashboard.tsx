@@ -28,7 +28,7 @@ import {
   Activity,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-
+import { ActiveUsersMonitor } from "@/components/admin/ActiveUsersMonitor";
 export default function AdminDashboard() {
   // Fetch dashboard stats
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -292,6 +292,9 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Active Users Monitor */}
+        <ActiveUsersMonitor />
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Recent Enrollments */}
