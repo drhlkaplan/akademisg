@@ -58,6 +58,7 @@ const CourseLearning = lazyRetry(() => import("./pages/course/CourseLearning"));
 const CertificateVerify = lazyRetry(() => import("./pages/CertificateVerify"));
 const MyCertificates = lazyRetry(() => import("./pages/dashboard/MyCertificates"));
 const MyCourses = lazyRetry(() => import("./pages/dashboard/MyCourses"));
+const CourseHistory = lazyRetry(() => import("./pages/dashboard/CourseHistory"));
 const MyExams = lazyRetry(() => import("./pages/dashboard/MyExams"));
 const Help = lazyRetry(() => import("./pages/dashboard/Help"));
 const ProfileSettings = lazyRetry(() => import("./pages/dashboard/ProfileSettings"));
