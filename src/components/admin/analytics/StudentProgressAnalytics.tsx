@@ -4,6 +4,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import {
   ChartContainer, ChartTooltip, ChartTooltipContent,
 } from "@/components/ui/chart";
@@ -14,9 +15,10 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { GraduationCap, Search, User } from "lucide-react";
+import { GraduationCap, Search, User, FileDown, FileSpreadsheet } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useMemo, useState } from "react";
+import { exportToPDF, exportToExcel } from "@/lib/reportExport";
 
 const COLORS = [
   "hsl(142, 71%, 45%)", "hsl(199, 89%, 48%)", "hsl(25, 95%, 53%)",
@@ -132,6 +134,22 @@ export function StudentProgressAnalytics({
     value: { label: "Sayı", color: "hsl(25, 95%, 53%)" },
   };
 
+  const exportHeaders = ["Öğrenci", "Kurs Sayısı", "Tamamlanan", "İlerleme (%)", "Sınav Ort.", "Ders Sayısı", "Süre (dk)"];
+
+  const getExportRows = () =>
+    filteredStudents.map(s => [
+      s.name, s.totalCourses, s.completedCourses, s.avgProgress,
+      s.avgExamScore ?? "—", s.totalLessonsCompleted, s.totalTimeMinutes || "—",
+    ]);
+
+  const handleExportPDF = () => {
+    exportToPDF({ title: "Öğrenci İlerleme Raporu", headers: exportHeaders, rows: getExportRows(), fileName: "ogrenci-ilerleme" });
+  };
+
+  const handleExportExcel = () => {
+    exportToExcel({ title: "Öğrenci İlerleme Raporu", headers: exportHeaders, rows: getExportRows(), fileName: "ogrenci-ilerleme" });
+  };
+
   if (studentSummaries.length === 0) {
     return (
       <Card>
@@ -228,7 +246,7 @@ export function StudentProgressAnalytics({
               Öğrenci İlerleme Tablosu
               <Badge variant="secondary">{filteredStudents.length} öğrenci</Badge>
             </CardTitle>
-            <div className="flex gap-2 w-full sm:w-auto">
+            <div className="flex gap-2 w-full sm:w-auto flex-wrap">
               <div className="relative flex-1 sm:w-48">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -248,6 +266,12 @@ export function StudentProgressAnalytics({
                   <SelectItem value="courses">Kurs Sayısı</SelectItem>
                 </SelectContent>
               </Select>
+              <Button variant="outline" size="sm" className="h-9" onClick={handleExportPDF}>
+                <FileDown className="h-4 w-4 mr-1" /> PDF
+              </Button>
+              <Button variant="outline" size="sm" className="h-9" onClick={handleExportExcel}>
+                <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+              </Button>
             </div>
           </div>
         </CardHeader>
