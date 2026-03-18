@@ -28,7 +28,7 @@ import {
   Activity,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-
+import { ActiveUsersMonitor } from "@/components/admin/ActiveUsersMonitor";
 export default function AdminDashboard() {
   // Fetch dashboard stats
   const { data: stats, isLoading: statsLoading } = useQuery({
