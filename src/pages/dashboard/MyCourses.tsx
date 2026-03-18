@@ -183,10 +183,15 @@ export default function MyCourses() {
                           </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
                         <div className="w-32">
                           <Progress value={progress} className="h-2" />
                         </div>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link to={`/dashboard/courses/${enrollment.id}`}>
+                            Detay
+                          </Link>
+                        </Button>
                         <Button variant="accent" size="sm" asChild>
                           <Link to={`/learn/${course.id}`}>
                             <Play className="h-4 w-4 mr-1" />

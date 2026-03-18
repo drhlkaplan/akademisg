@@ -139,6 +139,13 @@ export default function Login() {
             </div>
           )}
 
+          {rateLimitMsg && (
+            <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
+              <p className="text-sm text-destructive">{rateLimitMsg}</p>
+            </div>
+          )}
+
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-foreground">
               Hesabınıza Giriş Yapın

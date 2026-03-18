@@ -297,6 +297,14 @@ const App = () => (
               }
             />
             <Route
+              path="/dashboard/courses/:enrollmentId"
+              element={
+                <ProtectedRoute>
+                  <CourseHistory />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/dashboard/exams"
               element={
                 <ProtectedRoute>

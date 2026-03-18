@@ -293,6 +293,9 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Active Users Monitor */}
+        <ActiveUsersMonitor />
+
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Recent Enrollments */}
           <div className="lg:col-span-2">
