@@ -134,6 +134,22 @@ export function StudentProgressAnalytics({
     value: { label: "Sayı", color: "hsl(25, 95%, 53%)" },
   };
 
+  const exportHeaders = ["Öğrenci", "Kurs Sayısı", "Tamamlanan", "İlerleme (%)", "Sınav Ort.", "Ders Sayısı", "Süre (dk)"];
+
+  const getExportRows = () =>
+    filteredStudents.map(s => [
+      s.name, s.totalCourses, s.completedCourses, s.avgProgress,
+      s.avgExamScore ?? "—", s.totalLessonsCompleted, s.totalTimeMinutes || "—",
+    ]);
+
+  const handleExportPDF = () => {
+    exportToPDF({ title: "Öğrenci İlerleme Raporu", headers: exportHeaders, rows: getExportRows(), fileName: "ogrenci-ilerleme" });
+  };
+
+  const handleExportExcel = () => {
+    exportToExcel({ title: "Öğrenci İlerleme Raporu", headers: exportHeaders, rows: getExportRows(), fileName: "ogrenci-ilerleme" });
+  };
+
   if (studentSummaries.length === 0) {
     return (
       <Card>
