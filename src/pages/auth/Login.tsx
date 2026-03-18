@@ -17,6 +17,13 @@ export default function Login() {
   const [firmCode, setFirmCodeLocal] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [rateLimitMsg, setRateLimitMsg] = useState<string | null>(null);
+
+  const { checkLimit, recordAttempt, reset: resetRateLimit } = useRateLimit({
+    maxAttempts: 5,
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    cooldownMs: 2 * 60 * 1000, // 2 min cooldown
+  });
 
   const { signIn, isAdmin, isFirmAdmin } = useAuth();
   const { setFirmCode, branding } = useFirmBranding();
