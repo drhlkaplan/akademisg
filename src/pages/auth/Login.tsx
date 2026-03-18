@@ -46,7 +46,17 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Rate limit check
+    const { allowed, remainingMs } = checkLimit();
+    if (!allowed) {
+      setRateLimitMsg(`Çok fazla deneme yaptınız. Lütfen ${formatCooldown(remainingMs)} bekleyin.`);
+      return;
+    }
+    setRateLimitMsg(null);
+
     setIsLoading(true);
+    recordAttempt();
 
     // Save firm code
     if (firmCode.trim()) {
