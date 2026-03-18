@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Shield, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Building2, CreditCard } from "lucide-react";
+import { Shield, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Building2, CreditCard, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFirmBranding } from "@/contexts/FirmBrandingContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useRateLimit, formatCooldown } from "@/hooks/useRateLimit";
 
 export default function Login() {
   const [identifier, setIdentifier] = useState("");
