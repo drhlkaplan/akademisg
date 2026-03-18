@@ -98,6 +98,7 @@ export default function Login() {
       return;
     }
 
+    resetRateLimit();
     toast.success("Başarıyla giriş yapıldı!");
     // Wait for auth state to settle, then redirect based on role
     setTimeout(() => {
