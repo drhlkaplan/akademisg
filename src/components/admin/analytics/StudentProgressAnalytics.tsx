@@ -230,7 +230,7 @@ export function StudentProgressAnalytics({
               Öğrenci İlerleme Tablosu
               <Badge variant="secondary">{filteredStudents.length} öğrenci</Badge>
             </CardTitle>
-            <div className="flex gap-2 w-full sm:w-auto">
+            <div className="flex gap-2 w-full sm:w-auto flex-wrap">
               <div className="relative flex-1 sm:w-48">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -250,6 +250,12 @@ export function StudentProgressAnalytics({
                   <SelectItem value="courses">Kurs Sayısı</SelectItem>
                 </SelectContent>
               </Select>
+              <Button variant="outline" size="sm" className="h-9" onClick={handleExportPDF}>
+                <FileDown className="h-4 w-4 mr-1" /> PDF
+              </Button>
+              <Button variant="outline" size="sm" className="h-9" onClick={handleExportExcel}>
+                <FileSpreadsheet className="h-4 w-4 mr-1" /> Excel
+              </Button>
             </div>
           </div>
         </CardHeader>
