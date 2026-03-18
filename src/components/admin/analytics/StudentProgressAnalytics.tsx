@@ -4,6 +4,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import {
   ChartContainer, ChartTooltip, ChartTooltipContent,
 } from "@/components/ui/chart";
@@ -14,9 +15,10 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { GraduationCap, Search, User } from "lucide-react";
+import { GraduationCap, Search, User, FileDown, FileSpreadsheet } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useMemo, useState } from "react";
+import { exportToPDF, exportToExcel } from "@/lib/reportExport";
 
 const COLORS = [
   "hsl(142, 71%, 45%)", "hsl(199, 89%, 48%)", "hsl(25, 95%, 53%)",
