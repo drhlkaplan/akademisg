@@ -102,6 +102,7 @@ export type Database = {
           course_title: string
           created_at: string | null
           danger_class: Database["public"]["Enums"]["danger_class"] | null
+          deleted_at: string | null
           duration_hours: number | null
           enrollment_id: string
           expiry_date: string | null
@@ -121,6 +122,7 @@ export type Database = {
           course_title: string
           created_at?: string | null
           danger_class?: Database["public"]["Enums"]["danger_class"] | null
+          deleted_at?: string | null
           duration_hours?: number | null
           enrollment_id: string
           expiry_date?: string | null
@@ -140,6 +142,7 @@ export type Database = {
           course_title?: string
           created_at?: string | null
           danger_class?: Database["public"]["Enums"]["danger_class"] | null
+          deleted_at?: string | null
           duration_hours?: number | null
           enrollment_id?: string
           expiry_date?: string | null
@@ -210,6 +213,7 @@ export type Database = {
           category_id: string | null
           certificate_template_id: string | null
           created_at: string | null
+          deleted_at: string | null
           description: string | null
           duration_minutes: number
           id: string
@@ -224,6 +228,7 @@ export type Database = {
           category_id?: string | null
           certificate_template_id?: string | null
           created_at?: string | null
+          deleted_at?: string | null
           description?: string | null
           duration_minutes?: number
           id?: string
@@ -238,6 +243,7 @@ export type Database = {
           category_id?: string | null
           certificate_template_id?: string | null
           created_at?: string | null
+          deleted_at?: string | null
           description?: string | null
           duration_minutes?: number
           id?: string
@@ -269,6 +275,7 @@ export type Database = {
           completed_at: string | null
           course_id: string
           created_at: string | null
+          deleted_at: string | null
           expires_at: string | null
           firm_id: string | null
           id: string
@@ -282,6 +289,7 @@ export type Database = {
           completed_at?: string | null
           course_id: string
           created_at?: string | null
+          deleted_at?: string | null
           expires_at?: string | null
           firm_id?: string | null
           id?: string
@@ -295,6 +303,7 @@ export type Database = {
           completed_at?: string | null
           course_id?: string
           created_at?: string | null
+          deleted_at?: string | null
           expires_at?: string | null
           firm_id?: string | null
           id?: string
@@ -388,6 +397,7 @@ export type Database = {
         Row: {
           course_id: string
           created_at: string | null
+          deleted_at: string | null
           duration_minutes: number | null
           exam_type: string | null
           id: string
@@ -402,6 +412,7 @@ export type Database = {
         Insert: {
           course_id: string
           created_at?: string | null
+          deleted_at?: string | null
           duration_minutes?: number | null
           exam_type?: string | null
           id?: string
@@ -416,6 +427,7 @@ export type Database = {
         Update: {
           course_id?: string
           created_at?: string | null
+          deleted_at?: string | null
           duration_minutes?: number | null
           exam_type?: string | null
           id?: string
@@ -443,6 +455,7 @@ export type Database = {
           bg_color: string | null
           created_at: string | null
           custom_css: string | null
+          deleted_at: string | null
           email: string | null
           favicon_url: string | null
           firm_code: string | null
@@ -465,6 +478,7 @@ export type Database = {
           bg_color?: string | null
           created_at?: string | null
           custom_css?: string | null
+          deleted_at?: string | null
           email?: string | null
           favicon_url?: string | null
           firm_code?: string | null
@@ -487,6 +501,7 @@ export type Database = {
           bg_color?: string | null
           created_at?: string | null
           custom_css?: string | null
+          deleted_at?: string | null
           email?: string | null
           favicon_url?: string | null
           firm_code?: string | null
@@ -545,6 +560,7 @@ export type Database = {
       groups: {
         Row: {
           created_at: string
+          deleted_at: string | null
           firm_id: string | null
           group_key: string
           id: string
@@ -554,6 +570,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           firm_id?: string | null
           group_key: string
           id?: string
@@ -563,6 +580,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           firm_id?: string | null
           group_key?: string
           id?: string
@@ -655,6 +673,7 @@ export type Database = {
           content_url: string | null
           course_id: string
           created_at: string
+          deleted_at: string | null
           duration_minutes: number
           exam_id: string | null
           id: string
@@ -670,6 +689,7 @@ export type Database = {
           content_url?: string | null
           course_id: string
           created_at?: string
+          deleted_at?: string | null
           duration_minutes?: number
           exam_id?: string | null
           id?: string
@@ -685,6 +705,7 @@ export type Database = {
           content_url?: string | null
           course_id?: string
           created_at?: string
+          deleted_at?: string | null
           duration_minutes?: number
           exam_id?: string | null
           id?: string
@@ -800,6 +821,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string | null
+          deleted_at: string | null
           firm_id: string | null
           first_name: string
           id: string
@@ -812,6 +834,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string | null
+          deleted_at?: string | null
           firm_id?: string | null
           first_name: string
           id?: string
@@ -824,6 +847,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string | null
+          deleted_at?: string | null
           firm_id?: string | null
           first_name?: string
           id?: string
@@ -1195,6 +1219,7 @@ export type Database = {
         Args: { _duration_seconds: number; _tracking_id: string }
         Returns: undefined
       }
+      mask_tc_identity: { Args: { tc: string }; Returns: string }
       record_lesson_progress: {
         Args: {
           _enrollment_id: string
@@ -1215,6 +1240,10 @@ export type Database = {
           _lesson_id: string
           _sco_id?: string
         }
+        Returns: undefined
+      }
+      soft_delete_record: {
+        Args: { _record_id: string; _table_name: string }
         Returns: undefined
       }
       update_enrollment_progress: {
