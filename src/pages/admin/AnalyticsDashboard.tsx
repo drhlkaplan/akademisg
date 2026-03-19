@@ -726,10 +726,10 @@ export default function AnalyticsDashboard() {
             <FirmComparisonDashboard
               firms={firms || []}
               profiles={profiles || []}
-              enrollments={enrollments || []}
-              examResults={examResults || []}
-              certificates={certificates || []}
-              lessonProgress={lessonProgress || []}
+              enrollments={filteredEnrollments}
+              examResults={filteredExamResults}
+              certificates={filteredCertificates}
+              lessonProgress={filteredLessonProgress}
             />
           </TabsContent>
 
