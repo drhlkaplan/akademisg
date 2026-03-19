@@ -23,9 +23,10 @@ import {
 import {
   BarChart3, Users, BookOpen, Building2, Award, GraduationCap,
   TrendingUp, Clock, Target, Layers, KeyRound, Activity, Zap,
-  MousePointerClick, Timer, ClipboardCheck,
+  MousePointerClick, Timer, ClipboardCheck, CalendarDays,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { subDays, subMonths, isAfter } from "date-fns";
 import { ExamAnalytics } from "@/components/admin/analytics/ExamAnalytics";
 import { StudentProgressAnalytics } from "@/components/admin/analytics/StudentProgressAnalytics";
 import { FirmComparisonDashboard } from "@/components/admin/analytics/FirmComparisonDashboard";
