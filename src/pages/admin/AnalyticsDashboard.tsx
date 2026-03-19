@@ -251,7 +251,7 @@ export default function AnalyticsDashboard() {
 
   // Group stats
   const groupStats = useMemo(() => {
-    if (!groups || !userGroups || !enrollments) return [];
+    if (!groups || !userGroups || !filteredEnrollments) return [];
     return groups
       .filter(g => g.is_active)
       .map(group => {
@@ -264,7 +264,7 @@ export default function AnalyticsDashboard() {
         };
       })
       .sort((a, b) => b.members - a.members);
-  }, [groups, userGroups, firms, enrollments]);
+  }, [groups, userGroups, firms, filteredEnrollments]);
 
   // Monthly enrollment trend (last 6 months)
   const monthlyTrend = useMemo(() => {
