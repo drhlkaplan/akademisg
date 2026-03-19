@@ -304,13 +304,12 @@ export default function AnalyticsDashboard() {
 
   // xAPI Analytics
   const xapiVerbDistribution = useMemo(() => {
-    if (!xapiStatements) return [];
     const counts: Record<string, number> = {};
     const verbLabels: Record<string, string> = {
       launched: "Başlatıldı", progressed: "İlerledi", terminated: "Sonlandırıldı",
       interacted: "Etkileşim", completed: "Tamamlandı", passed: "Geçti", failed: "Başarısız",
     };
-    xapiStatements.forEach(s => {
+    filteredXapi.forEach(s => {
       counts[s.verb] = (counts[s.verb] || 0) + 1;
     });
     return Object.entries(counts)
@@ -318,10 +317,9 @@ export default function AnalyticsDashboard() {
         name: verbLabels[key] || key, verb: key, value, color: COLORS[i % COLORS.length],
       }))
       .sort((a, b) => b.value - a.value);
-  }, [xapiStatements]);
+  }, [filteredXapi]);
 
   const xapiDailyActivity = useMemo(() => {
-    if (!xapiStatements) return [];
     const days: Record<string, { events: number; users: Set<string> }> = {};
     const now = new Date();
     for (let i = 13; i >= 0; i--) {
@@ -330,7 +328,7 @@ export default function AnalyticsDashboard() {
       const key = d.toLocaleDateString("tr-TR", { day: "2-digit", month: "short" });
       days[key] = { events: 0, users: new Set() };
     }
-    xapiStatements.forEach(s => {
+    filteredXapi.forEach(s => {
       const d = new Date(s.created_at);
       const key = d.toLocaleDateString("tr-TR", { day: "2-digit", month: "short" });
       if (days[key]) {
@@ -341,12 +339,12 @@ export default function AnalyticsDashboard() {
     return Object.entries(days).map(([day, data]) => ({
       day, events: data.events, users: data.users.size,
     }));
-  }, [xapiStatements]);
+  }, [filteredXapi]);
 
   const xapiLessonTimeAnalysis = useMemo(() => {
-    if (!xapiStatements || !lessons) return [];
+    if (!lessons) return [];
     const lessonTimes: Record<string, { totalSeconds: number; count: number; title: string }> = {};
-    xapiStatements.forEach(s => {
+    filteredXapi.forEach(s => {
       if (s.verb === "terminated" && s.result && s.object_type === "scorm_lesson") {
         const result = s.result as any;
         const context = s.context as any;
@@ -376,14 +374,13 @@ export default function AnalyticsDashboard() {
       }))
       .sort((a, b) => b.sessions - a.sessions)
       .slice(0, 10);
-  }, [xapiStatements, lessons]);
+  }, [filteredXapi, lessons]);
 
   const xapiCompletionFunnel = useMemo(() => {
-    if (!xapiStatements) return [];
-    const launched = xapiStatements.filter(s => s.verb === "launched").length;
-    const progressed = xapiStatements.filter(s => s.verb === "progressed").length;
-    const terminated = xapiStatements.filter(s => s.verb === "terminated").length;
-    const completedEvents = xapiStatements.filter(s => {
+    const launched = filteredXapi.filter(s => s.verb === "launched").length;
+    const progressed = filteredXapi.filter(s => s.verb === "progressed").length;
+    const terminated = filteredXapi.filter(s => s.verb === "terminated").length;
+    const completedEvents = filteredXapi.filter(s => {
       const result = s.result as any;
       return s.verb === "terminated" && result?.completion === true;
     }).length;
@@ -393,12 +390,12 @@ export default function AnalyticsDashboard() {
       { stage: "Sonlanan", value: terminated, color: COLORS[2] },
       { stage: "Tamamlanan", value: completedEvents, color: COLORS[3] },
     ];
-  }, [xapiStatements]);
+  }, [filteredXapi]);
 
   const xapiTopUsers = useMemo(() => {
-    if (!xapiStatements || !profiles) return [];
+    if (!profiles) return [];
     const userEvents: Record<string, number> = {};
-    xapiStatements.forEach(s => {
+    filteredXapi.forEach(s => {
       userEvents[s.user_id] = (userEvents[s.user_id] || 0) + 1;
     });
     return Object.entries(userEvents)
@@ -411,7 +408,7 @@ export default function AnalyticsDashboard() {
       })
       .sort((a, b) => b.events - a.events)
       .slice(0, 10);
-  }, [xapiStatements, profiles]);
+  }, [filteredXapi, profiles]);
 
   const chartConfig = {
     completed: { label: "Tamamlanan", color: "hsl(142, 71%, 45%)" },
