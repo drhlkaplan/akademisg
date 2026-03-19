@@ -438,9 +438,27 @@ export default function AnalyticsDashboard() {
   return (
     <DashboardLayout userRole="admin">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Analiz & Raporlar</h1>
-          <p className="text-muted-foreground">Kurs, kullanıcı, firma ve grup bazlı detaylı istatistikler</p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Analiz & Raporlar</h1>
+            <p className="text-muted-foreground">Kurs, kullanıcı, firma ve grup bazlı detaylı istatistikler</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+            <Select value={dateRange} onValueChange={setDateRange}>
+              <SelectTrigger className="w-40 h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tüm Zamanlar</SelectItem>
+                <SelectItem value="7d">Son 7 Gün</SelectItem>
+                <SelectItem value="30d">Son 30 Gün</SelectItem>
+                <SelectItem value="3m">Son 3 Ay</SelectItem>
+                <SelectItem value="6m">Son 6 Ay</SelectItem>
+                <SelectItem value="1y">Son 1 Yıl</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Overview Stats */}
