@@ -225,15 +225,15 @@ export default function AnalyticsDashboard() {
 
   // Firm performance
   const firmPerformance = useMemo(() => {
-    if (!firms || !profiles || !enrollments || !certificates) return [];
+    if (!firms || !profiles || !filteredEnrollments || !filteredCertificates) return [];
     return firms
       .filter(f => f.is_active)
       .map(firm => {
         const firmUsers = profiles.filter(p => p.firm_id === firm.id).length;
-        const firmEnrollments = enrollments.filter(e => e.firm_id === firm.id);
+        const firmEnrollments = filteredEnrollments.filter(e => e.firm_id === firm.id);
         const firmCompleted = firmEnrollments.filter(e => e.status === "completed").length;
-        const firmCerts = certificates.filter(c => {
-          const enrollment = enrollments.find(e => e.id === c.course_id);
+        const firmCerts = filteredCertificates.filter(c => {
+          const enrollment = filteredEnrollments.find(e => e.id === c.course_id);
           return enrollment?.firm_id === firm.id;
         }).length;
         return {
@@ -247,7 +247,7 @@ export default function AnalyticsDashboard() {
       })
       .filter(f => f.users > 0)
       .sort((a, b) => b.users - a.users);
-  }, [firms, profiles, enrollments, certificates]);
+  }, [firms, profiles, filteredEnrollments, filteredCertificates]);
 
   // Group stats
   const groupStats = useMemo(() => {
