@@ -267,7 +267,6 @@ export default function AnalyticsDashboard() {
 
   // Monthly enrollment trend (last 6 months)
   const monthlyTrend = useMemo(() => {
-    if (!enrollments) return [];
     const months: Record<string, { enrolled: number; completed: number }> = {};
     const now = new Date();
     for (let i = 5; i >= 0; i--) {
@@ -275,7 +274,7 @@ export default function AnalyticsDashboard() {
       const key = d.toLocaleDateString("tr-TR", { month: "short", year: "2-digit" });
       months[key] = { enrolled: 0, completed: 0 };
     }
-    enrollments.forEach(e => {
+    filteredEnrollments.forEach(e => {
       const d = new Date(e.created_at || "");
       const key = d.toLocaleDateString("tr-TR", { month: "short", year: "2-digit" });
       if (months[key]) months[key].enrolled++;
@@ -286,7 +285,7 @@ export default function AnalyticsDashboard() {
       }
     });
     return Object.entries(months).map(([month, data]) => ({ month, ...data }));
-  }, [enrollments]);
+  }, [filteredEnrollments]);
 
   // Lesson type distribution
   const lessonTypeData = useMemo(() => {
