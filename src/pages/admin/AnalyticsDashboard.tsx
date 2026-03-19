@@ -23,9 +23,10 @@ import {
 import {
   BarChart3, Users, BookOpen, Building2, Award, GraduationCap,
   TrendingUp, Clock, Target, Layers, KeyRound, Activity, Zap,
-  MousePointerClick, Timer, ClipboardCheck,
+  MousePointerClick, Timer, ClipboardCheck, CalendarDays,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { subDays, subMonths, isAfter } from "date-fns";
 import { ExamAnalytics } from "@/components/admin/analytics/ExamAnalytics";
 import { StudentProgressAnalytics } from "@/components/admin/analytics/StudentProgressAnalytics";
 import { FirmComparisonDashboard } from "@/components/admin/analytics/FirmComparisonDashboard";
@@ -133,34 +134,64 @@ export default function AnalyticsDashboard() {
 
   const isLoading = !courses || !enrollments || !profiles || !firms;
 
+  // Date range filter
+  const [dateRange, setDateRange] = useState<string>("all");
+
+  const dateFilterStart = useMemo(() => {
+    const now = new Date();
+    switch (dateRange) {
+      case "7d": return subDays(now, 7);
+      case "30d": return subDays(now, 30);
+      case "3m": return subMonths(now, 3);
+      case "6m": return subMonths(now, 6);
+      case "1y": return subMonths(now, 12);
+      default: return null;
+    }
+  }, [dateRange]);
+
+  const filterByDate = <T extends Record<string, any>>(items: T[] | null | undefined, dateField: string): T[] => {
+    if (!items) return [];
+    if (!dateFilterStart) return items;
+    return items.filter(item => {
+      const d = item[dateField];
+      return d && isAfter(new Date(d), dateFilterStart);
+    });
+  };
+
+  const filteredEnrollments = useMemo(() => filterByDate(enrollments, "created_at"), [enrollments, dateFilterStart]);
+  const filteredCertificates = useMemo(() => filterByDate(certificates, "issue_date"), [certificates, dateFilterStart]);
+  const filteredExamResults = useMemo(() => filterByDate(examResults, "completed_at"), [examResults, dateFilterStart]);
+  const filteredXapi = useMemo(() => filterByDate(xapiStatements, "created_at"), [xapiStatements, dateFilterStart]);
+  const filteredLessonProgress = useMemo(() => filterByDate(lessonProgress, "created_at"), [lessonProgress, dateFilterStart]);
+
   // --- Computed Stats ---
   const overviewStats = useMemo(() => {
-    if (!courses || !enrollments || !profiles || !firms || !certificates) return null;
-    const activeEnrollments = enrollments.filter(e => e.status === "active").length;
-    const completedEnrollments = enrollments.filter(e => e.status === "completed").length;
-    const avgProgress = enrollments.length > 0
-      ? Math.round(enrollments.reduce((sum, e) => sum + (e.progress_percent || 0), 0) / enrollments.length)
+    if (!courses || !filteredEnrollments || !profiles || !firms || !filteredCertificates) return null;
+    const activeEnrollments = filteredEnrollments.filter(e => e.status === "active").length;
+    const completedEnrollments = filteredEnrollments.filter(e => e.status === "completed").length;
+    const avgProgress = filteredEnrollments.length > 0
+      ? Math.round(filteredEnrollments.reduce((sum, e) => sum + (e.progress_percent || 0), 0) / filteredEnrollments.length)
       : 0;
     return {
       totalUsers: profiles.length,
       totalCourses: courses.filter(c => c.is_active).length,
       totalFirms: firms.filter(f => f.is_active).length,
-      totalEnrollments: enrollments.length,
+      totalEnrollments: filteredEnrollments.length,
       activeEnrollments,
       completedEnrollments,
-      totalCertificates: certificates.length,
+      totalCertificates: filteredCertificates.length,
       avgProgress,
-      completionRate: enrollments.length > 0 ? Math.round((completedEnrollments / enrollments.length) * 100) : 0,
+      completionRate: filteredEnrollments.length > 0 ? Math.round((completedEnrollments / filteredEnrollments.length) * 100) : 0,
     };
-  }, [courses, enrollments, profiles, firms, certificates]);
+  }, [courses, filteredEnrollments, profiles, firms, filteredCertificates]);
 
   // Course completion data
   const courseCompletionData = useMemo(() => {
-    if (!courses || !enrollments) return [];
+    if (!courses) return [];
     return courses
       .filter(c => c.is_active)
       .map(course => {
-        const courseEnrollments = enrollments.filter(e => e.course_id === course.id);
+        const courseEnrollments = filteredEnrollments.filter(e => e.course_id === course.id);
         const completed = courseEnrollments.filter(e => e.status === "completed").length;
         const active = courseEnrollments.filter(e => e.status === "active").length;
         const total = courseEnrollments.length;
@@ -176,13 +207,12 @@ export default function AnalyticsDashboard() {
       .filter(c => c.total > 0)
       .sort((a, b) => b.total - a.total)
       .slice(0, 10);
-  }, [courses, enrollments]);
+  }, [courses, filteredEnrollments]);
 
   // Enrollment status distribution
   const statusDistribution = useMemo(() => {
-    if (!enrollments) return [];
     const counts: Record<string, number> = {};
-    enrollments.forEach(e => { counts[e.status || "pending"] = (counts[e.status || "pending"] || 0) + 1; });
+    filteredEnrollments.forEach(e => { counts[e.status || "pending"] = (counts[e.status || "pending"] || 0) + 1; });
     const labels: Record<string, string> = {
       pending: "Beklemede", active: "Devam Ediyor", completed: "Tamamlandı",
       failed: "Başarısız", expired: "Süresi Doldu",
@@ -190,19 +220,19 @@ export default function AnalyticsDashboard() {
     return Object.entries(counts).map(([key, value], i) => ({
       name: labels[key] || key, value, color: COLORS[i % COLORS.length],
     }));
-  }, [enrollments]);
+  }, [filteredEnrollments]);
 
   // Firm performance
   const firmPerformance = useMemo(() => {
-    if (!firms || !profiles || !enrollments || !certificates) return [];
+    if (!firms || !profiles || !filteredEnrollments || !filteredCertificates) return [];
     return firms
       .filter(f => f.is_active)
       .map(firm => {
         const firmUsers = profiles.filter(p => p.firm_id === firm.id).length;
-        const firmEnrollments = enrollments.filter(e => e.firm_id === firm.id);
+        const firmEnrollments = filteredEnrollments.filter(e => e.firm_id === firm.id);
         const firmCompleted = firmEnrollments.filter(e => e.status === "completed").length;
-        const firmCerts = certificates.filter(c => {
-          const enrollment = enrollments.find(e => e.id === c.course_id);
+        const firmCerts = filteredCertificates.filter(c => {
+          const enrollment = filteredEnrollments.find(e => e.id === c.course_id);
           return enrollment?.firm_id === firm.id;
         }).length;
         return {
@@ -216,11 +246,11 @@ export default function AnalyticsDashboard() {
       })
       .filter(f => f.users > 0)
       .sort((a, b) => b.users - a.users);
-  }, [firms, profiles, enrollments, certificates]);
+  }, [firms, profiles, filteredEnrollments, filteredCertificates]);
 
   // Group stats
   const groupStats = useMemo(() => {
-    if (!groups || !userGroups || !enrollments) return [];
+    if (!groups || !userGroups || !filteredEnrollments) return [];
     return groups
       .filter(g => g.is_active)
       .map(group => {
@@ -233,11 +263,10 @@ export default function AnalyticsDashboard() {
         };
       })
       .sort((a, b) => b.members - a.members);
-  }, [groups, userGroups, firms, enrollments]);
+  }, [groups, userGroups, firms, filteredEnrollments]);
 
   // Monthly enrollment trend (last 6 months)
   const monthlyTrend = useMemo(() => {
-    if (!enrollments) return [];
     const months: Record<string, { enrolled: number; completed: number }> = {};
     const now = new Date();
     for (let i = 5; i >= 0; i--) {
@@ -245,7 +274,7 @@ export default function AnalyticsDashboard() {
       const key = d.toLocaleDateString("tr-TR", { month: "short", year: "2-digit" });
       months[key] = { enrolled: 0, completed: 0 };
     }
-    enrollments.forEach(e => {
+    filteredEnrollments.forEach(e => {
       const d = new Date(e.created_at || "");
       const key = d.toLocaleDateString("tr-TR", { month: "short", year: "2-digit" });
       if (months[key]) months[key].enrolled++;
@@ -256,7 +285,7 @@ export default function AnalyticsDashboard() {
       }
     });
     return Object.entries(months).map(([month, data]) => ({ month, ...data }));
-  }, [enrollments]);
+  }, [filteredEnrollments]);
 
   // Lesson type distribution
   const lessonTypeData = useMemo(() => {
@@ -275,13 +304,12 @@ export default function AnalyticsDashboard() {
 
   // xAPI Analytics
   const xapiVerbDistribution = useMemo(() => {
-    if (!xapiStatements) return [];
     const counts: Record<string, number> = {};
     const verbLabels: Record<string, string> = {
       launched: "Başlatıldı", progressed: "İlerledi", terminated: "Sonlandırıldı",
       interacted: "Etkileşim", completed: "Tamamlandı", passed: "Geçti", failed: "Başarısız",
     };
-    xapiStatements.forEach(s => {
+    filteredXapi.forEach(s => {
       counts[s.verb] = (counts[s.verb] || 0) + 1;
     });
     return Object.entries(counts)
@@ -289,10 +317,9 @@ export default function AnalyticsDashboard() {
         name: verbLabels[key] || key, verb: key, value, color: COLORS[i % COLORS.length],
       }))
       .sort((a, b) => b.value - a.value);
-  }, [xapiStatements]);
+  }, [filteredXapi]);
 
   const xapiDailyActivity = useMemo(() => {
-    if (!xapiStatements) return [];
     const days: Record<string, { events: number; users: Set<string> }> = {};
     const now = new Date();
     for (let i = 13; i >= 0; i--) {
@@ -301,7 +328,7 @@ export default function AnalyticsDashboard() {
       const key = d.toLocaleDateString("tr-TR", { day: "2-digit", month: "short" });
       days[key] = { events: 0, users: new Set() };
     }
-    xapiStatements.forEach(s => {
+    filteredXapi.forEach(s => {
       const d = new Date(s.created_at);
       const key = d.toLocaleDateString("tr-TR", { day: "2-digit", month: "short" });
       if (days[key]) {
@@ -312,12 +339,12 @@ export default function AnalyticsDashboard() {
     return Object.entries(days).map(([day, data]) => ({
       day, events: data.events, users: data.users.size,
     }));
-  }, [xapiStatements]);
+  }, [filteredXapi]);
 
   const xapiLessonTimeAnalysis = useMemo(() => {
-    if (!xapiStatements || !lessons) return [];
+    if (!lessons) return [];
     const lessonTimes: Record<string, { totalSeconds: number; count: number; title: string }> = {};
-    xapiStatements.forEach(s => {
+    filteredXapi.forEach(s => {
       if (s.verb === "terminated" && s.result && s.object_type === "scorm_lesson") {
         const result = s.result as any;
         const context = s.context as any;
@@ -347,14 +374,13 @@ export default function AnalyticsDashboard() {
       }))
       .sort((a, b) => b.sessions - a.sessions)
       .slice(0, 10);
-  }, [xapiStatements, lessons]);
+  }, [filteredXapi, lessons]);
 
   const xapiCompletionFunnel = useMemo(() => {
-    if (!xapiStatements) return [];
-    const launched = xapiStatements.filter(s => s.verb === "launched").length;
-    const progressed = xapiStatements.filter(s => s.verb === "progressed").length;
-    const terminated = xapiStatements.filter(s => s.verb === "terminated").length;
-    const completedEvents = xapiStatements.filter(s => {
+    const launched = filteredXapi.filter(s => s.verb === "launched").length;
+    const progressed = filteredXapi.filter(s => s.verb === "progressed").length;
+    const terminated = filteredXapi.filter(s => s.verb === "terminated").length;
+    const completedEvents = filteredXapi.filter(s => {
       const result = s.result as any;
       return s.verb === "terminated" && result?.completion === true;
     }).length;
@@ -364,12 +390,12 @@ export default function AnalyticsDashboard() {
       { stage: "Sonlanan", value: terminated, color: COLORS[2] },
       { stage: "Tamamlanan", value: completedEvents, color: COLORS[3] },
     ];
-  }, [xapiStatements]);
+  }, [filteredXapi]);
 
   const xapiTopUsers = useMemo(() => {
-    if (!xapiStatements || !profiles) return [];
+    if (!profiles) return [];
     const userEvents: Record<string, number> = {};
-    xapiStatements.forEach(s => {
+    filteredXapi.forEach(s => {
       userEvents[s.user_id] = (userEvents[s.user_id] || 0) + 1;
     });
     return Object.entries(userEvents)
@@ -382,7 +408,7 @@ export default function AnalyticsDashboard() {
       })
       .sort((a, b) => b.events - a.events)
       .slice(0, 10);
-  }, [xapiStatements, profiles]);
+  }, [filteredXapi, profiles]);
 
   const chartConfig = {
     completed: { label: "Tamamlanan", color: "hsl(142, 71%, 45%)" },
@@ -412,9 +438,27 @@ export default function AnalyticsDashboard() {
   return (
     <DashboardLayout userRole="admin">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Analiz & Raporlar</h1>
-          <p className="text-muted-foreground">Kurs, kullanıcı, firma ve grup bazlı detaylı istatistikler</p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Analiz & Raporlar</h1>
+            <p className="text-muted-foreground">Kurs, kullanıcı, firma ve grup bazlı detaylı istatistikler</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+            <Select value={dateRange} onValueChange={setDateRange}>
+              <SelectTrigger className="w-40 h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tüm Zamanlar</SelectItem>
+                <SelectItem value="7d">Son 7 Gün</SelectItem>
+                <SelectItem value="30d">Son 30 Gün</SelectItem>
+                <SelectItem value="3m">Son 3 Ay</SelectItem>
+                <SelectItem value="6m">Son 6 Ay</SelectItem>
+                <SelectItem value="1y">Son 1 Yıl</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Overview Stats */}
@@ -590,10 +634,10 @@ export default function AnalyticsDashboard() {
           {/* EXAMS TAB */}
           <TabsContent value="exams" className="space-y-6">
             <ExamAnalytics
-              examResults={examResults || []}
+              examResults={filteredExamResults}
               courses={courses || []}
               profiles={profiles || []}
-              enrollments={enrollments || []}
+              enrollments={filteredEnrollments}
             />
           </TabsContent>
 
@@ -601,11 +645,11 @@ export default function AnalyticsDashboard() {
           <TabsContent value="students" className="space-y-6">
             <StudentProgressAnalytics
               profiles={profiles || []}
-              enrollments={enrollments || []}
+              enrollments={filteredEnrollments}
               courses={courses || []}
-              lessonProgress={lessonProgress || []}
+              lessonProgress={filteredLessonProgress}
               lessons={lessons || []}
-              examResults={examResults || []}
+              examResults={filteredExamResults}
             />
           </TabsContent>
 
@@ -682,10 +726,10 @@ export default function AnalyticsDashboard() {
             <FirmComparisonDashboard
               firms={firms || []}
               profiles={profiles || []}
-              enrollments={enrollments || []}
-              examResults={examResults || []}
-              certificates={certificates || []}
-              lessonProgress={lessonProgress || []}
+              enrollments={filteredEnrollments}
+              examResults={filteredExamResults}
+              certificates={filteredCertificates}
+              lessonProgress={filteredLessonProgress}
             />
           </TabsContent>
 
