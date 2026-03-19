@@ -134,26 +134,56 @@ export default function AnalyticsDashboard() {
 
   const isLoading = !courses || !enrollments || !profiles || !firms;
 
+  // Date range filter
+  const [dateRange, setDateRange] = useState<string>("all");
+
+  const dateFilterStart = useMemo(() => {
+    const now = new Date();
+    switch (dateRange) {
+      case "7d": return subDays(now, 7);
+      case "30d": return subDays(now, 30);
+      case "3m": return subMonths(now, 3);
+      case "6m": return subMonths(now, 6);
+      case "1y": return subMonths(now, 12);
+      default: return null;
+    }
+  }, [dateRange]);
+
+  const filterByDate = <T extends Record<string, any>>(items: T[] | null | undefined, dateField: string): T[] => {
+    if (!items) return [];
+    if (!dateFilterStart) return items;
+    return items.filter(item => {
+      const d = item[dateField];
+      return d && isAfter(new Date(d), dateFilterStart);
+    });
+  };
+
+  const filteredEnrollments = useMemo(() => filterByDate(enrollments, "created_at"), [enrollments, dateFilterStart]);
+  const filteredCertificates = useMemo(() => filterByDate(certificates, "issue_date"), [certificates, dateFilterStart]);
+  const filteredExamResults = useMemo(() => filterByDate(examResults, "completed_at"), [examResults, dateFilterStart]);
+  const filteredXapi = useMemo(() => filterByDate(xapiStatements, "created_at"), [xapiStatements, dateFilterStart]);
+  const filteredLessonProgress = useMemo(() => filterByDate(lessonProgress, "created_at"), [lessonProgress, dateFilterStart]);
+
   // --- Computed Stats ---
   const overviewStats = useMemo(() => {
-    if (!courses || !enrollments || !profiles || !firms || !certificates) return null;
-    const activeEnrollments = enrollments.filter(e => e.status === "active").length;
-    const completedEnrollments = enrollments.filter(e => e.status === "completed").length;
-    const avgProgress = enrollments.length > 0
-      ? Math.round(enrollments.reduce((sum, e) => sum + (e.progress_percent || 0), 0) / enrollments.length)
+    if (!courses || !filteredEnrollments || !profiles || !firms || !filteredCertificates) return null;
+    const activeEnrollments = filteredEnrollments.filter(e => e.status === "active").length;
+    const completedEnrollments = filteredEnrollments.filter(e => e.status === "completed").length;
+    const avgProgress = filteredEnrollments.length > 0
+      ? Math.round(filteredEnrollments.reduce((sum, e) => sum + (e.progress_percent || 0), 0) / filteredEnrollments.length)
       : 0;
     return {
       totalUsers: profiles.length,
       totalCourses: courses.filter(c => c.is_active).length,
       totalFirms: firms.filter(f => f.is_active).length,
-      totalEnrollments: enrollments.length,
+      totalEnrollments: filteredEnrollments.length,
       activeEnrollments,
       completedEnrollments,
-      totalCertificates: certificates.length,
+      totalCertificates: filteredCertificates.length,
       avgProgress,
-      completionRate: enrollments.length > 0 ? Math.round((completedEnrollments / enrollments.length) * 100) : 0,
+      completionRate: filteredEnrollments.length > 0 ? Math.round((completedEnrollments / filteredEnrollments.length) * 100) : 0,
     };
-  }, [courses, enrollments, profiles, firms, certificates]);
+  }, [courses, filteredEnrollments, profiles, firms, filteredCertificates]);
 
   // Course completion data
   const courseCompletionData = useMemo(() => {
