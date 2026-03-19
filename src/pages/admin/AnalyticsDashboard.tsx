@@ -187,11 +187,11 @@ export default function AnalyticsDashboard() {
 
   // Course completion data
   const courseCompletionData = useMemo(() => {
-    if (!courses || !enrollments) return [];
+    if (!courses) return [];
     return courses
       .filter(c => c.is_active)
       .map(course => {
-        const courseEnrollments = enrollments.filter(e => e.course_id === course.id);
+        const courseEnrollments = filteredEnrollments.filter(e => e.course_id === course.id);
         const completed = courseEnrollments.filter(e => e.status === "completed").length;
         const active = courseEnrollments.filter(e => e.status === "active").length;
         const total = courseEnrollments.length;
@@ -207,13 +207,12 @@ export default function AnalyticsDashboard() {
       .filter(c => c.total > 0)
       .sort((a, b) => b.total - a.total)
       .slice(0, 10);
-  }, [courses, enrollments]);
+  }, [courses, filteredEnrollments]);
 
   // Enrollment status distribution
   const statusDistribution = useMemo(() => {
-    if (!enrollments) return [];
     const counts: Record<string, number> = {};
-    enrollments.forEach(e => { counts[e.status || "pending"] = (counts[e.status || "pending"] || 0) + 1; });
+    filteredEnrollments.forEach(e => { counts[e.status || "pending"] = (counts[e.status || "pending"] || 0) + 1; });
     const labels: Record<string, string> = {
       pending: "Beklemede", active: "Devam Ediyor", completed: "Tamamlandı",
       failed: "Başarısız", expired: "Süresi Doldu",
@@ -221,7 +220,7 @@ export default function AnalyticsDashboard() {
     return Object.entries(counts).map(([key, value], i) => ({
       name: labels[key] || key, value, color: COLORS[i % COLORS.length],
     }));
-  }, [enrollments]);
+  }, [filteredEnrollments]);
 
   // Firm performance
   const firmPerformance = useMemo(() => {
