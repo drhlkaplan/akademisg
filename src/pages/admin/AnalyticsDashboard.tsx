@@ -634,10 +634,10 @@ export default function AnalyticsDashboard() {
           {/* EXAMS TAB */}
           <TabsContent value="exams" className="space-y-6">
             <ExamAnalytics
-              examResults={examResults || []}
+              examResults={filteredExamResults}
               courses={courses || []}
               profiles={profiles || []}
-              enrollments={enrollments || []}
+              enrollments={filteredEnrollments}
             />
           </TabsContent>
 
@@ -645,11 +645,11 @@ export default function AnalyticsDashboard() {
           <TabsContent value="students" className="space-y-6">
             <StudentProgressAnalytics
               profiles={profiles || []}
-              enrollments={enrollments || []}
+              enrollments={filteredEnrollments}
               courses={courses || []}
-              lessonProgress={lessonProgress || []}
+              lessonProgress={filteredLessonProgress}
               lessons={lessons || []}
-              examResults={examResults || []}
+              examResults={filteredExamResults}
             />
           </TabsContent>
 
