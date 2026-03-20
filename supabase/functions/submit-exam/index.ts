@@ -101,10 +101,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Fetch questions with correct_answer (server-side only)
+    // Fetch questions with correct_answer and options (server-side only)
     let { data: questions, error: qErr } = await adminClient
       .from("questions")
-      .select("id, correct_answer")
+      .select("id, correct_answer, options")
       .eq("exam_id", exam_id);
 
     if (qErr || !questions || questions.length === 0) {
@@ -116,9 +116,6 @@ Deno.serve(async (req) => {
 
     // If exam has question_count limit, only grade those questions that were in the submitted set
     const submittedQuestionIds = Object.keys(answers);
-    const gradableQuestions = questions.filter((q) =>
-      submittedQuestionIds.includes(q.id) || true
-    );
 
     // Use question_count if set
     const totalQuestions = exam.question_count && exam.question_count < questions.length
@@ -126,10 +123,27 @@ Deno.serve(async (req) => {
       : questions.length;
 
     // Grade: count correct answers from submitted
+    // Frontend sends letter codes (A, B, C, D) for multiple_choice or "true"/"false" for true_false
+    // correct_answer in DB is the actual answer text
+    // Resolve letter codes to text via options array before comparing
     let correctAnswers = 0;
     for (const question of questions) {
       const userAnswer = answers[question.id];
-      if (userAnswer && userAnswer === question.correct_answer) {
+      if (!userAnswer) continue;
+
+      const correctValue = question.correct_answer;
+      const options = question.options as string[] | null;
+
+      // If userAnswer is a single uppercase letter (A-Z) and options exist, resolve to text
+      let resolvedAnswer = userAnswer;
+      if (options && Array.isArray(options) && /^[A-Z]$/.test(userAnswer)) {
+        const letterIndex = userAnswer.charCodeAt(0) - 65;
+        if (letterIndex >= 0 && letterIndex < options.length) {
+          resolvedAnswer = options[letterIndex];
+        }
+      }
+
+      if (resolvedAnswer === correctValue) {
         correctAnswers++;
       }
     }
