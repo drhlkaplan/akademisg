@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>İş Kazaları ve Meslek Hastalıkları</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; line-height: 1.7; color: #1a1a2e; background: #f8f9fc; padding: 2rem; max-width: 900px; margin: 0 auto; }
+h2 { color: #1a1a2e; margin: 2rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 3px solid #f97316; font-size: 1.5rem; }
+h3 { color: #2d3748; margin: 1.5rem 0 0.75rem; font-size: 1.15rem; }
+p { margin-bottom: 1rem; color: #374151; }
+ul, ol { margin: 0.5rem 0 1rem 1.5rem; color: #374151; }
+li { margin-bottom: 0.4rem; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; font-size: 0.9rem; }
+th { background: #1a2744; color: white; padding: 0.75rem; text-align: left; font-weight: 600; }
+td { padding: 0.65rem 0.75rem; border-bottom: 1px solid #e5e7eb; }
+tr:nth-child(even) { background: #f3f4f6; }
+.info-box { background: #eff6ff; border-left: 4px solid #3b82f6; padding: 1.25rem; border-radius: 0 8px 8px 0; margin: 1.5rem 0; }
+.info-box h3 { color: #1d4ed8; margin-top: 0; }
+.warning-box { background: #fef3cd; border-left: 4px solid #f59e0b; padding: 1.25rem; border-radius: 0 8px 8px 0; margin: 1.5rem 0; }
+.warning-box h3 { color: #b45309; margin-top: 0; }
+.case-study { background: #f0fdf4; border-left: 4px solid #22c55e; padding: 1.25rem; border-radius: 0 8px 8px 0; margin: 1.5rem 0; }
+.case-study h3 { color: #15803d; margin-top: 0; }
+.summary-box { background: #f5f3ff; border-left: 4px solid #8b5cf6; padding: 1.25rem; border-radius: 0 8px 8px 0; margin: 1.5rem 0; }
+.stat-box { background: #1a2744; color: white; padding: 1.5rem; border-radius: 12px; margin: 1.5rem 0; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1.5rem; text-align: center; }
+.stat-number { display: block; font-size: 2rem; font-weight: 700; color: #f97316; }
+.stat-label { display: block; font-size: 0.8rem; margin-top: 0.25rem; opacity: 0.85; }
+.formula-box { background: #fef7ed; border: 2px solid #f97316; padding: 1.25rem; border-radius: 8px; margin: 1.5rem 0; text-align: center; }
+.formula { font-size: 1.3rem; color: #c2410c; }
+.triangle-concept { background: #fef2f2; border-left: 4px solid #ef4444; padding: 1.25rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+strong { color: #1a1a2e; }
+.header-badge { display: inline-block; background: #f97316; color: white; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.8rem; margin-bottom: 0.5rem; }
+</style>
+</head>
+<body>
+<div class="header-badge">📚 Süre: 60 dakika</div>
+<h1 style="font-size:1.8rem; color:#1a2744; margin-bottom:1.5rem; padding-bottom:0.75rem; border-bottom:4px solid #f97316;">İş Kazaları ve Meslek Hastalıkları</h1>
+
+<h2>📋 Modül Hedefleri</h2>
+<ul>
+<li>İş kazası ve meslek hastalığı kavramlarını tanımlamak</li>
+<li>Kaza nedenlerini ve önleme yöntemlerini öğrenmek</li>
+<li>Bildirim ve kayıt prosedürlerini kavramak</li>
+</ul>
+
+<h2>1. İş Kazası Tanımı</h2>
+<p>İş kazası; işyerinde veya işin yürütülmesi sırasında meydana gelen, ölüme veya vücut bütünlüğünün bozulmasına yol açan <strong>ani ve beklenmedik</strong> bir olaydır.</p>
+
+<div class="stat-box">
+<div class="stat-grid">
+<div class="stat-item"><span class="stat-number">395.586</span><span class="stat-label">2022 Yılı İş Kazası</span></div>
+<div class="stat-item"><span class="stat-number">1.372</span><span class="stat-label">Hayatını Kaybeden</span></div>
+<div class="stat-item"><span class="stat-number">833</span><span class="stat-label">Meslek Hastalığı</span></div>
+</div>
+</div>
+
+<h3>1.1 İş Kazasının Unsurları</h3>
+<ol>
+<li><strong>Sigortalının kazaya uğraması:</strong> İş sözleşmesine dayalı çalışan</li>
+<li><strong>İşyerinde veya eklentilerinde olması:</strong> İşyeri sınırları dahilinde</li>
+<li><strong>İşverence yürütülen iş nedeniyle:</strong> İşle bağlantılı olma</li>
+<li><strong>Hemen veya sonradan bedence/ruhça engel kalma:</strong> Sağlık etkisi</li>
+</ol>
+
+<h2>2. İş Kazası Nedenleri</h2>
+<table>
+<thead><tr><th>Neden Türü</th><th>Oran</th><th>Örnekler</th></tr></thead>
+<tbody>
+<tr><td>Güvensiz Davranışlar</td><td>%88</td><td>KKD kullanmamak, dikkatsizlik, acele etmek</td></tr>
+<tr><td>Güvensiz Koşullar</td><td>%10</td><td>Arızalı makine, yetersiz aydınlatma, düzensiz zemin</td></tr>
+<tr><td>Doğal Olaylar</td><td>%2</td><td>Deprem, sel, yıldırım</td></tr>
+</tbody>
+</table>
+
+<h3>2.1 Heinrich Domino Teorisi</h3>
+<p>Herbert William Heinrich'e göre iş kazaları beş domino taşı gibi birbiri ardına düşen faktörlerin sonucudur:</p>
+<ol>
+<li>Sosyal çevre ve kalıtım</li>
+<li>Kişisel kusurlar</li>
+<li>Güvensiz davranış ve güvensiz koşullar</li>
+<li>Kaza</li>
+<li>Yaralanma</li>
+</ol>
+<p>Üçüncü domino taşını (güvensiz davranış/koşul) kaldırmak kazayı önler.</p>
+
+<h2>3. Meslek Hastalıkları</h2>
+<p>Meslek hastalığı; mesleki risklere maruziyet sonucu <strong>zamanla</strong> ortaya çıkan hastalıktır. İş kazasından farklı olarak anlık değil, süreğen bir etkilenme söz konusudur.</p>
+
+<h3>3.1 Meslek Hastalığı Grupları</h3>
+<table>
+<thead><tr><th>Grup</th><th>Hastalık Türü</th><th>Örnek</th></tr></thead>
+<tbody>
+<tr><td>A Grubu</td><td>Kimyasal etkenler</td><td>Kurşun zehirlenmesi, silikozis</td></tr>
+<tr><td>B Grubu</td><td>Cilt hastalıkları</td><td>Kontakt dermatit</td></tr>
+<tr><td>C Grubu</td><td>Pnömokonyozlar</td><td>Asbestoz, talk pnömokonyozu</td></tr>
+<tr><td>D Grubu</td><td>Fiziksel etkenler</td><td>İşitme kaybı, vibrasyon sendromu</td></tr>
+<tr><td>E Grubu</td><td>Biyolojik etkenler</td><td>Bruselloz, hepatit</td></tr>
+</tbody>
+</table>
+
+<h2>4. Bildirim Yükümlülükleri</h2>
+<div class="warning-box">
+<h3>⚠️ Yasal Bildirim Süreleri</h3>
+<ul>
+<li><strong>İş Kazası:</strong> Kazadan sonraki <strong>3 iş günü</strong> içinde SGK'ya bildirim</li>
+<li><strong>Meslek Hastalığı:</strong> Öğrenildiği tarihten itibaren <strong>3 iş günü</strong> içinde SGK'ya bildirim</li>
+<li><strong>Ölümlü/Ağır Kaza:</strong> Derhal Çalışma ve İş Kurumu İl Müdürlüğü'ne bildirim</li>
+</ul>
+</div>
+
+<h2>5. Kaza Önleme Stratejileri</h2>
+<h3>5.1 Tehlike Kontrol Hiyerarşisi</h3>
+<ol>
+<li><strong>Eliminasyon:</strong> Tehlikeyi tamamen ortadan kaldırma (en etkili)</li>
+<li><strong>Substitüsyon:</strong> Daha az tehlikeli olanla değiştirme</li>
+<li><strong>Mühendislik Kontrolleri:</strong> Korkuluk, havalandırma, izolasyon</li>
+<li><strong>İdari Kontroller:</strong> Eğitim, prosedür, iş izni sistemi</li>
+<li><strong>KKD:</strong> Kişisel koruyucu donanım (son çare)</li>
+</ol>
+
+<div class="case-study">
+<h3>📖 Vaka Analizi</h3>
+<p>Bir inşaat şantiyesinde yüksekten düşme kazası: İskele kenarında korkuluk bulunmaması (güvensiz koşul) ve emniyet kemeri takılmaması (güvensiz davranış) sonucu işçi 8 metreden düşerek ağır yaralanmıştır. Korkuluk ve yaşam halatı bu kazayı önleyebilirdi.</p>
+</div>
+
+<h2>6. Modül Özeti</h2>
+<div class="summary-box">
+<ul>
+<li>İş kazası ani bir olay, meslek hastalığı zamanla gelişen bir süreçtir</li>
+<li>İş kazalarının %88'i güvensiz davranışlardan kaynaklanır</li>
+<li>Bildirim süresi 3 iş günüdür</li>
+<li>Tehlike kontrol hiyerarşisinde eliminasyon en etkili yöntemdir</li>
+<li>KKD son çare olarak kullanılmalıdır</li>
+</ul>
+</div>
+
+</body>
+</html>

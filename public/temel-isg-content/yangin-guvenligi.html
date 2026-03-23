@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yangın Güvenliği ve Söndürme</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; line-height: 1.7; color: #1a1a2e; background: #f8f9fc; padding: 2rem; max-width: 900px; margin: 0 auto; }
+h2 { color: #1a1a2e; margin: 2rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 3px solid #f97316; font-size: 1.5rem; }
+h3 { color: #2d3748; margin: 1.5rem 0 0.75rem; font-size: 1.15rem; }
+p { margin-bottom: 1rem; color: #374151; }
+ul, ol { margin: 0.5rem 0 1rem 1.5rem; color: #374151; }
+li { margin-bottom: 0.4rem; }
+table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; font-size: 0.9rem; }
+th { background: #1a2744; color: white; padding: 0.75rem; text-align: left; font-weight: 600; }
+td { padding: 0.65rem 0.75rem; border-bottom: 1px solid #e5e7eb; }
+tr:nth-child(even) { background: #f3f4f6; }
+.info-box { background: #eff6ff; border-left: 4px solid #3b82f6; padding: 1.25rem; border-radius: 0 8px 8px 0; margin: 1.5rem 0; }
+.info-box h3 { color: #1d4ed8; margin-top: 0; }
+.warning-box { background: #fef3cd; border-left: 4px solid #f59e0b; padding: 1.25rem; border-radius: 0 8px 8px 0; margin: 1.5rem 0; }
+.warning-box h3 { color: #b45309; margin-top: 0; }
+.case-study { background: #f0fdf4; border-left: 4px solid #22c55e; padding: 1.25rem; border-radius: 0 8px 8px 0; margin: 1.5rem 0; }
+.case-study h3 { color: #15803d; margin-top: 0; }
+.summary-box { background: #f5f3ff; border-left: 4px solid #8b5cf6; padding: 1.25rem; border-radius: 0 8px 8px 0; margin: 1.5rem 0; }
+.stat-box { background: #1a2744; color: white; padding: 1.5rem; border-radius: 12px; margin: 1.5rem 0; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1.5rem; text-align: center; }
+.stat-number { display: block; font-size: 2rem; font-weight: 700; color: #f97316; }
+.stat-label { display: block; font-size: 0.8rem; margin-top: 0.25rem; opacity: 0.85; }
+.formula-box { background: #fef7ed; border: 2px solid #f97316; padding: 1.25rem; border-radius: 8px; margin: 1.5rem 0; text-align: center; }
+.formula { font-size: 1.3rem; color: #c2410c; }
+.triangle-concept { background: #fef2f2; border-left: 4px solid #ef4444; padding: 1.25rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+strong { color: #1a1a2e; }
+.header-badge { display: inline-block; background: #f97316; color: white; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.8rem; margin-bottom: 0.5rem; }
+</style>
+</head>
+<body>
+<div class="header-badge">📚 Süre: 60 dakika</div>
+<h1 style="font-size:1.8rem; color:#1a2744; margin-bottom:1.5rem; padding-bottom:0.75rem; border-bottom:4px solid #f97316;">Yangın Güvenliği ve Söndürme</h1>
+
+<h2>📋 Modül Hedefleri</h2>
+<ul>
+<li>Yangın oluşum mekanizmasını ve sınıflarını öğrenmek</li>
+<li>Yangın söndürme cihazlarını tanımak ve kullanabilmek</li>
+<li>Yangın önleme tedbirlerini kavramak</li>
+</ul>
+
+<h2>1. Yangın Bilimi</h2>
+<h3>1.1 Yangın Üçgeni</h3>
+<p>Yangının oluşması için üç unsurun bir arada bulunması gerekir:</p>
+<div class="triangle-concept">
+<ul>
+<li><strong>🔥 Yakıt (Yanıcı Madde):</strong> Katı, sıvı veya gaz halindeki yanabilir maddeler</li>
+<li><strong>🌡️ Isı (Tutuşma Kaynağı):</strong> Yanma reaksiyonunu başlatan enerji</li>
+<li><strong>💨 Oksijen (Hava):</strong> Yanma reaksiyonu için gerekli oksijen (%16+ oranında)</li>
+</ul>
+</div>
+<p>Bu üç unsurdan birini ortadan kaldırmak yangını söndürmek için yeterlidir.</p>
+
+<h2>2. Yangın Sınıfları</h2>
+<table>
+<thead><tr><th>Sınıf</th><th>Yanıcı Madde</th><th>Örnekler</th><th>Söndürme Yöntemi</th></tr></thead>
+<tbody>
+<tr><td><strong>A Sınıfı</strong></td><td>Katı maddeler</td><td>Ahşap, kağıt, kumaş</td><td>Su, köpük, kuru kimyevi toz</td></tr>
+<tr><td><strong>B Sınıfı</strong></td><td>Yanıcı sıvılar</td><td>Benzin, mazot, alkol</td><td>Köpük, CO₂, kuru kimyevi toz</td></tr>
+<tr><td><strong>C Sınıfı</strong></td><td>Yanıcı gazlar</td><td>LPG, doğalgaz, propan</td><td>Kuru kimyevi toz</td></tr>
+<tr><td><strong>D Sınıfı</strong></td><td>Yanıcı metaller</td><td>Magnezyum, sodyum</td><td>Özel D sınıfı tozlar</td></tr>
+<tr><td><strong>E/F Sınıfı</strong></td><td>Elektrikli ekipman / Yemeklik yağ</td><td>Trafo, priz / Fritöz yağı</td><td>CO₂ / Özel söndürücü</td></tr>
+</tbody>
+</table>
+
+<div class="warning-box">
+<h3>⚠️ Kritik Uyarı</h3>
+<p><strong>Elektrik yangınlarında ASLA su kullanılmamalıdır!</strong> Elektrik çarpma riski vardır. Önce elektrik kesilmeli, ardından CO₂ veya kuru kimyevi toz ile müdahale edilmelidir.</p>
+</div>
+
+<h2>3. Yangın Söndürücü Kullanımı</h2>
+<h3>3.1 PASS Tekniği</h3>
+<table>
+<thead><tr><th>Harf</th><th>İngilizce</th><th>Türkçe</th></tr></thead>
+<tbody>
+<tr><td><strong>P</strong></td><td>Pull</td><td>Pimi çek</td></tr>
+<tr><td><strong>A</strong></td><td>Aim</td><td>Alevin tabanına nişan al</td></tr>
+<tr><td><strong>S</strong></td><td>Squeeze</td><td>Tetiği sık</td></tr>
+<tr><td><strong>S</strong></td><td>Sweep</td><td>Süpürme hareketi yap</td></tr>
+</tbody>
+</table>
+
+<h3>3.2 Söndürücü Türleri ve Kullanım Alanları</h3>
+<table>
+<thead><tr><th>Söndürücü Türü</th><th>Uygun Sınıflar</th><th>Mesafe</th><th>Süre</th></tr></thead>
+<tbody>
+<tr><td>Kuru Kimyevi Toz (KKT)</td><td>A, B, C</td><td>3-4 m</td><td>15-25 sn</td></tr>
+<tr><td>CO₂ (Karbondioksit)</td><td>B, E</td><td>1-2 m</td><td>10-15 sn</td></tr>
+<tr><td>Su</td><td>A</td><td>6-10 m</td><td>60 sn</td></tr>
+<tr><td>Köpük</td><td>A, B</td><td>3-6 m</td><td>30-60 sn</td></tr>
+</tbody>
+</table>
+
+<h2>4. Yangın Önleme Tedbirleri</h2>
+<h3>4.1 Pasif Yangın Koruması</h3>
+<ul>
+<li>Yangına dayanıklı yapı malzemeleri kullanımı</li>
+<li>Yangın bölmeleri ve yangın kapıları</li>
+<li>Duman tahliye bacaları</li>
+<li>Yangın merdivenleri ve acil çıkışlar</li>
+</ul>
+
+<h3>4.2 Aktif Yangın Koruması</h3>
+<ul>
+<li>Otomatik sprinkler sistemleri</li>
+<li>Duman ve ısı dedektörleri</li>
+<li>Yangın alarm sistemleri</li>
+<li>Otomatik söndürme sistemleri</li>
+</ul>
+
+<h3>4.3 Organizasyonel Önlemler</h3>
+<ul>
+<li>Yangın tatbikatları (yılda en az 1 kez)</li>
+<li>Söndürücülerin periyodik kontrolü (6 ayda bir)</li>
+<li>Sigara içme alanlarının belirlenmesi</li>
+<li>Yanıcı madde depolama kurallarına uyum</li>
+</ul>
+
+<div class="stat-box">
+<div class="stat-grid">
+<div class="stat-item"><span class="stat-number">%30</span><span class="stat-label">Elektrik Kaynaklı</span></div>
+<div class="stat-item"><span class="stat-number">%25</span><span class="stat-label">İhmal/Dikkatsizlik</span></div>
+<div class="stat-item"><span class="stat-number">%15</span><span class="stat-label">Sigara</span></div>
+</div>
+</div>
+
+<h2>5. Modül Özeti</h2>
+<div class="summary-box">
+<ul>
+<li>Yangın üçgeni: Yakıt + Isı + Oksijen</li>
+<li>Yangın A-F arası sınıflara ayrılır, her sınıfa uygun söndürücü farklıdır</li>
+<li>Elektrik yangınlarında kesinlikle su kullanılmamalıdır</li>
+<li>PASS tekniği ile söndürücü kullanımı: Çek, Nişanla, Sık, Süpür</li>
+<li>Söndürücüler 6 ayda bir kontrol edilmelidir</li>
+</ul>
+</div>
+
+</body>
+</html>
