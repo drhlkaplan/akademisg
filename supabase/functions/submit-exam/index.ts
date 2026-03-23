@@ -180,12 +180,28 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Update enrollment if passed
-    if (passed) {
-      await adminClient
-        .from("enrollments")
-        .update({ status: "completed", completed_at: new Date().toISOString() })
-        .eq("id", enrollment_id);
+    // Record lesson_progress for the exam lesson so sequential unlock works
+    // Find the lesson linked to this exam
+    const { data: examLesson } = await adminClient
+      .from("lessons")
+      .select("id")
+      .eq("exam_id", exam_id)
+      .eq("course_id", enrollment.course_id)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (examLesson) {
+      const lessonStatus = passed ? "passed" : "failed";
+      // Use upsert to record lesson progress
+      await adminClient.from("lesson_progress").upsert(
+        {
+          enrollment_id,
+          lesson_id: examLesson.id,
+          lesson_status: lessonStatus,
+          score_raw: score,
+        },
+        { onConflict: "enrollment_id,lesson_id" }
+      );
     }
 
     return new Response(
