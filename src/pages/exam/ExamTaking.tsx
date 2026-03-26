@@ -238,8 +238,26 @@ export default function ExamTaking() {
     );
   }
 
+  // Get course_id from enrollment for navigation
+  const { data: enrollmentCourse } = useQuery({
+    queryKey: ["enrollment-course", enrollmentId],
+    queryFn: async () => {
+      if (!enrollmentId) return null;
+      const { data, error } = await supabase
+        .from("enrollments")
+        .select("course_id")
+        .eq("id", enrollmentId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!enrollmentId,
+  });
+
   // Show result screen
   if (examResult) {
+    const courseId = enrollmentCourse?.course_id;
+
     return (
       <DashboardLayout userRole="student">
         <div className="max-w-2xl mx-auto">
@@ -288,6 +306,14 @@ export default function ExamTaking() {
                 <Button variant="outline" onClick={() => navigate("/dashboard")}>
                   Dashboard'a Dön
                 </Button>
+                {examResult.passed && courseId && (
+                  <Button
+                    variant="accent"
+                    onClick={() => navigate(`/course/${courseId}/learn`)}
+                  >
+                    Eğitime Devam Et
+                  </Button>
+                )}
                 {!examResult.passed && !maxAttemptsReached && (
                   <Button
                     variant="accent"
