@@ -1,5 +1,6 @@
 import { ScormPlayer } from "@/components/scorm/ScormPlayer";
 import { LiveSessionJoin } from "@/components/course/LiveSessionJoin";
+import { HtmlContentViewer } from "@/components/course/HtmlContentViewer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -144,6 +145,7 @@ export function LessonContent({
       if (lesson.content_url) {
         const isVideo = lesson.content_url.endsWith(".mp4") || lesson.content_url.endsWith(".webm");
         const isPdf = lesson.content_url.endsWith(".pdf");
+        const isHtml = lesson.content_url.endsWith(".html") || lesson.content_url.endsWith(".htm");
 
         if (isVideo) {
           return (
@@ -157,6 +159,10 @@ export function LessonContent({
 
         if (isPdf) {
           return <iframe src={lesson.content_url} className="w-full h-full border-0 rounded-lg" title={lesson.title} />;
+        }
+
+        if (isHtml) {
+          return <HtmlContentViewer contentUrl={lesson.content_url} title={lesson.title} />;
         }
 
         return (
