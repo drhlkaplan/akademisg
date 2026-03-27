@@ -306,20 +306,17 @@ export default function ExamTaking() {
               </div>
 
               <div className="flex gap-3 justify-center">
-                <Button variant="outline" onClick={() => navigate("/dashboard")}>
-                  Dashboard'a Dön
-                </Button>
-                {examResult.passed && courseId && (
+                {courseId && (
                   <Button
                     variant="accent"
                     onClick={() => navigate(`/course/${courseId}/learn`)}
                   >
-                    Eğitime Devam Et
+                    {examResult.passed ? "Sonraki Derse Devam Et" : "Eğitime Dön"}
                   </Button>
                 )}
                 {!examResult.passed && !maxAttemptsReached && (
                   <Button
-                    variant="accent"
+                    variant="outline"
                     onClick={() => {
                       setAnswers({});
                       setCurrentQuestionIndex(0);
@@ -329,6 +326,11 @@ export default function ExamTaking() {
                     }}
                   >
                     Tekrar Dene
+                  </Button>
+                )}
+                {!courseId && (
+                  <Button variant="outline" onClick={() => navigate("/dashboard")}>
+                    Dashboard'a Dön
                   </Button>
                 )}
               </div>
