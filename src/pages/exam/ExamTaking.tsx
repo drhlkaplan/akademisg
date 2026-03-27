@@ -198,6 +198,27 @@ export default function ExamTaking() {
     }
   }, [questions, examId, enrollmentId, answers, isSubmitting, timeRemaining, toast]);
 
+  // Find next lesson and auto-navigate
+  const navigateToNextLesson = useCallback(async () => {
+    if (!enrollmentCourse?.course_id || !examId) return;
+    setAutoNavigating(true);
+    try {
+      navigate(`/learn/${enrollmentCourse.course_id}`, { replace: true });
+    } catch {
+      navigate(`/learn/${enrollmentCourse.course_id}`, { replace: true });
+    }
+  }, [enrollmentCourse, examId, navigate]);
+
+  // Auto-navigate after exam passed
+  useEffect(() => {
+    if (examResult?.passed && enrollmentCourse?.course_id) {
+      const timer = setTimeout(() => {
+        navigateToNextLesson();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [examResult, enrollmentCourse, navigateToNextLesson]);
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
