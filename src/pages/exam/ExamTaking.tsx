@@ -277,8 +277,6 @@ export default function ExamTaking() {
   }
 
 
-
-
   // Find next lesson and auto-navigate
   const navigateToNextLesson = useCallback(async () => {
     if (!enrollmentCourse?.course_id || !examId) return;
