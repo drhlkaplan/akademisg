@@ -151,7 +151,9 @@ Deno.serve(async (req) => {
     // Only count questions that were actually presented
     const effectiveTotal = Math.min(totalQuestions, questions.length);
     const score = Math.round((correctAnswers / effectiveTotal) * 100);
-    const passed = score >= (exam.passing_score || 70);
+    // Ön sınav (pre_test) türündeki sınavlarda geçme notu aranmaz, her zaman geçer
+    const isPreTest = exam.exam_type === "pre_test";
+    const passed = isPreTest ? true : score >= (exam.passing_score || 70);
     const status = passed ? "passed" : "failed";
 
     const durationMinutes = exam.duration_minutes || 60;

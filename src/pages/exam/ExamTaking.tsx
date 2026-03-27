@@ -209,9 +209,9 @@ export default function ExamTaking() {
     }
   }, [enrollmentCourse, examId, navigate]);
 
-  // Auto-navigate after exam passed
+  // Auto-navigate after exam completed (passed or pre_test always passes)
   useEffect(() => {
-    if (examResult?.passed && enrollmentCourse?.course_id) {
+    if (examResult && examResult.passed && enrollmentCourse?.course_id) {
       const timer = setTimeout(() => {
         navigateToNextLesson();
       }, 3000);
