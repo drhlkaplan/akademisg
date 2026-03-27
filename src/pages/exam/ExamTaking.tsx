@@ -258,6 +258,59 @@ export default function ExamTaking() {
 
 
 
+  // Find next lesson and auto-navigate
+  const navigateToNextLesson = useCallback(async () => {
+    if (!enrollmentCourse?.course_id || !examId) return;
+    setAutoNavigating(true);
+    try {
+      // Find the current exam lesson
+      const { data: currentLesson } = await supabase
+        .from("lessons")
+        .select("id, sort_order, course_id")
+        .eq("exam_id", examId)
+        .eq("course_id", enrollmentCourse.course_id)
+        .is("deleted_at", null)
+        .single();
+
+      if (!currentLesson) {
+        navigate(`/learn/${enrollmentCourse.course_id}`);
+        return;
+      }
+
+      // Get all lessons ordered
+      const { data: allLessons } = await supabase
+        .from("lessons")
+        .select("id, sort_order, title")
+        .eq("course_id", enrollmentCourse.course_id)
+        .is("deleted_at", null)
+        .eq("is_active", true)
+        .order("sort_order");
+
+      if (!allLessons) {
+        navigate(`/learn/${enrollmentCourse.course_id}`);
+        return;
+      }
+
+      const currentIdx = allLessons.findIndex(l => l.id === currentLesson.id);
+      const nextLesson = allLessons[currentIdx + 1];
+
+      // Navigate to course learning page - it will auto-select the next unlocked lesson
+      navigate(`/learn/${enrollmentCourse.course_id}`, { replace: true });
+    } catch {
+      navigate(`/learn/${enrollmentCourse.course_id}`, { replace: true });
+    }
+  }, [enrollmentCourse, examId, navigate]);
+
+  // Auto-navigate after exam passed
+  useEffect(() => {
+    if (examResult?.passed && enrollmentCourse?.course_id) {
+      const timer = setTimeout(() => {
+        navigateToNextLesson();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [examResult, enrollmentCourse, navigateToNextLesson]);
+
   // Show result screen
   if (examResult) {
     const courseId = enrollmentCourse?.course_id;
@@ -273,7 +326,17 @@ export default function ExamTaking() {
                     <Trophy className="h-10 w-10 text-success" />
                   </div>
                   <h2 className="text-2xl font-bold text-foreground mb-2">Tebrikler! 🎉</h2>
-                  <p className="text-muted-foreground mb-6">Sınavı başarıyla tamamladınız.</p>
+                  <p className="text-muted-foreground mb-4">Sınavı başarıyla tamamladınız.</p>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    {autoNavigating ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Sonraki derse yönlendiriliyorsunuz...
+                      </span>
+                    ) : (
+                      "Bir sonraki derse otomatik olarak yönlendirileceksiniz."
+                    )}
+                  </p>
                 </>
               ) : (
                 <>
@@ -307,32 +370,45 @@ export default function ExamTaking() {
               </div>
 
               <div className="flex gap-3 justify-center">
-                {courseId && (
+                {examResult.passed && courseId && (
                   <Button
                     variant="accent"
-                    onClick={() => navigate(`/course/${courseId}/learn`)}
+                    onClick={navigateToNextLesson}
+                    disabled={autoNavigating}
                   >
-                    {examResult.passed ? "Sonraki Derse Devam Et" : "Eğitime Dön"}
+                    {autoNavigating ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 mr-1" />
+                    )}
+                    Sonraki Derse Devam Et
                   </Button>
                 )}
-                {!examResult.passed && !maxAttemptsReached && (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setAnswers({});
-                      setCurrentQuestionIndex(0);
-                      setTimeRemaining(null);
-                      setExamResult(null);
-                      setIsSubmitting(false);
-                    }}
-                  >
-                    Tekrar Dene
-                  </Button>
-                )}
-                {!courseId && (
-                  <Button variant="outline" onClick={() => navigate("/dashboard")}>
-                    Dashboard'a Dön
-                  </Button>
+                {!examResult.passed && (
+                  <>
+                    {!maxAttemptsReached && (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setAnswers({});
+                          setCurrentQuestionIndex(0);
+                          setTimeRemaining(null);
+                          setExamResult(null);
+                          setIsSubmitting(false);
+                        }}
+                      >
+                        Tekrar Dene
+                      </Button>
+                    )}
+                    {courseId && (
+                      <Button
+                        variant="accent"
+                        onClick={() => navigate(`/learn/${courseId}`)}
+                      >
+                        Eğitime Dön
+                      </Button>
+                    )}
+                  </>
                 )}
               </div>
             </CardContent>
