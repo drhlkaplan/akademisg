@@ -277,59 +277,6 @@ export default function ExamTaking() {
   }
 
 
-  // Find next lesson and auto-navigate
-  const navigateToNextLesson = useCallback(async () => {
-    if (!enrollmentCourse?.course_id || !examId) return;
-    setAutoNavigating(true);
-    try {
-      // Find the current exam lesson
-      const { data: currentLesson } = await supabase
-        .from("lessons")
-        .select("id, sort_order, course_id")
-        .eq("exam_id", examId)
-        .eq("course_id", enrollmentCourse.course_id)
-        .is("deleted_at", null)
-        .single();
-
-      if (!currentLesson) {
-        navigate(`/learn/${enrollmentCourse.course_id}`);
-        return;
-      }
-
-      // Get all lessons ordered
-      const { data: allLessons } = await supabase
-        .from("lessons")
-        .select("id, sort_order, title")
-        .eq("course_id", enrollmentCourse.course_id)
-        .is("deleted_at", null)
-        .eq("is_active", true)
-        .order("sort_order");
-
-      if (!allLessons) {
-        navigate(`/learn/${enrollmentCourse.course_id}`);
-        return;
-      }
-
-      const currentIdx = allLessons.findIndex(l => l.id === currentLesson.id);
-      const nextLesson = allLessons[currentIdx + 1];
-
-      // Navigate to course learning page - it will auto-select the next unlocked lesson
-      navigate(`/learn/${enrollmentCourse.course_id}`, { replace: true });
-    } catch {
-      navigate(`/learn/${enrollmentCourse.course_id}`, { replace: true });
-    }
-  }, [enrollmentCourse, examId, navigate]);
-
-  // Auto-navigate after exam passed
-  useEffect(() => {
-    if (examResult?.passed && enrollmentCourse?.course_id) {
-      const timer = setTimeout(() => {
-        navigateToNextLesson();
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [examResult, enrollmentCourse, navigateToNextLesson]);
-
   // Show result screen
   if (examResult) {
     const courseId = enrollmentCourse?.course_id;
