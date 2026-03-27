@@ -65,6 +65,7 @@ export default function ExamTaking() {
     correctAnswers: number;
     totalQuestions: number;
   } | null>(null);
+  const [autoNavigating, setAutoNavigating] = useState(false);
 
   // Fetch exam details
   const { data: exam, isLoading: examLoading } = useQuery({
