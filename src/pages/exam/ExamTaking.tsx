@@ -254,21 +254,8 @@ export default function ExamTaking() {
     );
   }
 
-  // Get course_id from enrollment for navigation
-  const { data: enrollmentCourse } = useQuery({
-    queryKey: ["enrollment-course", enrollmentId],
-    queryFn: async () => {
-      if (!enrollmentId) return null;
-      const { data, error } = await supabase
-        .from("enrollments")
-        .select("course_id")
-        .eq("id", enrollmentId)
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!enrollmentId,
-  });
+
+
 
   // Show result screen
   if (examResult) {
