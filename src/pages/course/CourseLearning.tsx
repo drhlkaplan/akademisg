@@ -186,6 +186,33 @@ export default function CourseLearning() {
     if (enrollment) checkAndCompleteCourse(enrollment.id);
   }, [enrollment, checkAndCompleteCourse]);
 
+  // Auto-complete content lessons after viewing for 10 seconds
+  useEffect(() => {
+    if (!activeLesson || !enrollment) return;
+    if (activeLesson.type !== "content") return;
+
+    // Check if already completed
+    const alreadyDone = lessonProgress.some(
+      (p) => p.lesson_id === activeLesson.id && (p.lesson_status === "completed" || p.lesson_status === "passed")
+    );
+    if (alreadyDone) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        await supabase.rpc("record_lesson_progress", {
+          _enrollment_id: enrollment.id,
+          _lesson_id: activeLesson.id,
+          _lesson_status: "completed",
+        });
+        await checkAndCompleteCourse(enrollment.id);
+      } catch (err) {
+        console.error("Content lesson auto-complete error:", err);
+      }
+    }, 10000); // 10 seconds
+
+    return () => clearTimeout(timer);
+  }, [activeLesson?.id, activeLesson?.type, enrollment?.id, lessonProgress, checkAndCompleteCourse]);
+
   // Navigation helpers
   const sortedLessons = [...lessons].sort((a, b) => a.sort_order - b.sort_order);
   const activeIndex = sortedLessons.findIndex((l) => l.id === activeLessonId);
