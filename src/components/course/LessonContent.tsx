@@ -74,6 +74,7 @@ export function LessonContent({
       }
       return (
         <ScormPlayer
+          key={lesson.id}
           packageUrl={pkg.package_url}
           entryPoint={pkg.entry_point || "index.html"}
           enrollmentId={enrollmentId}
