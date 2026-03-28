@@ -186,12 +186,24 @@ export default function CourseLearning() {
     if (enrollment) checkAndCompleteCourse(enrollment.id);
   }, [enrollment, checkAndCompleteCourse]);
 
+  // Navigation helpers
+  const sortedLessons = [...lessons].sort((a, b) => a.sort_order - b.sort_order);
+  const activeIndex = sortedLessons.findIndex((l) => l.id === activeLessonId);
+  const activeLesson = sortedLessons[activeIndex] || null;
+
+  const handlePrevious = useCallback(() => {
+    if (activeIndex > 0) setActiveLessonId(sortedLessons[activeIndex - 1].id);
+  }, [activeIndex, sortedLessons]);
+
+  const handleNext = useCallback(() => {
+    if (activeIndex < sortedLessons.length - 1) setActiveLessonId(sortedLessons[activeIndex + 1].id);
+  }, [activeIndex, sortedLessons]);
+
   // Auto-complete content lessons after viewing for 10 seconds
   useEffect(() => {
     if (!activeLesson || !enrollment) return;
     if (activeLesson.type !== "content") return;
 
-    // Check if already completed
     const alreadyDone = lessonProgress.some(
       (p) => p.lesson_id === activeLesson.id && (p.lesson_status === "completed" || p.lesson_status === "passed")
     );
@@ -208,23 +220,10 @@ export default function CourseLearning() {
       } catch (err) {
         console.error("Content lesson auto-complete error:", err);
       }
-    }, 10000); // 10 seconds
+    }, 10000);
 
     return () => clearTimeout(timer);
   }, [activeLesson?.id, activeLesson?.type, enrollment?.id, lessonProgress, checkAndCompleteCourse]);
-
-  // Navigation helpers
-  const sortedLessons = [...lessons].sort((a, b) => a.sort_order - b.sort_order);
-  const activeIndex = sortedLessons.findIndex((l) => l.id === activeLessonId);
-  const activeLesson = sortedLessons[activeIndex] || null;
-
-  const handlePrevious = useCallback(() => {
-    if (activeIndex > 0) setActiveLessonId(sortedLessons[activeIndex - 1].id);
-  }, [activeIndex, sortedLessons]);
-
-  const handleNext = useCallback(() => {
-    if (activeIndex < sortedLessons.length - 1) setActiveLessonId(sortedLessons[activeIndex + 1].id);
-  }, [activeIndex, sortedLessons]);
 
   if (isLoading) {
     return (
