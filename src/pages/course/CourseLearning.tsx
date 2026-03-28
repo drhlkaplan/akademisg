@@ -217,6 +217,11 @@ export default function CourseLearning() {
           _lesson_status: "completed",
         });
         await checkAndCompleteCourse(enrollment.id);
+        // Auto-advance to next lesson
+        const currentIdx = sortedLessons.findIndex((l) => l.id === activeLesson.id);
+        if (currentIdx >= 0 && currentIdx < sortedLessons.length - 1) {
+          setActiveLessonId(sortedLessons[currentIdx + 1].id);
+        }
       } catch (err) {
         console.error("Content lesson auto-complete error:", err);
       }
