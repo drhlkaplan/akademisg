@@ -294,21 +294,24 @@ const Index = () => {
       </section>
 
       {/* Video Dialog */}
-      <Dialog open={videoOpen} onOpenChange={setVideoOpen}>
+      <Dialog open={videoOpen} onOpenChange={(open) => {
+        setVideoOpen(open);
+      }}>
         <DialogContent className="sm:max-w-3xl p-0 overflow-hidden bg-black border-none">
           <DialogHeader className="absolute top-2 right-2 z-20 p-0 m-0">
             <DialogTitle className="sr-only">Tanıtım Videosu</DialogTitle>
           </DialogHeader>
           <div className="relative w-full aspect-video">
-            <video
-              className="w-full h-full"
-              controls
-              autoPlay
-              src="https://www.w3schools.com/html/mov_bbb.mp4"
-              poster={heroImage}
-            >
-              Tarayıcınız video etiketini desteklemiyor.
-            </video>
+            {videoOpen && (
+              <iframe
+                className="w-full h-full"
+                src="https://www.youtube.com/embed/9Iq5yELYnLE?autoplay=1&rel=0"
+                title="İSG Eğitim Platformu Tanıtım"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                frameBorder="0"
+              />
+            )}
           </div>
         </DialogContent>
       </Dialog>
