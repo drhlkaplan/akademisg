@@ -114,7 +114,7 @@ export function DashboardLayout({
   const location = useLocation();
   const navigate = useNavigate();
   const { branding } = useFirmBranding();
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, isFirmAdmin } = useAuth();
 
   const navItems = userRole === "student" ? studentNavItems
     : userRole === "company" ? companyNavItems
