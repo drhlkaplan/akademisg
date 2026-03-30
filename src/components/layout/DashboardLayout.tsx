@@ -32,6 +32,8 @@ import {
   Search,
   ChevronRight,
   Video,
+  UserCog,
+  ArrowRightLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFirmBranding } from "@/contexts/FirmBrandingContext";

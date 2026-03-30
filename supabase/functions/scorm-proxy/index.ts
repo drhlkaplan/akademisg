@@ -107,12 +107,10 @@ interface ParsedManifest {
 
 function parseManifestXml(xmlContent: string): ParsedManifest | null {
   try {
-    // Use a simple regex-based parser since DOMParser isn't available in Deno
     const version = detectScormVersion(xmlContent);
     const title = extractTag(xmlContent, "organization", "title") || "Untitled";
     const defaultOrg = extractAttr(xmlContent, "organizations", "default") || "";
 
-    // Extract resources
     const resourceMap = new Map<string, { href: string; type: string }>();
     const resourceRegex = /<resource\s+([^>]*)\/?>(?:[\s\S]*?<\/resource>)?/gi;
     let match;
@@ -124,7 +122,6 @@ function parseManifestXml(xmlContent: string): ParsedManifest | null {
       if (id) resourceMap.set(id, { href: href || "", type });
     }
 
-    // Extract items
     const scos: ParsedSco[] = [];
     const itemRegex = /<item\s+([^>]*)>[\s\S]*?<title>([^<]*)<\/title>/gi;
     while ((match = itemRegex.exec(xmlContent)) !== null) {
@@ -149,7 +146,6 @@ function parseManifestXml(xmlContent: string): ParsedManifest | null {
       }
     }
 
-    // Fallback: if no items found, use resources directly
     if (scos.length === 0) {
       let idx = 0;
       for (const [id, res] of resourceMap) {
@@ -196,6 +192,66 @@ function extractAttr(xml: string, tag: string, attr: string): string {
   return match ? match[1] : "";
 }
 
+// ─── Token extraction helpers ────────────────────────────────────────────────
+
+function extractPathToken(pathname: string): { token: string; subPath: string } | null {
+  // New path-based token: /scorm-proxy/_t_/ENCODED_TOKEN/rest/of/path
+  const tMarker = "/_t_/";
+  const tIndex = pathname.indexOf(tMarker);
+  if (tIndex === -1) return null;
+
+  const afterMarker = pathname.slice(tIndex + tMarker.length);
+  const firstSlash = afterMarker.indexOf("/");
+  if (firstSlash === -1) return null;
+
+  const encodedToken = afterMarker.substring(0, firstSlash);
+  const subPath = afterMarker.substring(firstSlash + 1);
+
+  return {
+    token: decodeURIComponent(encodedToken),
+    subPath: decodeURIComponent(subPath).replace(/^\/?(?:___\/)+/, ""),
+  };
+}
+
+function extractQueryToken(reqUrl: URL): { token: string; subPath: string } | null {
+  // Legacy query-based token: ?t=TOKEN
+  const token = reqUrl.searchParams.get("t");
+  if (!token) return null;
+
+  const marker = "/scorm-proxy/";
+  const markerIndex = reqUrl.pathname.indexOf(marker);
+  let subPath = "";
+  if (markerIndex !== -1) {
+    subPath = decodeURIComponent(reqUrl.pathname.slice(markerIndex + marker.length));
+    subPath = subPath.replace(/^\/?(?:___\/)+/, "");
+  }
+
+  return { token, subPath };
+}
+
+// ─── MIME type helper ────────────────────────────────────────────────────────
+
+function getMimeType(filePath: string): string {
+  const ext = filePath.split(".").pop()?.toLowerCase() || "";
+  const mimeMap: Record<string, string> = {
+    html: "text/html", htm: "text/html",
+    js: "application/javascript", mjs: "application/javascript",
+    css: "text/css",
+    json: "application/json",
+    xml: "application/xml",
+    svg: "image/svg+xml",
+    png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
+    gif: "image/gif", webp: "image/webp", ico: "image/x-icon",
+    woff: "font/woff", woff2: "font/woff2", ttf: "font/ttf",
+    mp3: "audio/mpeg", mp4: "video/mp4", webm: "video/webm",
+    wav: "audio/wav", ogg: "audio/ogg",
+    pdf: "application/pdf",
+    swf: "application/x-shockwave-flash",
+    dat: "application/octet-stream",
+  };
+  return mimeMap[ext] || "application/octet-stream";
+}
+
 // ─── Main handler ────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -212,48 +268,46 @@ Deno.serve(async (req) => {
   const reqUrl = new URL(req.url);
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // MODE 1: Token-based redirect (GET with ?t= parameter)
-  // Sub-resource loading — NO auth header required
+  // MODE 1: Token-based redirect (GET)
+  // Supports both path-based (_t_/TOKEN/path) and query-based (?t=TOKEN)
   // ═══════════════════════════════════════════════════════════════════════════
-  const sessionToken = reqUrl.searchParams.get("t");
-  if (sessionToken && req.method === "GET") {
-    const tokenPayload = await verifySessionToken(sessionToken, serviceRoleKey);
-    if (!tokenPayload) {
-      return new Response(JSON.stringify({ error: "Invalid or expired session" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+  if (req.method === "GET") {
+    // Try path-based token first, then query-based (backward compat)
+    const tokenInfo = extractPathToken(reqUrl.pathname) || extractQueryToken(reqUrl);
+
+    if (tokenInfo) {
+      const tokenPayload = await verifySessionToken(tokenInfo.token, serviceRoleKey);
+      if (!tokenPayload) {
+        return new Response(JSON.stringify({ error: "Invalid or expired session" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Build storage path: folderPath + subPath from URL
+      const subPath = tokenInfo.subPath.replace(/^\/+/, "").replace(/\/+$/, "");
+      const storagePath = subPath
+        ? `${tokenPayload.folderPath}/${subPath}`
+        : tokenPayload.folderPath;
+
+      const adminClient = createClient(supabaseUrl, serviceRoleKey);
+      const { data: signedUrlData, error: signedUrlError } = await adminClient.storage
+        .from("scorm-packages")
+        .createSignedUrl(storagePath, 300);
+
+      if (signedUrlError || !signedUrlData?.signedUrl) {
+        return new Response("File not found", { status: 404, headers: corsHeaders });
+      }
+
+      return new Response(null, {
+        status: 302,
+        headers: {
+          ...corsHeaders,
+          Location: signedUrlData.signedUrl,
+          "Cache-Control": "private, max-age=240",
+        },
       });
     }
-
-    const marker = "/scorm-proxy/";
-    const markerIndex = reqUrl.pathname.indexOf(marker);
-    let subPath = "";
-    if (markerIndex !== -1) {
-      subPath = decodeURIComponent(reqUrl.pathname.slice(markerIndex + marker.length));
-      subPath = subPath.replace(/^\/?(?:___\/)+/, "");
-    }
-
-    const storagePath = subPath
-      ? `${tokenPayload.folderPath}/${subPath}`
-      : tokenPayload.folderPath;
-
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    const { data: signedUrlData, error: signedUrlError } = await adminClient.storage
-      .from("scorm-packages")
-      .createSignedUrl(storagePath, 300);
-
-    if (signedUrlError || !signedUrlData?.signedUrl) {
-      return new Response("File not found", { status: 404, headers: corsHeaders });
-    }
-
-    return new Response(null, {
-      status: 302,
-      headers: {
-        ...corsHeaders,
-        Location: signedUrlData.signedUrl,
-        "Cache-Control": "private, max-age=240",
-      },
-    });
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -358,11 +412,9 @@ Deno.serve(async (req) => {
     }
 
     // ── ACTION: parse-manifest ──
-    // Parses imsmanifest.xml, detects SCORM version/SCOs, optionally saves to DB
     if (body.action === "parse-manifest") {
       const manifestPath = `${body.folderPath}/imsmanifest.xml`;
 
-      // Download manifest from storage
       const { data: fileData, error: downloadError } = await adminClient.storage
         .from("scorm-packages")
         .download(manifestPath);
@@ -384,9 +436,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Save manifest data and SCOs to DB if packageId provided
       if (body.packageId) {
-        // Update scorm_packages with manifest data and detected version
         await adminClient
           .from("scorm_packages")
           .update({
@@ -396,13 +446,11 @@ Deno.serve(async (req) => {
           })
           .eq("id", body.packageId);
 
-        // Delete existing SCOs for this package
         await adminClient
           .from("scorm_scos")
           .delete()
           .eq("package_id", body.packageId);
 
-        // Insert new SCOs
         if (manifest.scos.length > 0) {
           const scoRows = manifest.scos.map((sco) => ({
             package_id: body.packageId!,

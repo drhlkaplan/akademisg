@@ -360,14 +360,15 @@ export function ScormPlayer({
       if (initialData.score_raw) setScoreRaw(initialData.score_raw);
 
       // 5. Build base tag for sub-resource loading via redirect proxy
+      // Token MUST be in the path (not query string) so relative URL resolution preserves it
       const entryDir = entryFile.includes("/")
         ? entryFile.substring(0, entryFile.lastIndexOf("/") + 1)
         : "";
-      const baseUrl = entryDir
-        ? `${baseRedirectUrl}/${folderPath}/${entryDir}`
-        : `${baseRedirectUrl}/${folderPath}/`;
-      const baseTagUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
-      const baseTagWithToken = `${baseTagUrl}?t=${encodeURIComponent(sessionToken)}&_=/`;
+      const encodedToken = encodeURIComponent(sessionToken);
+      const basePath = entryDir
+        ? `${baseRedirectUrl}/_t_/${encodedToken}/${entryDir}`
+        : `${baseRedirectUrl}/_t_/${encodedToken}/`;
+      const baseTagWithToken = basePath.endsWith("/") ? basePath : basePath + "/";
 
       // 6. Build SCORM API script
       const scormScript = buildScormApiScript(
