@@ -250,6 +250,56 @@ export function DashboardLayout({
         )}
       </nav>
 
+      {/* Role Switcher - Admin only */}
+      {(userRole === "admin" || userRole === "superadmin") && (
+        <div className="px-3 pt-2 border-t border-sidebar-border/50">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-between text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 text-xs h-9"
+              >
+                <span className="flex items-center gap-2">
+                  <ArrowRightLeft className="h-3.5 w-3.5" />
+                  Rol Değiştir
+                </span>
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="center" className="w-52">
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                Paneli Değiştir
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => navigate("/admin")}
+                className={cn("cursor-pointer", location.pathname.startsWith("/admin") && "bg-accent/10 font-medium")}
+              >
+                <Shield className="mr-2 h-4 w-4 text-accent" />
+                Yönetici Paneli
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => navigate("/dashboard")}
+                className={cn("cursor-pointer", location.pathname.startsWith("/dashboard") && "bg-accent/10 font-medium")}
+              >
+                <GraduationCap className="mr-2 h-4 w-4 text-blue-500" />
+                Öğrenci Paneli
+              </DropdownMenuItem>
+              {isFirmAdmin && (
+                <DropdownMenuItem
+                  onClick={() => navigate("/firm")}
+                  className={cn("cursor-pointer", location.pathname.startsWith("/firm") && "bg-accent/10 font-medium")}
+                >
+                  <Building2 className="mr-2 h-4 w-4 text-emerald-500" />
+                  Firma Yetkilisi Paneli
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+
       {/* User Section */}
       <div className="p-3 border-t border-sidebar-border/50">
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-sidebar-accent/50">
