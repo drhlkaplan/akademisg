@@ -500,23 +500,15 @@ export function ScormPlayer({
         </div>
       )}
 
-      {/* SCORM Content iframe */}
-      {blobUrl && (
-        <iframe
-          ref={iframeRef}
-          src={blobUrl}
-          className="flex-1 w-full border-0 bg-white"
-          style={{ minHeight: "500px" }}
-          onLoad={() => setIsLoading(false)}
-          onError={() => {
-            setIsLoading(false);
-            setError("Eğitim içeriği yüklenemedi.");
-          }}
-          allow="fullscreen"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-          title="SCORM Eğitim İçeriği"
-        />
-      )}
+      {/* SCORM Content iframe — uses document.write(), no src needed */}
+      <iframe
+        ref={iframeRef}
+        className="flex-1 w-full border-0 bg-white"
+        style={{ minHeight: "500px", display: contentReady ? "block" : "none" }}
+        allow="fullscreen"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        title="SCORM Eğitim İçeriği"
+      />
 
       <ScormBottomBar
         lessonStatus={lessonStatus}
