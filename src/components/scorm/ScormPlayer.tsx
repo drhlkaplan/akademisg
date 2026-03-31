@@ -208,14 +208,14 @@ export function ScormPlayer({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  const blobUrlRef = useRef<string | null>(null);
+  const preparedHtmlRef = useRef<string | null>(null);
   const sessionStartRef = useRef<number>(Date.now());
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [contentReady, setContentReady] = useState(false);
   const [lessonStatus, setLessonStatus] = useState<string>("not attempted");
   const [scoreRaw, setScoreRaw] = useState<string>("");
   const [sessionSeconds, setSessionSeconds] = useState(0);
