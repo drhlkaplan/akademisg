@@ -377,7 +377,12 @@ export function ScormPlayer({
       );
       const baseTag = `<base href="${baseTagWithToken}">`;
 
-      // 7. Inject into HTML
+      // 7. Rewrite absolute paths to relative so they resolve via <base> tag
+      // Blob URLs resolve "/" against blob: origin which fails; relative paths use <base> correctly
+      html = html.replace(/(src|href|data|poster)\s*=\s*"\/(?!\/)/gi, '$1="');
+      html = html.replace(/(src|href|data|poster)\s*=\s*'\/(?!\/)/gi, "$1='");
+
+      // 8. Inject into HTML
       if (html.match(/<head[^>]*>/i)) {
         html = html.replace(/<head[^>]*>/i, `$&\n${baseTag}\n${scormScript}`);
       } else if (html.match(/<html[^>]*>/i)) {
