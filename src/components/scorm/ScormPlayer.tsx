@@ -379,8 +379,11 @@ export function ScormPlayer({
 
       // 7. Rewrite absolute paths to relative so they resolve via <base> tag
       // Blob URLs resolve "/" against blob: origin which fails; relative paths use <base> correctly
-      html = html.replace(/(src|href|data|poster)\s*=\s*"\/(?!\/)/gi, '$1="');
-      html = html.replace(/(src|href|data|poster)\s*=\s*'\/(?!\/)/gi, "$1='");
+      html = html.replace(/(src|href|data|poster|action)\s*=\s*"\/(?!\/)/gi, '$1="');
+      html = html.replace(/(src|href|data|poster|action)\s*=\s*'\/(?!\/)/gi, "$1='");
+      // Also fix url() in inline styles
+      html = html.replace(/url\(\s*"\/(?!\/)/gi, 'url("');
+      html = html.replace(/url\(\s*'\/(?!\/)/gi, "url('");
 
       // 8. Inject into HTML
       if (html.match(/<head[^>]*>/i)) {
