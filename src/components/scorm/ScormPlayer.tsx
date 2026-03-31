@@ -297,16 +297,12 @@ export function ScormPlayer({
     };
   }, [handlePersist]);
 
-  // ─── Load SCORM content ──────────────────────────────────────────────────
+  // ─── Load SCORM content (document.write approach) ─────────────────────────
 
   const loadContent = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-      blobUrlRef.current = null;
-    }
-    setBlobUrl(null);
+    setContentReady(false);
 
     const token = await getAuthToken();
     if (!token) {
@@ -324,7 +320,7 @@ export function ScormPlayer({
 
     const courseId = extractCourseId(folderPath);
 
-    // 1. Resolve entry file (with manifest-based version detection)
+    // 1. Resolve entry file
     const { entryFile, detectedVersion } = await resolveEntryFile(token, folderPath, entryPoint, courseId);
     if (!entryFile) {
       setError("SCORM başlangıç dosyası bulunamadı.");
@@ -332,7 +328,6 @@ export function ScormPlayer({
       return;
     }
 
-    // Use detected version if no explicit version was provided
     const activeVersion = scormVersion || detectedVersion || "1.2";
     setEffectiveVersion(activeVersion);
 
@@ -352,15 +347,15 @@ export function ScormPlayer({
         setIsLoading(false);
         return;
       }
-      let html = await res.text();
+      const rawBytes = await res.arrayBuffer();
+      let html = new TextDecoder("utf-8").decode(rawBytes);
 
       // 4. Load previous progress for resume
       const initialData = await loadScormProgress(enrollmentId, lessonId);
       if (initialData.lesson_status) setLessonStatus(initialData.lesson_status);
       if (initialData.score_raw) setScoreRaw(initialData.score_raw);
 
-      // 5. Build base tag for sub-resource loading via redirect proxy
-      // Token MUST be in the path (not query string) so relative URL resolution preserves it
+      // 5. Build base URL for sub-resource loading via path-based token proxy
       const entryDir = entryFile.includes("/")
         ? entryFile.substring(0, entryFile.lastIndexOf("/") + 1)
         : "";
@@ -368,39 +363,27 @@ export function ScormPlayer({
       const basePath = entryDir
         ? `${baseRedirectUrl}/_t_/${encodedToken}/${entryDir}`
         : `${baseRedirectUrl}/_t_/${encodedToken}/`;
-      const baseTagWithToken = basePath.endsWith("/") ? basePath : basePath + "/";
+      const baseHref = basePath.endsWith("/") ? basePath : basePath + "/";
 
       // 6. Build SCORM API script
-      const scormScript = buildScormApiScript(
-        initialData as ScormInitialData,
-        activeVersion,
-      );
-      const baseTag = `<base href="${baseTagWithToken}">`;
+      const scormScript = buildScormApiScript(initialData as ScormInitialData, activeVersion);
+      const baseTag = `<base href="${baseHref}">`;
+      const metaCharset = `<meta charset="UTF-8">`;
 
-      // 7. Rewrite absolute paths to relative so they resolve via <base> tag
-      // Blob URLs resolve "/" against blob: origin which fails; relative paths use <base> correctly
-      html = html.replace(/(src|href|data|poster|action)\s*=\s*"\/(?!\/)/gi, '$1="');
-      html = html.replace(/(src|href|data|poster|action)\s*=\s*'\/(?!\/)/gi, "$1='");
-      // Also fix url() in inline styles
-      html = html.replace(/url\(\s*"\/(?!\/)/gi, 'url("');
-      html = html.replace(/url\(\s*'\/(?!\/)/gi, "url('");
-
-      // 8. Inject into HTML
+      // 7. Inject base tag + SCORM API into HTML
       if (html.match(/<head[^>]*>/i)) {
-        html = html.replace(/<head[^>]*>/i, `$&\n${baseTag}\n${scormScript}`);
+        html = html.replace(/<head[^>]*>/i, `$&\n${metaCharset}\n${baseTag}\n${scormScript}`);
       } else if (html.match(/<html[^>]*>/i)) {
-        html = html.replace(/<html[^>]*>/i, `$&\n<head>${baseTag}\n${scormScript}</head>`);
+        html = html.replace(/<html[^>]*>/i, `$&\n<head>${metaCharset}\n${baseTag}\n${scormScript}</head>`);
       } else {
-        html = `<!DOCTYPE html><html><head>${baseTag}\n${scormScript}</head><body>${html}</body></html>`;
+        html = `<!DOCTYPE html><html><head>${metaCharset}\n${baseTag}\n${scormScript}</head><body>${html}</body></html>`;
       }
 
-      // 8. Create blob URL
-      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      blobUrlRef.current = url;
-      setBlobUrl(url);
+      // Store prepared HTML for iframe injection
+      preparedHtmlRef.current = html;
+      setContentReady(true);
 
-      // 9. Track launch
+      // Track launch
       await trackLessonLaunch(userId, lessonId, enrollmentId, courseTitle, lessonTitle);
     } catch (err: any) {
       console.error("SCORM load error:", err);
@@ -413,14 +396,42 @@ export function ScormPlayer({
     }
   }, [packageUrl, entryPoint, enrollmentId, lessonId, userId, courseTitle, lessonTitle, scormVersion]);
 
+  // Write HTML into iframe using document.write() when content is ready
   useEffect(() => {
-    loadContent();
-    return () => {
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
+    if (!contentReady || !preparedHtmlRef.current || !iframeRef.current) return;
+
+    const iframe = iframeRef.current;
+    const html = preparedHtmlRef.current;
+
+    const writeContent = () => {
+      try {
+        const doc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (!doc) {
+          setError("iframe erişimi sağlanamadı.");
+          setIsLoading(false);
+          return;
+        }
+        doc.open();
+        doc.write(html);
+        doc.close();
+        setIsLoading(false);
+      } catch (err) {
+        console.error("document.write error:", err);
+        setError("İçerik iframe'e yazılamadı.");
+        setIsLoading(false);
       }
     };
+
+    // Ensure iframe is mounted before writing
+    if (iframe.contentDocument) {
+      writeContent();
+    } else {
+      iframe.addEventListener("load", writeContent, { once: true });
+    }
+  }, [contentReady]);
+
+  useEffect(() => {
+    loadContent();
   }, [loadContent]);
 
   // ─── Fullscreen ──────────────────────────────────────────────────────────
