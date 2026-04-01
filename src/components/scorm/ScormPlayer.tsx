@@ -475,11 +475,12 @@ export function ScormPlayer({
         </div>
       )}
 
-      {/* SCORM Content iframe — uses document.write(), no src needed */}
+      {/* SCORM Content iframe — uses srcdoc for reliable HTML rendering */}
       <iframe
         ref={iframeRef}
+        srcDoc={iframeSrcDoc}
         className="flex-1 w-full border-0 bg-white"
-        style={{ minHeight: "500px", display: contentReady ? "block" : "none" }}
+        style={{ minHeight: "500px", display: iframeSrcDoc ? "block" : "none" }}
         allow="fullscreen"
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
         title="SCORM Eğitim İçeriği"
