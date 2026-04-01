@@ -1,27 +1,18 @@
 /**
  * ScormPlayer — Production-grade SCORM 1.2 & 2004 player.
- * Uses modular architecture: ScormApiAdapter, ScormProgressService,
- * ScormManifestParser, and ScormControls.
- *
- * Features:
- * - Signed URL + HMAC token based content delivery
- * - postMessage-based SCORM API communication
- * - Auto-resume from suspend_data
- * - Netflix-style auto-hiding controls
- * - Manifest parsing for entry point detection
- * - Granular CMI runtime data persistence
+ * Uses proxy-served HTML approach: the edge function downloads the SCORM HTML,
+ * injects <base> tag + SCORM API script, and serves it as text/html directly.
+ * No srcdoc, no document.write, no Blob URLs.
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { buildScormApiScript, type ScormInitialData } from "./ScormApiAdapter";
 import {
   persistScormProgress,
   loadScormProgress,
   trackLessonLaunch,
-  formatTime,
   type ScormEventData,
 } from "./ScormProgressService";
 import { parseManifest, PRIORITY_ENTRY_FILES } from "./ScormManifestParser";
@@ -123,7 +114,6 @@ async function resolveEntryFile(
   const rootFiles = await listFiles(token, folderPath, "", courseId);
   const rootFileNames = new Set(rootFiles.map((f) => f.name));
 
-  // 1. Try manifest parsing first for accurate detection
   if (rootFileNames.has("imsmanifest.xml")) {
     try {
       const { signedUrl } = await proxyPost(token, {
@@ -143,24 +133,19 @@ async function resolveEntryFile(
           };
         }
       }
-    } catch {
-      // Manifest parsing failed, continue with heuristics
-    }
+    } catch { /* continue with heuristics */ }
   }
 
-  // 2. Priority file detection
   for (const file of PRIORITY_ENTRY_FILES) {
     if (rootFileNames.has(file)) return { entryFile: file };
   }
 
-  // 3. Check scormcontent subfolder (Articulate Rise)
   if (rootFileNames.has("scormcontent")) {
     const subFiles = await listFiles(token, folderPath, "scormcontent", courseId);
     if (subFiles.some((f) => f.name === "index.html"))
       return { entryFile: "scormcontent/index.html" };
   }
 
-  // 4. Try nested entry point path
   const sanitizedEntry = entryPoint.replace(/&/g, "_").replace(/ /g, "_");
   const entryParts = sanitizedEntry.split("/");
   if (entryParts.length > 1) {
@@ -174,7 +159,6 @@ async function resolveEntryFile(
     }
   }
 
-  // 5. Search subfolders
   const subfolders = rootFiles.filter((f) => f.id === null);
   for (const folder of subfolders) {
     const subFiles = await listFiles(token, folderPath, folder.name, courseId);
@@ -208,14 +192,13 @@ export function ScormPlayer({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  const preparedHtmlRef = useRef<string | null>(null);
   const sessionStartRef = useRef<number>(Date.now());
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [contentReady, setContentReady] = useState(false);
+  const [iframeSrc, setIframeSrc] = useState<string | null>(null);
   const [lessonStatus, setLessonStatus] = useState<string>("not attempted");
   const [scoreRaw, setScoreRaw] = useState<string>("");
   const [sessionSeconds, setSessionSeconds] = useState(0);
@@ -297,12 +280,12 @@ export function ScormPlayer({
     };
   }, [handlePersist]);
 
-  // ─── Load SCORM content (document.write approach) ─────────────────────────
+  // ─── Load SCORM content (proxy-served HTML approach) ──────────────────────
 
   const loadContent = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    setContentReady(false);
+    setIframeSrc(null);
 
     const token = await getAuthToken();
     if (!token) {
@@ -332,56 +315,26 @@ export function ScormPlayer({
     setEffectiveVersion(activeVersion);
 
     try {
-      // 2. Get signed URL + session token
-      const { signedUrl, sessionToken, baseRedirectUrl } = await proxyPost(token, {
+      // 2. Get session token via sign action
+      const { sessionToken } = await proxyPost(token, {
         action: "sign",
         folderPath,
         filePath: entryFile,
         courseId,
       });
 
-      // 3. Fetch entry HTML
-      const res = await fetch(signedUrl);
-      if (!res.ok) {
-        setError(`İçerik dosyası yüklenemedi (HTTP ${res.status}).`);
-        setIsLoading(false);
-        return;
-      }
-      const rawBytes = await res.arrayBuffer();
-      let html = new TextDecoder("utf-8").decode(rawBytes);
-
-      // 4. Load previous progress for resume
+      // 3. Load previous progress for resume
       const initialData = await loadScormProgress(enrollmentId, lessonId);
       if (initialData.lesson_status) setLessonStatus(initialData.lesson_status);
       if (initialData.score_raw) setScoreRaw(initialData.score_raw);
 
-      // 5. Build base URL for sub-resource loading via path-based token proxy
-      const entryDir = entryFile.includes("/")
-        ? entryFile.substring(0, entryFile.lastIndexOf("/") + 1)
-        : "";
+      // 4. Build serve URL — proxy will download HTML, inject base + SCORM API, serve as text/html
+      const initDataB64 = btoa(JSON.stringify(initialData));
       const encodedToken = encodeURIComponent(sessionToken);
-      const basePath = entryDir
-        ? `${baseRedirectUrl}/_t_/${encodedToken}/${entryDir}`
-        : `${baseRedirectUrl}/_t_/${encodedToken}/`;
-      const baseHref = basePath.endsWith("/") ? basePath : basePath + "/";
+      const serveUrl = `${proxyUrl}/_serve_/${encodedToken}/${entryFile}?v=${encodeURIComponent(activeVersion)}&d=${encodeURIComponent(initDataB64)}`;
 
-      // 6. Build SCORM API script
-      const scormScript = buildScormApiScript(initialData as ScormInitialData, activeVersion);
-      const baseTag = `<base href="${baseHref}">`;
-      const metaCharset = `<meta charset="UTF-8">`;
-
-      // 7. Inject base tag + SCORM API into HTML
-      if (html.match(/<head[^>]*>/i)) {
-        html = html.replace(/<head[^>]*>/i, `$&\n${metaCharset}\n${baseTag}\n${scormScript}`);
-      } else if (html.match(/<html[^>]*>/i)) {
-        html = html.replace(/<html[^>]*>/i, `$&\n<head>${metaCharset}\n${baseTag}\n${scormScript}</head>`);
-      } else {
-        html = `<!DOCTYPE html><html><head>${metaCharset}\n${baseTag}\n${scormScript}</head><body>${html}</body></html>`;
-      }
-
-      // Store prepared HTML for iframe injection
-      preparedHtmlRef.current = html;
-      setContentReady(true);
+      // 5. Set iframe src — browser will render it as a real HTML page
+      setIframeSrc(serveUrl);
 
       // Track launch
       await trackLessonLaunch(userId, lessonId, enrollmentId, courseTitle, lessonTitle);
@@ -396,14 +349,10 @@ export function ScormPlayer({
     }
   }, [packageUrl, entryPoint, enrollmentId, lessonId, userId, courseTitle, lessonTitle, scormVersion]);
 
-  // Write HTML into iframe using srcdoc for reliable rendering
-  const [iframeSrcDoc, setIframeSrcDoc] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    if (!contentReady || !preparedHtmlRef.current) return;
-    setIframeSrcDoc(preparedHtmlRef.current);
+  // Handle iframe load event
+  const handleIframeLoad = useCallback(() => {
     setIsLoading(false);
-  }, [contentReady]);
+  }, []);
 
   useEffect(() => {
     loadContent();
@@ -475,16 +424,19 @@ export function ScormPlayer({
         </div>
       )}
 
-      {/* SCORM Content iframe — uses srcdoc for reliable HTML rendering */}
-      <iframe
-        ref={iframeRef}
-        srcDoc={iframeSrcDoc}
-        className="flex-1 w-full border-0 bg-white"
-        style={{ minHeight: "500px", display: iframeSrcDoc ? "block" : "none" }}
-        allow="fullscreen"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-        title="SCORM Eğitim İçeriği"
-      />
+      {/* SCORM Content iframe — served directly by proxy as text/html */}
+      {iframeSrc && (
+        <iframe
+          ref={iframeRef}
+          src={iframeSrc}
+          className="flex-1 w-full border-0 bg-white"
+          style={{ minHeight: "500px" }}
+          allow="fullscreen"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          title="SCORM Eğitim İçeriği"
+          onLoad={handleIframeLoad}
+        />
+      )}
 
       <ScormBottomBar
         lessonStatus={lessonStatus}
