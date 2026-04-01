@@ -396,38 +396,13 @@ export function ScormPlayer({
     }
   }, [packageUrl, entryPoint, enrollmentId, lessonId, userId, courseTitle, lessonTitle, scormVersion]);
 
-  // Write HTML into iframe using document.write() when content is ready
+  // Write HTML into iframe using srcdoc for reliable rendering
+  const [iframeSrcDoc, setIframeSrcDoc] = useState<string | undefined>(undefined);
+
   useEffect(() => {
-    if (!contentReady || !preparedHtmlRef.current || !iframeRef.current) return;
-
-    const iframe = iframeRef.current;
-    const html = preparedHtmlRef.current;
-
-    const writeContent = () => {
-      try {
-        const doc = iframe.contentDocument || iframe.contentWindow?.document;
-        if (!doc) {
-          setError("iframe erişimi sağlanamadı.");
-          setIsLoading(false);
-          return;
-        }
-        doc.open();
-        doc.write(html);
-        doc.close();
-        setIsLoading(false);
-      } catch (err) {
-        console.error("document.write error:", err);
-        setError("İçerik iframe'e yazılamadı.");
-        setIsLoading(false);
-      }
-    };
-
-    // Ensure iframe is mounted before writing
-    if (iframe.contentDocument) {
-      writeContent();
-    } else {
-      iframe.addEventListener("load", writeContent, { once: true });
-    }
+    if (!contentReady || !preparedHtmlRef.current) return;
+    setIframeSrcDoc(preparedHtmlRef.current);
+    setIsLoading(false);
   }, [contentReady]);
 
   useEffect(() => {
