@@ -195,7 +195,6 @@ function extractAttr(xml: string, tag: string, attr: string): string {
 // ─── Token extraction helpers ────────────────────────────────────────────────
 
 function extractPathToken(pathname: string): { token: string; subPath: string } | null {
-  // New path-based token: /scorm-proxy/_t_/ENCODED_TOKEN/rest/of/path
   const tMarker = "/_t_/";
   const tIndex = pathname.indexOf(tMarker);
   if (tIndex === -1) return null;
@@ -214,7 +213,6 @@ function extractPathToken(pathname: string): { token: string; subPath: string } 
 }
 
 function extractQueryToken(reqUrl: URL): { token: string; subPath: string } | null {
-  // Legacy query-based token: ?t=TOKEN
   const token = reqUrl.searchParams.get("t");
   if (!token) return null;
 
@@ -227,6 +225,151 @@ function extractQueryToken(reqUrl: URL): { token: string; subPath: string } | nu
   }
 
   return { token, subPath };
+}
+
+// ─── Serve token extraction ──────────────────────────────────────────────────
+
+function extractServeInfo(pathname: string): { token: string; entryPath: string } | null {
+  const serveMarker = "/_serve_/";
+  const idx = pathname.indexOf(serveMarker);
+  if (idx === -1) return null;
+
+  const afterMarker = pathname.slice(idx + serveMarker.length);
+  const firstSlash = afterMarker.indexOf("/");
+  if (firstSlash === -1) return null;
+
+  const encodedToken = afterMarker.substring(0, firstSlash);
+  const entryPath = afterMarker.substring(firstSlash + 1);
+
+  return {
+    token: decodeURIComponent(encodedToken),
+    entryPath: decodeURIComponent(entryPath),
+  };
+}
+
+// ─── SCORM API script builder (server-side) ──────────────────────────────────
+
+interface ScormInitData {
+  lesson_status?: string;
+  lesson_location?: string;
+  suspend_data?: string;
+  score_raw?: string;
+  total_time?: string;
+}
+
+function buildScorm12Script(d: ScormInitData): string {
+  return `<script>
+(function() {
+  var _init = false, _fin = false, _err = '0';
+  var cmi = {
+    'cmi.core.lesson_status': ${JSON.stringify(d.lesson_status || "not attempted")},
+    'cmi.core.lesson_location': ${JSON.stringify(d.lesson_location || "")},
+    'cmi.suspend_data': ${JSON.stringify(d.suspend_data || "")},
+    'cmi.core.score.raw': ${JSON.stringify(d.score_raw || "")},
+    'cmi.core.score.min': '0', 'cmi.core.score.max': '100',
+    'cmi.core.total_time': ${JSON.stringify(d.total_time || "0000:00:00")},
+    'cmi.core.session_time': '0000:00:00',
+    'cmi.core.student_id': '', 'cmi.core.student_name': '',
+    'cmi.core.credit': 'credit',
+    'cmi.core.entry': ${JSON.stringify(d.lesson_status && d.lesson_status !== "not attempted" ? "resume" : "ab-initio")},
+    'cmi.core.exit': '', 'cmi.core.lesson_mode': 'normal',
+    'cmi.launch_data': '', 'cmi.comments': '', 'cmi.comments_from_lms': ''
+  };
+  function send(m) {
+    try { window.parent.postMessage({ type: 'scorm_api_event', scormVersion: '1.2', method: m, data: {
+      lesson_status: cmi['cmi.core.lesson_status'], lesson_location: cmi['cmi.core.lesson_location'],
+      suspend_data: cmi['cmi.suspend_data'], score_raw: cmi['cmi.core.score.raw'],
+      total_time: cmi['cmi.core.total_time'], session_time: cmi['cmi.core.session_time'],
+      exit: cmi['cmi.core.exit']
+    }}, '*'); } catch(e) {}
+  }
+  window.API = {
+    LMSInitialize: function() { _init = true; _fin = false; _err = '0'; send('LMSInitialize'); return 'true'; },
+    LMSFinish: function() { if (!_init) { _err = '301'; return 'false'; } _fin = true; _init = false; _err = '0'; send('LMSFinish'); return 'true'; },
+    LMSGetValue: function(el) { if (!_init) { _err = '301'; return ''; } _err = '0'; if (el in cmi) return cmi[el]; if (el.match(/_count$/)) return '0'; return ''; },
+    LMSSetValue: function(el, v) { if (!_init) { _err = '301'; return 'false'; } _err = '0'; cmi[el] = v; return 'true'; },
+    LMSCommit: function() { if (!_init) { _err = '301'; return 'false'; } _err = '0'; send('LMSCommit'); return 'true'; },
+    LMSGetLastError: function() { return _err; },
+    LMSGetErrorString: function(c) { return {'0':'No Error','101':'General Exception','301':'Not initialized','401':'Not implemented'}[c]||'Unknown'; },
+    LMSGetDiagnostic: function(c) { return c||''; }
+  };
+})();
+<\/script>`;
+}
+
+function buildScorm2004Script(d: ScormInitData): string {
+  const cs = (d.lesson_status === "completed" || d.lesson_status === "passed") ? "completed"
+    : d.lesson_status === "incomplete" ? "incomplete" : "unknown";
+  const ss = d.lesson_status === "passed" ? "passed" : d.lesson_status === "failed" ? "failed" : "unknown";
+  const tp = (d.total_time || "0000:00:00").split(":");
+  const isoT = tp.length === 3 ? "PT" + parseInt(tp[0]) + "H" + parseInt(tp[1]) + "M" + parseInt(tp[2]) + "S" : "PT0S";
+
+  return `<script>
+(function() {
+  var _init = false, _term = false, _err = '0';
+  var cmi = {
+    'cmi.completion_status': ${JSON.stringify(cs)},
+    'cmi.success_status': ${JSON.stringify(ss)},
+    'cmi.location': ${JSON.stringify(d.lesson_location || "")},
+    'cmi.suspend_data': ${JSON.stringify(d.suspend_data || "")},
+    'cmi.score.raw': ${JSON.stringify(d.score_raw || "")},
+    'cmi.score.min': '0', 'cmi.score.max': '100',
+    'cmi.score.scaled': ${JSON.stringify(d.score_raw ? (parseFloat(d.score_raw) / 100).toString() : "")},
+    'cmi.total_time': ${JSON.stringify(isoT)},
+    'cmi.session_time': 'PT0S',
+    'cmi.learner_id': '', 'cmi.learner_name': '',
+    'cmi.credit': 'credit',
+    'cmi.entry': ${JSON.stringify(cs !== "unknown" ? "resume" : "ab-initio")},
+    'cmi.exit': '', 'cmi.mode': 'normal', 'cmi.launch_data': '',
+    'cmi.comments_from_learner._count': '0', 'cmi.comments_from_lms._count': '0',
+    'cmi.interactions._count': '0', 'cmi.objectives._count': '0',
+    'cmi.learner_preference.audio_level': '1', 'cmi.learner_preference.language': '',
+    'cmi.learner_preference.delivery_speed': '1', 'cmi.learner_preference.audio_captioning': '0',
+    'cmi.completion_threshold': '', 'cmi.scaled_passing_score': '', 'cmi.progress_measure': '',
+    'adl.nav.request': '_none_'
+  };
+  function send(m) {
+    try {
+      var ls = cmi['cmi.completion_status']||'unknown', s = cmi['cmi.success_status']||'unknown';
+      var ns = s==='passed'?'passed':s==='failed'?'failed':ls==='completed'?'completed':ls==='incomplete'?'incomplete':'not attempted';
+      window.parent.postMessage({ type: 'scorm_api_event', method: m, scormVersion: '2004', data: {
+        lesson_status: ns, lesson_location: cmi['cmi.location']||'',
+        suspend_data: cmi['cmi.suspend_data']||'', score_raw: cmi['cmi.score.raw']||'',
+        total_time: cmi['cmi.total_time']||'PT0S', session_time: cmi['cmi.session_time']||'PT0S',
+        exit: cmi['cmi.exit']||'', completion_status: cmi['cmi.completion_status'],
+        success_status: cmi['cmi.success_status'], progress_measure: cmi['cmi.progress_measure']||'',
+        nav_request: cmi['adl.nav.request']||'_none_'
+      }}, '*');
+    } catch(e) {}
+  }
+  window.API_1484_11 = {
+    Initialize: function() { if (_init) { _err='103'; return 'false'; } _init=true; _term=false; _err='0'; send('Initialize'); return 'true'; },
+    Terminate: function() { if (!_init) { _err='112'; return 'false'; } if (_term) { _err='113'; return 'false'; } _term=true; _init=false; _err='0'; send('Terminate'); return 'true'; },
+    GetValue: function(el) {
+      if (!_init) { _err='122'; return ''; } _err='0';
+      if (el in cmi) return cmi[el]; if (el.match(/\\._count$/)) return '0';
+      var m = el.match(/^cmi\\.(interactions|objectives|comments_from_learner)\\.(\\d+)\\./);
+      if (m && cmi[el] !== undefined) return cmi[el]; if (m) return '';
+      _err='401'; return '';
+    },
+    SetValue: function(el, v) {
+      if (!_init) { _err='132'; return 'false'; } _err='0'; cmi[el]=v;
+      var m = el.match(/^cmi\\.(interactions|objectives|comments_from_learner)\\.(\\d+)\\./);
+      if (m) { var ck='cmi.'+m[1]+'._count'; var c=parseInt(cmi[ck]||'0'); if (parseInt(m[2])>=c) cmi[ck]=String(parseInt(m[2])+1); }
+      return 'true';
+    },
+    Commit: function() { if (!_init) { _err='142'; return 'false'; } _err='0'; send('Commit'); return 'true'; },
+    GetLastError: function() { return _err; },
+    GetErrorString: function(c) { return {'0':'No Error','101':'General Exception','103':'Already Initialized','112':'Termination Before Init','113':'Termination After Termination','122':'Retrieve Data Before Init','132':'Store Data Before Init','142':'Commit Before Init','401':'Undefined Data Model'}[c]||'Unknown Error'; },
+    GetDiagnostic: function(c) { return c||''; }
+  };
+})();
+<\/script>`;
+}
+
+function buildScormScript(initData: ScormInitData, version: string): string {
+  if (version.startsWith("2004")) return buildScorm2004Script(initData);
+  return buildScorm12Script(initData);
 }
 
 // ─── MIME type helper ────────────────────────────────────────────────────────
@@ -268,11 +411,87 @@ Deno.serve(async (req) => {
   const reqUrl = new URL(req.url);
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // MODE 1: Token-based redirect (GET)
-  // Supports both path-based (_t_/TOKEN/path) and query-based (?t=TOKEN)
+  // MODE 0: Serve HTML with injected SCORM API (GET /_serve_/TOKEN/path)
+  // Downloads HTML from storage, injects <base>, SCORM API, returns text/html
   // ═══════════════════════════════════════════════════════════════════════════
   if (req.method === "GET") {
-    // Try path-based token first, then query-based (backward compat)
+    const serveInfo = extractServeInfo(reqUrl.pathname);
+    if (serveInfo) {
+      const tokenPayload = await verifySessionToken(serveInfo.token, serviceRoleKey);
+      if (!tokenPayload) {
+        return new Response("<html><body><h1>Session expired</h1></body></html>", {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
+        });
+      }
+
+      const adminClient = createClient(supabaseUrl, serviceRoleKey);
+      const storagePath = `${tokenPayload.folderPath}/${serveInfo.entryPath}`;
+
+      // Download HTML from storage
+      const { data: fileData, error: dlError } = await adminClient.storage
+        .from("scorm-packages")
+        .download(storagePath);
+
+      if (dlError || !fileData) {
+        return new Response("<html><body><h1>File not found</h1></body></html>", {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
+        });
+      }
+
+      const rawBytes = await fileData.arrayBuffer();
+      let html = new TextDecoder("utf-8").decode(rawBytes);
+
+      // Parse query params for SCORM init data and version
+      const version = reqUrl.searchParams.get("v") || "1.2";
+      const initB64 = reqUrl.searchParams.get("d");
+      let initData: ScormInitData = {};
+      if (initB64) {
+        try {
+          initData = JSON.parse(atob(initB64));
+        } catch { /* ignore parse errors */ }
+      }
+
+      // Build base URL for sub-resource loading via path-based token proxy
+      const entryDir = serveInfo.entryPath.includes("/")
+        ? serveInfo.entryPath.substring(0, serveInfo.entryPath.lastIndexOf("/") + 1)
+        : "";
+      const encodedToken = encodeURIComponent(serveInfo.token);
+      const basePath = entryDir
+        ? `${supabaseUrl}/functions/v1/scorm-proxy/_t_/${encodedToken}/${entryDir}`
+        : `${supabaseUrl}/functions/v1/scorm-proxy/_t_/${encodedToken}/`;
+      const baseHref = basePath.endsWith("/") ? basePath : basePath + "/";
+
+      // Build injections
+      const scormScript = buildScormScript(initData, version);
+      const baseTag = `<base href="${baseHref}">`;
+      const metaCharset = `<meta charset="UTF-8">`;
+
+      // Inject into HTML
+      if (html.match(/<head[^>]*>/i)) {
+        html = html.replace(/<head[^>]*>/i, `$&\n${metaCharset}\n${baseTag}\n${scormScript}`);
+      } else if (html.match(/<html[^>]*>/i)) {
+        html = html.replace(/<html[^>]*>/i, `$&\n<head>${metaCharset}\n${baseTag}\n${scormScript}</head>`);
+      } else {
+        html = `<!DOCTYPE html><html><head>${metaCharset}\n${baseTag}\n${scormScript}</head><body>${html}</body></html>`;
+      }
+
+      return new Response(html, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "private, no-cache",
+        },
+      });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MODE 1: Token-based redirect (GET /_t_/TOKEN/path or ?t=TOKEN)
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (req.method === "GET") {
     const tokenInfo = extractPathToken(reqUrl.pathname) || extractQueryToken(reqUrl);
 
     if (tokenInfo) {
@@ -284,7 +503,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Build storage path: folderPath + subPath from URL
       const subPath = tokenInfo.subPath.replace(/^\/+/, "").replace(/\/+$/, "");
       const storagePath = subPath
         ? `${tokenPayload.folderPath}/${subPath}`
