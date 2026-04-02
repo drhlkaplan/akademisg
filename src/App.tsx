@@ -235,6 +235,46 @@ const App = () => (
               }
             />
             <Route
+              path="/admin/sectors"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <SectorsManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/training-types"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <TrainingTypesManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/topic4-packs"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <Topic4PacksManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/face-to-face"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <FaceToFaceSessionsManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/faq"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <FaqManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/live-sessions"
               element={
                 <ProtectedRoute requireAdmin>
