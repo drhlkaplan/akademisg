@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      absence_renewal_records: {
+        Row: {
+          absence_days: number | null
+          absence_end: string
+          absence_start: string
+          assigned_course_id: string | null
+          created_at: string | null
+          created_by: string | null
+          firm_id: string | null
+          id: string
+          reason: string | null
+          requires_bilgi_yenileme: boolean | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          absence_days?: number | null
+          absence_end: string
+          absence_start: string
+          assigned_course_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          firm_id?: string | null
+          id?: string
+          reason?: string | null
+          requires_bilgi_yenileme?: boolean | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          absence_days?: number | null
+          absence_end?: string
+          absence_start?: string
+          assigned_course_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          firm_id?: string | null
+          id?: string
+          reason?: string | null
+          requires_bilgi_yenileme?: boolean | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "absence_renewal_records_assigned_course_id_fkey"
+            columns: ["assigned_course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "absence_renewal_records_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       activity_logs: {
         Row: {
           action: string
@@ -180,6 +240,95 @@ export type Database = {
           },
         ]
       }
+      company_topic4_assignments: {
+        Row: {
+          assigned_by: string | null
+          created_at: string | null
+          custom_content_url: string | null
+          custom_risk_data: Json | null
+          firm_id: string
+          id: string
+          is_active: boolean | null
+          topic4_pack_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string | null
+          custom_content_url?: string | null
+          custom_risk_data?: Json | null
+          firm_id: string
+          id?: string
+          is_active?: boolean | null
+          topic4_pack_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string | null
+          custom_content_url?: string | null
+          custom_risk_data?: Json | null
+          firm_id?: string
+          id?: string
+          is_active?: boolean | null
+          topic4_pack_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_topic4_assignments_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_topic4_assignments_topic4_pack_id_fkey"
+            columns: ["topic4_pack_id"]
+            isOneToOne: false
+            referencedRelation: "topic4_sector_packs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_reports: {
+        Row: {
+          created_at: string | null
+          firm_id: string | null
+          generated_by: string | null
+          id: string
+          pdf_url: string | null
+          report_data: Json | null
+          report_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          firm_id?: string | null
+          generated_by?: string | null
+          id?: string
+          pdf_url?: string | null
+          report_data?: Json | null
+          report_type: string
+        }
+        Update: {
+          created_at?: string | null
+          firm_id?: string | null
+          generated_by?: string | null
+          id?: string
+          pdf_url?: string | null
+          report_data?: Json | null
+          report_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_reports_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_categories: {
         Row: {
           created_at: string | null
@@ -207,6 +356,65 @@ export type Database = {
         }
         Relationships: []
       }
+      course_template_rules: {
+        Row: {
+          course_id: string
+          created_at: string | null
+          hazard_class: Database["public"]["Enums"]["hazard_class_enum"]
+          id: string
+          max_exam_attempts: number | null
+          min_topic4_hours: number
+          min_total_hours: number
+          passing_score: number | null
+          recurrence_months: number | null
+          requires_final_assessment: boolean | null
+          requires_pre_assessment: boolean | null
+          topic4_method: Database["public"]["Enums"]["lesson_delivery_method"]
+          training_type: Database["public"]["Enums"]["training_type_enum"]
+          updated_at: string | null
+        }
+        Insert: {
+          course_id: string
+          created_at?: string | null
+          hazard_class: Database["public"]["Enums"]["hazard_class_enum"]
+          id?: string
+          max_exam_attempts?: number | null
+          min_topic4_hours?: number
+          min_total_hours?: number
+          passing_score?: number | null
+          recurrence_months?: number | null
+          requires_final_assessment?: boolean | null
+          requires_pre_assessment?: boolean | null
+          topic4_method?: Database["public"]["Enums"]["lesson_delivery_method"]
+          training_type: Database["public"]["Enums"]["training_type_enum"]
+          updated_at?: string | null
+        }
+        Update: {
+          course_id?: string
+          created_at?: string | null
+          hazard_class?: Database["public"]["Enums"]["hazard_class_enum"]
+          id?: string
+          max_exam_attempts?: number | null
+          min_topic4_hours?: number
+          min_total_hours?: number
+          passing_score?: number | null
+          recurrence_months?: number | null
+          requires_final_assessment?: boolean | null
+          requires_pre_assessment?: boolean | null
+          topic4_method?: Database["public"]["Enums"]["lesson_delivery_method"]
+          training_type?: Database["public"]["Enums"]["training_type_enum"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_template_rules_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: true
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courses: {
         Row: {
           auto_certificate: boolean | null
@@ -216,11 +424,20 @@ export type Database = {
           deleted_at: string | null
           description: string | null
           duration_minutes: number
+          hazard_class_new:
+            | Database["public"]["Enums"]["hazard_class_enum"]
+            | null
           id: string
           is_active: boolean | null
+          is_template: boolean | null
+          legacy_regulation: boolean | null
+          min_total_hours: number | null
           require_sequential: boolean
           thumbnail_url: string | null
           title: string
+          training_type:
+            | Database["public"]["Enums"]["training_type_enum"]
+            | null
           updated_at: string | null
         }
         Insert: {
@@ -231,11 +448,20 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           duration_minutes?: number
+          hazard_class_new?:
+            | Database["public"]["Enums"]["hazard_class_enum"]
+            | null
           id?: string
           is_active?: boolean | null
+          is_template?: boolean | null
+          legacy_regulation?: boolean | null
+          min_total_hours?: number | null
           require_sequential?: boolean
           thumbnail_url?: string | null
           title: string
+          training_type?:
+            | Database["public"]["Enums"]["training_type_enum"]
+            | null
           updated_at?: string | null
         }
         Update: {
@@ -246,11 +472,20 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           duration_minutes?: number
+          hazard_class_new?:
+            | Database["public"]["Enums"]["hazard_class_enum"]
+            | null
           id?: string
           is_active?: boolean | null
+          is_template?: boolean | null
+          legacy_regulation?: boolean | null
+          min_total_hours?: number | null
           require_sequential?: boolean
           thumbnail_url?: string | null
           title?: string
+          training_type?:
+            | Database["public"]["Enums"]["training_type_enum"]
+            | null
           updated_at?: string | null
         }
         Relationships: [
@@ -270,6 +505,39 @@ export type Database = {
           },
         ]
       }
+      document_templates: {
+        Row: {
+          created_at: string | null
+          document_type: Database["public"]["Enums"]["document_type_enum"]
+          id: string
+          is_active: boolean | null
+          name: string
+          template_html: string | null
+          updated_at: string | null
+          variables: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          document_type: Database["public"]["Enums"]["document_type_enum"]
+          id?: string
+          is_active?: boolean | null
+          name: string
+          template_html?: string | null
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          document_type?: Database["public"]["Enums"]["document_type_enum"]
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          template_html?: string | null
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Relationships: []
+      }
       enrollments: {
         Row: {
           completed_at: string | null
@@ -280,8 +548,12 @@ export type Database = {
           firm_id: string | null
           id: string
           progress_percent: number | null
+          recurrence_due_at: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["enrollment_status"] | null
+          training_type:
+            | Database["public"]["Enums"]["training_type_enum"]
+            | null
           updated_at: string | null
           user_id: string
         }
@@ -294,8 +566,12 @@ export type Database = {
           firm_id?: string | null
           id?: string
           progress_percent?: number | null
+          recurrence_due_at?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["enrollment_status"] | null
+          training_type?:
+            | Database["public"]["Enums"]["training_type_enum"]
+            | null
           updated_at?: string | null
           user_id: string
         }
@@ -308,8 +584,12 @@ export type Database = {
           firm_id?: string | null
           id?: string
           progress_percent?: number | null
+          recurrence_due_at?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["enrollment_status"] | null
+          training_type?:
+            | Database["public"]["Enums"]["training_type_enum"]
+            | null
           updated_at?: string | null
           user_id?: string
         }
@@ -449,6 +729,184 @@ export type Database = {
           },
         ]
       }
+      face_to_face_attendance: {
+        Row: {
+          admin_verified: boolean | null
+          check_in_time: string | null
+          check_out_time: string | null
+          created_at: string | null
+          duration_minutes: number | null
+          end_of_session_ack: boolean | null
+          enrollment_id: string | null
+          id: string
+          notes: string | null
+          session_id: string
+          status: Database["public"]["Enums"]["attendance_status_enum"] | null
+          trainer_verified: boolean | null
+          updated_at: string | null
+          user_id: string
+          verification_method: string | null
+        }
+        Insert: {
+          admin_verified?: boolean | null
+          check_in_time?: string | null
+          check_out_time?: string | null
+          created_at?: string | null
+          duration_minutes?: number | null
+          end_of_session_ack?: boolean | null
+          enrollment_id?: string | null
+          id?: string
+          notes?: string | null
+          session_id: string
+          status?: Database["public"]["Enums"]["attendance_status_enum"] | null
+          trainer_verified?: boolean | null
+          updated_at?: string | null
+          user_id: string
+          verification_method?: string | null
+        }
+        Update: {
+          admin_verified?: boolean | null
+          check_in_time?: string | null
+          check_out_time?: string | null
+          created_at?: string | null
+          duration_minutes?: number | null
+          end_of_session_ack?: boolean | null
+          enrollment_id?: string | null
+          id?: string
+          notes?: string | null
+          session_id?: string
+          status?: Database["public"]["Enums"]["attendance_status_enum"] | null
+          trainer_verified?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+          verification_method?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "face_to_face_attendance_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "face_to_face_attendance_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "face_to_face_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      face_to_face_sessions: {
+        Row: {
+          attendance_code: string | null
+          capacity: number | null
+          course_id: string | null
+          created_at: string | null
+          end_time: string
+          firm_id: string | null
+          id: string
+          lesson_id: string | null
+          location: string
+          notes: string | null
+          session_date: string
+          start_time: string
+          status: Database["public"]["Enums"]["f2f_session_status"] | null
+          trainer_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          attendance_code?: string | null
+          capacity?: number | null
+          course_id?: string | null
+          created_at?: string | null
+          end_time: string
+          firm_id?: string | null
+          id?: string
+          lesson_id?: string | null
+          location: string
+          notes?: string | null
+          session_date: string
+          start_time: string
+          status?: Database["public"]["Enums"]["f2f_session_status"] | null
+          trainer_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          attendance_code?: string | null
+          capacity?: number | null
+          course_id?: string | null
+          created_at?: string | null
+          end_time?: string
+          firm_id?: string | null
+          id?: string
+          lesson_id?: string | null
+          location?: string
+          notes?: string | null
+          session_date?: string
+          start_time?: string
+          status?: Database["public"]["Enums"]["f2f_session_status"] | null
+          trainer_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "face_to_face_sessions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "face_to_face_sessions_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "face_to_face_sessions_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      faq_items: {
+        Row: {
+          answer: string
+          category: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          question: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          answer: string
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          question: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          answer?: string
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          question?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       firms: {
         Row: {
           address: string | null
@@ -460,6 +918,9 @@ export type Database = {
           favicon_url: string | null
           firm_code: string | null
           footer_text: string | null
+          hazard_class_new:
+            | Database["public"]["Enums"]["hazard_class_enum"]
+            | null
           id: string
           is_active: boolean | null
           login_bg_url: string | null
@@ -467,11 +928,14 @@ export type Database = {
           name: string
           phone: string | null
           primary_color: string | null
+          risk_profile: Json | null
           secondary_color: string | null
           sector: string | null
+          sector_id: string | null
           tax_number: string | null
           updated_at: string | null
           welcome_message: string | null
+          workplace_type_id: string | null
         }
         Insert: {
           address?: string | null
@@ -483,6 +947,9 @@ export type Database = {
           favicon_url?: string | null
           firm_code?: string | null
           footer_text?: string | null
+          hazard_class_new?:
+            | Database["public"]["Enums"]["hazard_class_enum"]
+            | null
           id?: string
           is_active?: boolean | null
           login_bg_url?: string | null
@@ -490,11 +957,14 @@ export type Database = {
           name: string
           phone?: string | null
           primary_color?: string | null
+          risk_profile?: Json | null
           secondary_color?: string | null
           sector?: string | null
+          sector_id?: string | null
           tax_number?: string | null
           updated_at?: string | null
           welcome_message?: string | null
+          workplace_type_id?: string | null
         }
         Update: {
           address?: string | null
@@ -506,6 +976,9 @@ export type Database = {
           favicon_url?: string | null
           firm_code?: string | null
           footer_text?: string | null
+          hazard_class_new?:
+            | Database["public"]["Enums"]["hazard_class_enum"]
+            | null
           id?: string
           is_active?: boolean | null
           login_bg_url?: string | null
@@ -513,13 +986,89 @@ export type Database = {
           name?: string
           phone?: string | null
           primary_color?: string | null
+          risk_profile?: Json | null
           secondary_color?: string | null
           sector?: string | null
+          sector_id?: string | null
           tax_number?: string | null
           updated_at?: string | null
           welcome_message?: string | null
+          workplace_type_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "firms_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "firms_workplace_type_id_fkey"
+            columns: ["workplace_type_id"]
+            isOneToOne: false
+            referencedRelation: "workplace_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      generated_documents: {
+        Row: {
+          created_at: string | null
+          document_data: Json | null
+          document_type: Database["public"]["Enums"]["document_type_enum"]
+          enrollment_id: string | null
+          firm_id: string | null
+          id: string
+          pdf_url: string | null
+          template_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          document_data?: Json | null
+          document_type: Database["public"]["Enums"]["document_type_enum"]
+          enrollment_id?: string | null
+          firm_id?: string | null
+          id?: string
+          pdf_url?: string | null
+          template_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          document_data?: Json | null
+          document_type?: Database["public"]["Enums"]["document_type_enum"]
+          enrollment_id?: string | null
+          firm_id?: string | null
+          id?: string
+          pdf_url?: string | null
+          template_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_documents_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_documents_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_documents_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "document_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       group_courses: {
         Row: {
@@ -594,6 +1143,95 @@ export type Database = {
             columns: ["firm_id"]
             isOneToOne: false
             referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      homepage_content_blocks: {
+        Row: {
+          block_type: string
+          content: string | null
+          created_at: string | null
+          cta_text: string | null
+          cta_url: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          sort_order: number | null
+          subtitle: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          block_type: string
+          content?: string | null
+          created_at?: string | null
+          cta_text?: string | null
+          cta_url?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          sort_order?: number | null
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          block_type?: string
+          content?: string | null
+          created_at?: string | null
+          cta_text?: string | null
+          cta_url?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          sort_order?: number | null
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      lesson_method_rules: {
+        Row: {
+          allowed_methods: Database["public"]["Enums"]["lesson_delivery_method"][]
+          created_at: string | null
+          id: string
+          lesson_id: string
+          min_duration_minutes: number | null
+          required_method:
+            | Database["public"]["Enums"]["lesson_delivery_method"]
+            | null
+          topic_group: number | null
+        }
+        Insert: {
+          allowed_methods?: Database["public"]["Enums"]["lesson_delivery_method"][]
+          created_at?: string | null
+          id?: string
+          lesson_id: string
+          min_duration_minutes?: number | null
+          required_method?:
+            | Database["public"]["Enums"]["lesson_delivery_method"]
+            | null
+          topic_group?: number | null
+        }
+        Update: {
+          allowed_methods?: Database["public"]["Enums"]["lesson_delivery_method"][]
+          created_at?: string | null
+          id?: string
+          lesson_id?: string
+          min_duration_minutes?: number | null
+          required_method?:
+            | Database["public"]["Enums"]["lesson_delivery_method"]
+            | null
+          topic_group?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_method_rules_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: true
+            referencedRelation: "lessons"
             referencedColumns: ["id"]
           },
         ]
@@ -674,6 +1312,9 @@ export type Database = {
           course_id: string
           created_at: string
           deleted_at: string | null
+          delivery_method:
+            | Database["public"]["Enums"]["lesson_delivery_method"]
+            | null
           duration_minutes: number
           exam_id: string | null
           id: string
@@ -682,6 +1323,7 @@ export type Database = {
           scorm_package_id: string | null
           sort_order: number
           title: string
+          topic_group: number | null
           type: Database["public"]["Enums"]["lesson_type"]
           updated_at: string
         }
@@ -690,6 +1332,9 @@ export type Database = {
           course_id: string
           created_at?: string
           deleted_at?: string | null
+          delivery_method?:
+            | Database["public"]["Enums"]["lesson_delivery_method"]
+            | null
           duration_minutes?: number
           exam_id?: string | null
           id?: string
@@ -698,6 +1343,7 @@ export type Database = {
           scorm_package_id?: string | null
           sort_order?: number
           title: string
+          topic_group?: number | null
           type?: Database["public"]["Enums"]["lesson_type"]
           updated_at?: string
         }
@@ -706,6 +1352,9 @@ export type Database = {
           course_id?: string
           created_at?: string
           deleted_at?: string | null
+          delivery_method?:
+            | Database["public"]["Enums"]["lesson_delivery_method"]
+            | null
           duration_minutes?: number
           exam_id?: string | null
           id?: string
@@ -714,6 +1363,7 @@ export type Database = {
           scorm_package_id?: string | null
           sort_order?: number
           title?: string
+          topic_group?: number | null
           type?: Database["public"]["Enums"]["lesson_type"]
           updated_at?: string
         }
@@ -908,6 +1558,66 @@ export type Database = {
           },
         ]
       }
+      recurrence_rules: {
+        Row: {
+          completed_at: string | null
+          course_id: string | null
+          created_at: string | null
+          enrollment_id: string | null
+          hazard_class: Database["public"]["Enums"]["hazard_class_enum"]
+          id: string
+          next_due_at: string
+          notified_at: string | null
+          recurrence_months: number
+          status: string | null
+          training_type: Database["public"]["Enums"]["training_type_enum"]
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          course_id?: string | null
+          created_at?: string | null
+          enrollment_id?: string | null
+          hazard_class: Database["public"]["Enums"]["hazard_class_enum"]
+          id?: string
+          next_due_at: string
+          notified_at?: string | null
+          recurrence_months: number
+          status?: string | null
+          training_type?: Database["public"]["Enums"]["training_type_enum"]
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          course_id?: string | null
+          created_at?: string | null
+          enrollment_id?: string | null
+          hazard_class?: Database["public"]["Enums"]["hazard_class_enum"]
+          id?: string
+          next_due_at?: string
+          notified_at?: string | null
+          recurrence_months?: number
+          status?: string | null
+          training_type?: Database["public"]["Enums"]["training_type_enum"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurrence_rules_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurrence_rules_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scorm_packages: {
         Row: {
           course_id: string
@@ -1045,6 +1755,182 @@ export type Database = {
           },
         ]
       }
+      sectors: {
+        Row: {
+          code: string | null
+          created_at: string | null
+          default_hazard_class:
+            | Database["public"]["Enums"]["hazard_class_enum"]
+            | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string | null
+          default_hazard_class?:
+            | Database["public"]["Enums"]["hazard_class_enum"]
+            | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          code?: string | null
+          created_at?: string | null
+          default_hazard_class?:
+            | Database["public"]["Enums"]["hazard_class_enum"]
+            | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      sub_sectors: {
+        Row: {
+          created_at: string | null
+          hazard_class_override:
+            | Database["public"]["Enums"]["hazard_class_enum"]
+            | null
+          id: string
+          name: string
+          sector_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          hazard_class_override?:
+            | Database["public"]["Enums"]["hazard_class_enum"]
+            | null
+          id?: string
+          name: string
+          sector_id: string
+        }
+        Update: {
+          created_at?: string | null
+          hazard_class_override?:
+            | Database["public"]["Enums"]["hazard_class_enum"]
+            | null
+          id?: string
+          name?: string
+          sector_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sub_sectors_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      topic4_sector_packs: {
+        Row: {
+          content_url: string | null
+          created_at: string | null
+          description: string | null
+          duration_minutes: number | null
+          hazard_class: Database["public"]["Enums"]["hazard_class_enum"]
+          id: string
+          is_active: boolean | null
+          key_hazards: Json | null
+          name: string
+          scorm_package_id: string | null
+          sector_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          content_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          hazard_class: Database["public"]["Enums"]["hazard_class_enum"]
+          id?: string
+          is_active?: boolean | null
+          key_hazards?: Json | null
+          name: string
+          scorm_package_id?: string | null
+          sector_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          content_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          hazard_class?: Database["public"]["Enums"]["hazard_class_enum"]
+          id?: string
+          is_active?: boolean | null
+          key_hazards?: Json | null
+          name?: string
+          scorm_package_id?: string | null
+          sector_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topic4_sector_packs_scorm_package_id_fkey"
+            columns: ["scorm_package_id"]
+            isOneToOne: false
+            referencedRelation: "scorm_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topic4_sector_packs_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_types: {
+        Row: {
+          code: Database["public"]["Enums"]["training_type_enum"]
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          min_duration_hours: number | null
+          name: string
+          requires_exam: boolean | null
+          requires_face_to_face: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          code: Database["public"]["Enums"]["training_type_enum"]
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          min_duration_hours?: number | null
+          name: string
+          requires_exam?: boolean | null
+          requires_face_to_face?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          code?: Database["public"]["Enums"]["training_type_enum"]
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          min_duration_hours?: number | null
+          name?: string
+          requires_exam?: boolean | null
+          requires_face_to_face?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -1091,6 +1977,113 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workplace_change_records: {
+        Row: {
+          assigned_courses: Json | null
+          change_date: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          new_firm_id: string | null
+          new_hazard_class:
+            | Database["public"]["Enums"]["hazard_class_enum"]
+            | null
+          notes: string | null
+          previous_firm_id: string | null
+          previous_hazard_class:
+            | Database["public"]["Enums"]["hazard_class_enum"]
+            | null
+          requires_ise_baslama: boolean | null
+          requires_topic4_update: boolean | null
+          user_id: string
+        }
+        Insert: {
+          assigned_courses?: Json | null
+          change_date: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          new_firm_id?: string | null
+          new_hazard_class?:
+            | Database["public"]["Enums"]["hazard_class_enum"]
+            | null
+          notes?: string | null
+          previous_firm_id?: string | null
+          previous_hazard_class?:
+            | Database["public"]["Enums"]["hazard_class_enum"]
+            | null
+          requires_ise_baslama?: boolean | null
+          requires_topic4_update?: boolean | null
+          user_id: string
+        }
+        Update: {
+          assigned_courses?: Json | null
+          change_date?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          new_firm_id?: string | null
+          new_hazard_class?:
+            | Database["public"]["Enums"]["hazard_class_enum"]
+            | null
+          notes?: string | null
+          previous_firm_id?: string | null
+          previous_hazard_class?:
+            | Database["public"]["Enums"]["hazard_class_enum"]
+            | null
+          requires_ise_baslama?: boolean | null
+          requires_topic4_update?: boolean | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workplace_change_records_new_firm_id_fkey"
+            columns: ["new_firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workplace_change_records_previous_firm_id_fkey"
+            columns: ["previous_firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workplace_types: {
+        Row: {
+          created_at: string | null
+          hazard_class: Database["public"]["Enums"]["hazard_class_enum"]
+          id: string
+          name: string
+          sector_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          hazard_class?: Database["public"]["Enums"]["hazard_class_enum"]
+          id?: string
+          name: string
+          sector_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          hazard_class?: Database["public"]["Enums"]["hazard_class_enum"]
+          id?: string
+          name?: string
+          sector_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workplace_types_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
             referencedColumns: ["id"]
           },
         ]
@@ -1262,7 +2255,23 @@ export type Database = {
         | "company_admin"
         | "student"
         | "firm_admin"
+      attendance_status_enum:
+        | "pending"
+        | "attended"
+        | "absent"
+        | "late"
+        | "partially_attended"
+        | "trainer_verified"
+        | "admin_verified"
       danger_class: "low" | "medium" | "high"
+      document_type_enum:
+        | "temel_egitim_belgesi"
+        | "tekrar_egitim_belgesi"
+        | "ise_baslama_kaydi"
+        | "bilgi_yenileme_kaydi"
+        | "yuz_yuze_katilim_tutanagi"
+        | "faaliyet_raporu"
+        | "sinav_sonuc_belgesi"
       enrollment_status:
         | "pending"
         | "active"
@@ -1275,8 +2284,24 @@ export type Database = {
         | "completed"
         | "passed"
         | "failed"
+      f2f_session_status:
+        | "scheduled"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+      hazard_class_enum: "az_tehlikeli" | "tehlikeli" | "cok_tehlikeli"
+      lesson_delivery_method: "scorm" | "bbb_live" | "face_to_face" | "hybrid"
       lesson_type: "scorm" | "exam" | "live" | "content"
       question_type: "multiple_choice" | "true_false"
+      training_type_enum:
+        | "ise_baslama"
+        | "temel"
+        | "tekrar"
+        | "bilgi_yenileme"
+        | "ilave"
+        | "ozel_grup"
+        | "destek_elemani"
+        | "calisan_temsilcisi"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1411,7 +2436,25 @@ export const Constants = {
         "student",
         "firm_admin",
       ],
+      attendance_status_enum: [
+        "pending",
+        "attended",
+        "absent",
+        "late",
+        "partially_attended",
+        "trainer_verified",
+        "admin_verified",
+      ],
       danger_class: ["low", "medium", "high"],
+      document_type_enum: [
+        "temel_egitim_belgesi",
+        "tekrar_egitim_belgesi",
+        "ise_baslama_kaydi",
+        "bilgi_yenileme_kaydi",
+        "yuz_yuze_katilim_tutanagi",
+        "faaliyet_raporu",
+        "sinav_sonuc_belgesi",
+      ],
       enrollment_status: [
         "pending",
         "active",
@@ -1426,8 +2469,26 @@ export const Constants = {
         "passed",
         "failed",
       ],
+      f2f_session_status: [
+        "scheduled",
+        "in_progress",
+        "completed",
+        "cancelled",
+      ],
+      hazard_class_enum: ["az_tehlikeli", "tehlikeli", "cok_tehlikeli"],
+      lesson_delivery_method: ["scorm", "bbb_live", "face_to_face", "hybrid"],
       lesson_type: ["scorm", "exam", "live", "content"],
       question_type: ["multiple_choice", "true_false"],
+      training_type_enum: [
+        "ise_baslama",
+        "temel",
+        "tekrar",
+        "bilgi_yenileme",
+        "ilave",
+        "ozel_grup",
+        "destek_elemani",
+        "calisan_temsilcisi",
+      ],
     },
   },
 } as const
