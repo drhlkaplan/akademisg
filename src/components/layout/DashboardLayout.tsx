@@ -74,14 +74,18 @@ const adminNavGroups = [
       { icon: Users, label: "Kullanıcılar", href: "/admin/users" },
       { icon: Building2, label: "Firmalar", href: "/admin/companies" },
       { icon: KeyRound, label: "Gruplar", href: "/admin/groups" },
+      { icon: Building2, label: "Sektörler", href: "/admin/sectors" },
     ],
   },
   {
     label: "Eğitim",
     items: [
       { icon: GraduationCap, label: "Eğitimler", href: "/admin/courses" },
+      { icon: BookOpen, label: "Eğitim Türleri", href: "/admin/training-types" },
       { icon: FileCheck, label: "Sınavlar", href: "/admin/exams" },
       { icon: Video, label: "Canlı Oturumlar", href: "/admin/live-sessions" },
+      { icon: Users, label: "Yüz Yüze Oturumlar", href: "/admin/face-to-face" },
+      { icon: Shield, label: "Konu 4 Paketleri", href: "/admin/topic4-packs" },
       { icon: Award, label: "Sertifikalar", href: "/admin/certificates" },
       { icon: FileText, label: "Şablonlar", href: "/admin/certificate-templates" },
     ],
@@ -99,6 +103,7 @@ const adminNavGroups = [
     label: "Sistem",
     items: [
       { icon: Settings, label: "Ayarlar", href: "/admin/settings" },
+      { icon: Search, label: "SSS Yönetimi", href: "/admin/faq" },
     ],
   },
 ];
