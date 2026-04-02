@@ -66,6 +66,12 @@ const GroupsManagement = lazyRetry(() => import("./pages/admin/GroupsManagement"
 const ActivityLogs = lazyRetry(() => import("./pages/admin/ActivityLogs"));
 const AdminSettings = lazyRetry(() => import("./pages/admin/AdminSettings"));
 const LiveSessionsManagement = lazyRetry(() => import("./pages/admin/LiveSessionsManagement"));
+const SectorsManagement = lazyRetry(() => import("./pages/admin/SectorsManagement"));
+const TrainingTypesManagement = lazyRetry(() => import("./pages/admin/TrainingTypesManagement"));
+const Topic4PacksManagement = lazyRetry(() => import("./pages/admin/Topic4PacksManagement"));
+const FaceToFaceSessionsManagement = lazyRetry(() => import("./pages/admin/FaceToFaceSessionsManagement"));
+const FaqManagement = lazyRetry(() => import("./pages/admin/FaqManagement"));
+const RegulationInfo = lazyRetry(() => import("./pages/RegulationInfo"));
 const FirmDashboard = lazyRetry(() => import("./pages/firm/FirmDashboard"));
 const FirmEmployees = lazyRetry(() => import("./pages/firm/FirmEmployees"));
 const FirmCourses = lazyRetry(() => import("./pages/firm/FirmCourses"));
@@ -110,6 +116,7 @@ const App = () => (
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/cookies" element={<CookiePolicy />} />
+            <Route path="/regulation" element={<RegulationInfo />} />
             
             {/* Protected Student Dashboard */}
             <Route
@@ -225,6 +232,46 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/sectors"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <SectorsManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/training-types"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <TrainingTypesManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/topic4-packs"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <Topic4PacksManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/face-to-face"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <FaceToFaceSessionsManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/faq"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <FaqManagement />
                 </ProtectedRoute>
               }
             />
