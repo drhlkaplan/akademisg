@@ -90,8 +90,7 @@ export function LessonContent({
       </div>
     );
   }
-
-
+  const scormProps = {
     onPrevious,
     onNext,
     hasPrevious,
