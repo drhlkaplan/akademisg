@@ -194,6 +194,17 @@ export default function CourseLearning() {
   const activeIndex = sortedLessons.findIndex((l) => l.id === activeLessonId);
   const activeLesson = sortedLessons[activeIndex] || null;
 
+  // Delivery method enforcement based on hazard class
+  const enforcement = useDeliveryMethodEnforcement(
+    course?.hazard_class_new,
+    sortedLessons.map((l) => ({
+      lessonId: l.id,
+      topicGroup: l.topic_group ?? null,
+      deliveryMethod: l.delivery_method ?? null,
+      type: l.type,
+    }))
+  );
+
   const handlePrevious = useCallback(() => {
     if (activeIndex > 0) setActiveLessonId(sortedLessons[activeIndex - 1].id);
   }, [activeIndex, sortedLessons]);
