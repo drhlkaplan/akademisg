@@ -75,7 +75,7 @@ export default function CourseLearning() {
       const [courseRes, lessonsRes, scormRes] = await Promise.all([
         supabase
           .from("courses")
-          .select("id, title, description, duration_minutes, auto_certificate, require_sequential, category:course_categories(danger_class, name)")
+          .select("id, title, description, duration_minutes, auto_certificate, require_sequential, hazard_class_new, category:course_categories(danger_class, name)")
           .eq("id", courseId!)
           .single(),
         supabase
