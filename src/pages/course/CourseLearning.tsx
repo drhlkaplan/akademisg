@@ -80,7 +80,7 @@ export default function CourseLearning() {
           .single(),
         supabase
           .from("lessons")
-          .select("id, title, type, sort_order, duration_minutes, is_active, scorm_package_id, exam_id, content_url, min_live_duration_minutes")
+          .select("id, title, type, sort_order, duration_minutes, is_active, scorm_package_id, exam_id, content_url, min_live_duration_minutes, topic_group, delivery_method")
           .eq("course_id", courseId!)
           .eq("is_active", true)
           .order("sort_order"),
