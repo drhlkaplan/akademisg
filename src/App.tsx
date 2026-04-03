@@ -71,6 +71,7 @@ const TrainingTypesManagement = lazyRetry(() => import("./pages/admin/TrainingTy
 const Topic4PacksManagement = lazyRetry(() => import("./pages/admin/Topic4PacksManagement"));
 const FaceToFaceSessionsManagement = lazyRetry(() => import("./pages/admin/FaceToFaceSessionsManagement"));
 const FaqManagement = lazyRetry(() => import("./pages/admin/FaqManagement"));
+const CourseTemplateRules = lazyRetry(() => import("./pages/admin/CourseTemplateRules"));
 const RegulationInfo = lazyRetry(() => import("./pages/RegulationInfo"));
 const FirmDashboard = lazyRetry(() => import("./pages/firm/FirmDashboard"));
 const FirmEmployees = lazyRetry(() => import("./pages/firm/FirmEmployees"));
