@@ -201,7 +201,7 @@ export function LessonSidebar({
                     >
                       {lesson.title}
                     </p>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <div className="flex items-center gap-1">
                         <Icon className="h-3 w-3 text-muted-foreground" />
                         <span className="text-[11px] text-muted-foreground">
@@ -211,6 +211,16 @@ export function LessonSidebar({
                       {lesson.duration_minutes > 0 && (
                         <span className="text-[11px] text-muted-foreground">
                           • {lesson.duration_minutes} dk
+                        </span>
+                      )}
+                      {enforcement?.[lesson.id]?.badgeLabel && (
+                        <span className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
+                          enforcement[lesson.id].isBlocked
+                            ? "bg-destructive/10 text-destructive"
+                            : "bg-accent/10 text-accent"
+                        )}>
+                          {enforcement[lesson.id].badgeLabel}
                         </span>
                       )}
                     </div>

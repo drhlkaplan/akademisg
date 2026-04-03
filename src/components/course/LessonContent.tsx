@@ -9,6 +9,8 @@ import {
   Video,
   FileText,
   Play,
+  AlertTriangle,
+  Users,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { LessonItem } from "./LessonSidebar";
