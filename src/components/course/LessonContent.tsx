@@ -52,6 +52,7 @@ export function LessonContent({
   hasPrevious = false,
   hasNext = false,
   courseTitle,
+  enforcement,
 }: LessonContentProps) {
   if (!lesson) {
     return (
