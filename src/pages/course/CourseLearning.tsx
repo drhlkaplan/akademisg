@@ -30,6 +30,7 @@ interface CourseData {
   duration_minutes: number;
   auto_certificate?: boolean | null;
   require_sequential?: boolean | null;
+  hazard_class_new?: HazardClass | null;
   category: { danger_class: DangerClass; name: string } | null;
 }
 
