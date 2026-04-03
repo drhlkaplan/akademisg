@@ -66,7 +66,32 @@ export function LessonContent({
     );
   }
 
-  const scormProps = {
+  // Check if this lesson is blocked by enforcement rules (e.g., Topic 4 face-to-face only)
+  const lessonEnforcement = enforcement?.[lesson.id];
+  if (lessonEnforcement?.isBlocked) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-6 p-8">
+        <div className="h-20 w-20 rounded-2xl bg-destructive/10 flex items-center justify-center">
+          <Users className="h-10 w-10 text-destructive" />
+        </div>
+        <div className="text-center space-y-3 max-w-lg">
+          <h3 className="text-xl font-semibold text-foreground">{lesson.title}</h3>
+          <div className="flex items-center justify-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/20">
+            <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0" />
+            <p className="text-sm text-warning font-medium">
+              {lessonEnforcement.reason}
+            </p>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            Bu ders için planlanmış yüz yüze oturumlara katılmanız gerekmektedir. 
+            Oturum bilgileri ve tarihler için eğitim yöneticinize başvurun.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+
     onPrevious,
     onNext,
     hasPrevious,
