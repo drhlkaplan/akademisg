@@ -22,6 +22,11 @@ interface ScormPackageData {
   scorm_version: string | null;
 }
 
+interface EnforcementInfo {
+  isBlocked: boolean;
+  reason: string | null;
+}
+
 interface LessonContentProps {
   lesson: LessonItem | null;
   scormPackages: Record<string, ScormPackageData>;
@@ -33,6 +38,7 @@ interface LessonContentProps {
   hasPrevious?: boolean;
   hasNext?: boolean;
   courseTitle?: string;
+  enforcement?: Record<string, EnforcementInfo>;
 }
 
 export function LessonContent({
