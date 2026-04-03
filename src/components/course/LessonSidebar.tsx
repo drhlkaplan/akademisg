@@ -91,6 +91,7 @@ export function LessonSidebar({
   onSelectLesson,
   onBack,
   requireSequential = false,
+  enforcement,
 }: LessonSidebarProps) {
   const sortedLessons = [...lessons].sort((a, b) => a.sort_order - b.sort_order);
 
