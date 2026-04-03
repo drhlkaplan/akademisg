@@ -331,6 +331,7 @@ export default function CourseLearning() {
               hasPrevious={activeIndex > 0}
               hasNext={activeIndex < sortedLessons.length - 1}
               courseTitle={course.title}
+              enforcement={enforcement}
             />
           </div>
           <LessonTabs
