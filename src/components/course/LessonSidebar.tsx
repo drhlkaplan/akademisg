@@ -17,6 +17,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import type { Database } from "@/integrations/supabase/types";
 
 type LessonType = Database["public"]["Enums"]["lesson_type"];
+type DeliveryMethod = Database["public"]["Enums"]["lesson_delivery_method"];
 
 export interface LessonItem {
   id: string;
@@ -29,6 +30,8 @@ export interface LessonItem {
   exam_id: string | null;
   content_url: string | null;
   min_live_duration_minutes?: number;
+  topic_group?: number | null;
+  delivery_method?: DeliveryMethod | null;
 }
 
 export interface LessonProgressItem {
