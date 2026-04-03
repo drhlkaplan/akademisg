@@ -297,6 +297,7 @@ export default function CourseLearning() {
               activeLessonId={activeLessonId}
               overallProgress={progress}
               requireSequential={course.require_sequential !== false}
+              enforcement={enforcement}
               onSelectLesson={(id) => {
                 setActiveLessonId(id);
                 if (window.innerWidth < 1024) setSidebarOpen(false);
