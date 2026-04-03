@@ -277,6 +277,14 @@ const App = () => (
               }
             />
             <Route
+              path="/admin/course-template-rules"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <CourseTemplateRules />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/live-sessions"
               element={
                 <ProtectedRoute requireAdmin>
