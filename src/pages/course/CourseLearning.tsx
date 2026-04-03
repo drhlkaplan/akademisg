@@ -18,8 +18,10 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { useCertificateGeneration } from "@/hooks/useCertificateGeneration";
+import { useDeliveryMethodEnforcement } from "@/hooks/useDeliveryMethodEnforcement";
 
 type DangerClass = Database["public"]["Enums"]["danger_class"];
+type HazardClass = Database["public"]["Enums"]["hazard_class_enum"];
 
 interface CourseData {
   id: string;
@@ -28,6 +30,7 @@ interface CourseData {
   duration_minutes: number;
   auto_certificate?: boolean | null;
   require_sequential?: boolean | null;
+  hazard_class_new?: HazardClass | null;
   category: { danger_class: DangerClass; name: string } | null;
 }
 
@@ -72,12 +75,12 @@ export default function CourseLearning() {
       const [courseRes, lessonsRes, scormRes] = await Promise.all([
         supabase
           .from("courses")
-          .select("id, title, description, duration_minutes, auto_certificate, require_sequential, category:course_categories(danger_class, name)")
+          .select("id, title, description, duration_minutes, auto_certificate, require_sequential, hazard_class_new, category:course_categories(danger_class, name)")
           .eq("id", courseId!)
           .single(),
         supabase
           .from("lessons")
-          .select("id, title, type, sort_order, duration_minutes, is_active, scorm_package_id, exam_id, content_url, min_live_duration_minutes")
+          .select("id, title, type, sort_order, duration_minutes, is_active, scorm_package_id, exam_id, content_url, min_live_duration_minutes, topic_group, delivery_method")
           .eq("course_id", courseId!)
           .eq("is_active", true)
           .order("sort_order"),
@@ -191,6 +194,17 @@ export default function CourseLearning() {
   const activeIndex = sortedLessons.findIndex((l) => l.id === activeLessonId);
   const activeLesson = sortedLessons[activeIndex] || null;
 
+  // Delivery method enforcement based on hazard class
+  const enforcement = useDeliveryMethodEnforcement(
+    course?.hazard_class_new,
+    sortedLessons.map((l) => ({
+      lessonId: l.id,
+      topicGroup: l.topic_group ?? null,
+      deliveryMethod: l.delivery_method ?? null,
+      type: l.type,
+    }))
+  );
+
   const handlePrevious = useCallback(() => {
     if (activeIndex > 0) setActiveLessonId(sortedLessons[activeIndex - 1].id);
   }, [activeIndex, sortedLessons]);
@@ -283,6 +297,7 @@ export default function CourseLearning() {
               activeLessonId={activeLessonId}
               overallProgress={progress}
               requireSequential={course.require_sequential !== false}
+              enforcement={enforcement}
               onSelectLesson={(id) => {
                 setActiveLessonId(id);
                 if (window.innerWidth < 1024) setSidebarOpen(false);
@@ -316,6 +331,7 @@ export default function CourseLearning() {
               hasPrevious={activeIndex > 0}
               hasNext={activeIndex < sortedLessons.length - 1}
               courseTitle={course.title}
+              enforcement={enforcement}
             />
           </div>
           <LessonTabs

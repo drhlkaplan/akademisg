@@ -17,6 +17,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import type { Database } from "@/integrations/supabase/types";
 
 type LessonType = Database["public"]["Enums"]["lesson_type"];
+type DeliveryMethod = Database["public"]["Enums"]["lesson_delivery_method"];
 
 export interface LessonItem {
   id: string;
@@ -29,11 +30,19 @@ export interface LessonItem {
   exam_id: string | null;
   content_url: string | null;
   min_live_duration_minutes?: number;
+  topic_group?: number | null;
+  delivery_method?: DeliveryMethod | null;
 }
 
 export interface LessonProgressItem {
   lesson_id: string | null;
   lesson_status: string | null;
+}
+
+interface EnforcementInfo {
+  isBlocked: boolean;
+  reason: string | null;
+  badgeLabel: string | null;
 }
 
 interface LessonSidebarProps {
@@ -47,6 +56,7 @@ interface LessonSidebarProps {
   collapsed?: boolean;
   onToggleCollapse?: () => void;
   requireSequential?: boolean;
+  enforcement?: Record<string, EnforcementInfo>;
 }
 
 const lessonTypeIcon: Record<LessonType, typeof BookOpen> = {
@@ -81,6 +91,7 @@ export function LessonSidebar({
   onSelectLesson,
   onBack,
   requireSequential = false,
+  enforcement,
 }: LessonSidebarProps) {
   const sortedLessons = [...lessons].sort((a, b) => a.sort_order - b.sort_order);
 
@@ -190,7 +201,7 @@ export function LessonSidebar({
                     >
                       {lesson.title}
                     </p>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <div className="flex items-center gap-1">
                         <Icon className="h-3 w-3 text-muted-foreground" />
                         <span className="text-[11px] text-muted-foreground">
@@ -200,6 +211,16 @@ export function LessonSidebar({
                       {lesson.duration_minutes > 0 && (
                         <span className="text-[11px] text-muted-foreground">
                           • {lesson.duration_minutes} dk
+                        </span>
+                      )}
+                      {enforcement?.[lesson.id]?.badgeLabel && (
+                        <span className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
+                          enforcement[lesson.id].isBlocked
+                            ? "bg-destructive/10 text-destructive"
+                            : "bg-accent/10 text-accent"
+                        )}>
+                          {enforcement[lesson.id].badgeLabel}
                         </span>
                       )}
                     </div>
