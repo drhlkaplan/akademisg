@@ -82,6 +82,7 @@ const adminNavGroups = [
     items: [
       { icon: GraduationCap, label: "Eğitimler", href: "/admin/courses" },
       { icon: BookOpen, label: "Eğitim Türleri", href: "/admin/training-types" },
+      { icon: Settings, label: "Şablon Kuralları", href: "/admin/course-template-rules" },
       { icon: FileCheck, label: "Sınavlar", href: "/admin/exams" },
       { icon: Video, label: "Canlı Oturumlar", href: "/admin/live-sessions" },
       { icon: Users, label: "Yüz Yüze Oturumlar", href: "/admin/face-to-face" },
