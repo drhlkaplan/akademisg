@@ -39,6 +39,12 @@ export interface LessonProgressItem {
   lesson_status: string | null;
 }
 
+interface EnforcementInfo {
+  isBlocked: boolean;
+  reason: string | null;
+  badgeLabel: string | null;
+}
+
 interface LessonSidebarProps {
   courseTitle: string;
   lessons: LessonItem[];
@@ -50,6 +56,7 @@ interface LessonSidebarProps {
   collapsed?: boolean;
   onToggleCollapse?: () => void;
   requireSequential?: boolean;
+  enforcement?: Record<string, EnforcementInfo>;
 }
 
 const lessonTypeIcon: Record<LessonType, typeof BookOpen> = {
