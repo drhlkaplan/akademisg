@@ -125,7 +125,7 @@ const Index = () => {
             <div className="flex flex-col sm:flex-row gap-3">
               <Button variant="hero" size="xl" asChild>
                 <Link to="/register">
-                  Hemen Başla
+                  Ücretsiz Demo Talep Edin
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
@@ -133,10 +133,12 @@ const Index = () => {
                 variant="ghost"
                 size="xl"
                 className="border border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 backdrop-blur-sm bg-transparent"
-                onClick={() => setVideoOpen(true)}
+                asChild
               >
-                <Play className="mr-2 h-5 w-5" />
-                Tanıtım Videosu
+                <Link to="/regulation">
+                  <BookOpen className="mr-2 h-5 w-5" />
+                  Yönetmelik Değişikliklerini İnceleyin
+                </Link>
               </Button>
             </div>
 
