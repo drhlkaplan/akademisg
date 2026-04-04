@@ -249,8 +249,8 @@ export default function CourseTemplateRules() {
                     <TableHead>Eğitim Türü</TableHead>
                     <TableHead>Tehlike Sınıfı</TableHead>
                     <TableHead>Min. Süre</TableHead>
-                    <TableHead>Konu 4 Min.</TableHead>
-                    <TableHead>Konu 4 Yöntemi</TableHead>
+                    <TableHead>İşyeri K. Min.</TableHead>
+                    <TableHead>İşyeri K. Yöntemi</TableHead>
                     <TableHead>Tekrar Periyodu</TableHead>
                     <TableHead>Geçme Notu</TableHead>
                     <TableHead></TableHead>
