@@ -31,23 +31,23 @@ const stats = [
 const features = [
   {
     icon: Shield,
-    title: "SCORM Uyumlu",
-    description: "SCORM 1.2 ve 2004 standartlarına uygun eğitim içerikleri ile profesyonel öğrenme deneyimi.",
+    title: "Yönetmeliğe Uyumlu",
+    description: "Yeni İSG eğitim yönetmeliğine tam uyumlu: 7 eğitim türü, tehlike sınıfına göre süre ve yöntem kontrolü.",
   },
   {
     icon: GraduationCap,
-    title: "Sertifikalı Eğitim",
-    description: "Eğitim ve sınavları başarıyla tamamlayanlara QR kodlu, doğrulanabilir sertifika.",
+    title: "Hibrit Eğitim Modeli",
+    description: "SCORM, canlı ders ve yüz yüze oturumları tek kursta birleştirin. Konu 4 yüz yüze zorunluluğu otomatik uygulanır.",
   },
   {
     icon: FileCheck,
-    title: "Kapsamlı Sınav",
-    description: "Ön test ve son sınav ile bilgi ölçümü, otomatik değerlendirme ve başarı takibi.",
+    title: "Denetime Hazır Belgeler",
+    description: "Katılım tutanağı, faaliyet raporu ve sertifika otomatik üretilir. QR kodlu doğrulama ile şeffaf belgelendirme.",
   },
   {
     icon: Building2,
-    title: "Kurumsal Çözümler",
-    description: "Çoklu firma desteği, toplu kullanıcı yönetimi ve detaylı raporlama.",
+    title: "Sektöre Özel Konu 4",
+    description: "Her firma ve sektör için işyerine özgü risk eğitimlerini otomatik atayın. Firma izolasyonlu multi-tenant yapı.",
   },
 ];
 
