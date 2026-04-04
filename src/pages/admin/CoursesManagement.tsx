@@ -124,8 +124,23 @@ export default function CoursesManagement() {
           *,
           course_categories (*)
         `)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
+      if (error) throw error;
+      return data as CourseWithCategory[];
+    },
+  });
+
+  // Fetch archived courses
+  const { data: archivedCourses } = useQuery({
+    queryKey: ["admin-courses-archived"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("courses")
+        .select(`*, course_categories (*)`)
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false });
       if (error) throw error;
       return data as CourseWithCategory[];
     },
