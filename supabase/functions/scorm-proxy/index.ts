@@ -633,11 +633,41 @@ Deno.serve(async (req) => {
     if (body.action === "parse-manifest") {
       const manifestPath = `${body.folderPath}/imsmanifest.xml`;
 
-      const { data: fileData, error: downloadError } = await adminClient.storage
+      let fileData: Blob | null = null;
+      let actualManifestDir = "";
+
+      // Try root first
+      const { data: rootData, error: rootError } = await adminClient.storage
         .from("scorm-packages")
         .download(manifestPath);
 
-      if (downloadError || !fileData) {
+      if (!rootError && rootData) {
+        fileData = rootData;
+      } else {
+        // Search one level of subdirectories for imsmanifest.xml
+        const { data: entries } = await adminClient.storage
+          .from("scorm-packages")
+          .list(body.folderPath, { limit: 100 });
+
+        if (entries) {
+          for (const entry of entries) {
+            // Check if it's a folder (no metadata means folder)
+            if (!entry.metadata) {
+              const subManifestPath = `${body.folderPath}/${entry.name}/imsmanifest.xml`;
+              const { data: subData, error: subError } = await adminClient.storage
+                .from("scorm-packages")
+                .download(subManifestPath);
+              if (!subError && subData) {
+                fileData = subData;
+                actualManifestDir = entry.name;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      if (!fileData) {
         return new Response(JSON.stringify({ error: "imsmanifest.xml not found" }), {
           status: 404,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
