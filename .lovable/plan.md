@@ -915,6 +915,13 @@ destek_elemani → Destek Elemanı / Çalışan Temsilcisi Eğitimi
 - ✅ Entegrasyon testleri: 13 test (tekrar kuralları, Konu 4 F2F zorunluluğu, minimum saat gereksinimleri)
 - ✅ Canlıya geçiş kontrol sayfası: /admin/migration (analiz, migrasyon aksiyonları, uyumluluk skoru, checklist)
 
+### Post-Faz Düzeltmeleri ✅ TAMAMLANDI
+- ✅ workplace_types tablosuna 20 sektör bazlı işyeri türü seed data eklendi
+- ✅ Eksik 11 sektör için topic4_sector_packs oluşturuldu (toplam 20 paket, tüm sektörler kapsandı)
+- ✅ workplace_change_records tablosuna previous_sector_id ve new_sector_id kolonları eklendi
+- ✅ migrate-legacy-data ve recurrence-scheduler edge function'ları config.toml'a eklendi
+- ✅ Veritabanı linter kontrolü yapıldı (sadece leaked password protection uyarısı — auth ayarı)
+
 ---
 
 ## 24. Lovable İçinde Modül Modül Üretim Planı
