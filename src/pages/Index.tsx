@@ -111,16 +111,15 @@ const Index = () => {
           <div className="max-w-2xl animate-slide-up">
             <Badge variant="active" className="mb-6 bg-accent/20 border-accent/30 text-accent">
               <Shield className="h-3 w-3 mr-1" />
-              ÇSGB Onaylı İSG Eğitimleri
+              Yeni Yönetmeliğe Tam Uyumlu
             </Badge>
 
             <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-extrabold text-primary-foreground mb-6 leading-[1.1] tracking-tight">
-              İş Sağlığı ve Güvenliği <span className="text-gradient">Online Eğitim Platformu</span>
+              Yeni Yönetmeliğe Uyumlu <span className="text-gradient">İSG Eğitim Platformu</span>
             </h1>
 
             <p className="text-base md:text-lg text-primary-foreground/75 mb-8 max-w-xl leading-relaxed">
-              Tehlike sınıfına göre SCORM uyumlu eğitimler, kapsamlı sınavlar ve QR kodlu sertifikalar ile İSG
-              eğitimlerinizi dijital ortama taşıyın.
+              Online, canlı ve yüz yüze eğitimleri tek platformda yönetin. Sektöre özel içerikler, ölçülebilir katılım ve denetime hazır belgeler.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3">
