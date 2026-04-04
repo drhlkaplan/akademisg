@@ -363,7 +363,7 @@ export default function CourseTemplateRules() {
                 />
               </div>
               <div>
-                <Label>Konu 4 Min. Süre (saat)</Label>
+                <Label>İşyeri Konusu Min. Süre (saat)</Label>
                 <Input
                   type="number"
                   value={formData.min_topic4_hours}
