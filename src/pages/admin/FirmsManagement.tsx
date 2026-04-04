@@ -422,6 +422,8 @@ export default function FirmsManagement() {
       footer_text: (firm as any).footer_text || "",
       custom_css: (firm as any).custom_css || "",
       favicon_url: (firm as any).favicon_url || "",
+      sector_id: firm.sector_id || "",
+      hazard_class_new: firm.hazard_class_new || "az_tehlikeli",
     });
     setDialogOpen(true);
   };
