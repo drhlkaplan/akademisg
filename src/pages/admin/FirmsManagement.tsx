@@ -563,14 +563,15 @@ export default function FirmsManagement() {
             ) : filteredFirms && filteredFirms.length > 0 ? (
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Firma</TableHead>
-                    <TableHead className="hidden md:table-cell">Sektör</TableHead>
-                    <TableHead className="hidden lg:table-cell">İletişim</TableHead>
-                    <TableHead>Çalışan</TableHead>
-                    <TableHead>Durum</TableHead>
-                    <TableHead className="text-right">İşlemler</TableHead>
-                  </TableRow>
+                   <TableRow>
+                     <TableHead>Firma</TableHead>
+                     <TableHead className="hidden md:table-cell">Sektör</TableHead>
+                     <TableHead className="hidden md:table-cell">Tehlike Sınıfı</TableHead>
+                     <TableHead className="hidden lg:table-cell">İletişim</TableHead>
+                     <TableHead>Çalışan</TableHead>
+                     <TableHead>Durum</TableHead>
+                     <TableHead className="text-right">İşlemler</TableHead>
+                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredFirms.map((firm) => (
