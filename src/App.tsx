@@ -280,6 +280,14 @@ const App = () => (
               }
             />
             <Route
+              path="/admin/attendance/:sessionId"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <SessionAttendance />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/faq"
               element={
                 <ProtectedRoute requireAdmin>
