@@ -2273,6 +2273,14 @@ export type Database = {
       }
     }
     Functions: {
+      check_topic4_f2f_completion: {
+        Args: {
+          _course_id: string
+          _enrollment_id: string
+          _hazard_class: Database["public"]["Enums"]["hazard_class_enum"]
+        }
+        Returns: boolean
+      }
       complete_enrollment: {
         Args: { _enrollment_id: string }
         Returns: undefined
