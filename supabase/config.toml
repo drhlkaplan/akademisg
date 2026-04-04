@@ -20,3 +20,12 @@ verify_jwt = false
 
 [functions.ai-tutor]
 verify_jwt = false
+
+[functions.migrate-legacy-data]
+verify_jwt = false
+
+[functions.recurrence-scheduler]
+verify_jwt = false
+
+[functions.lookup-tc]
+verify_jwt = false
