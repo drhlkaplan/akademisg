@@ -437,7 +437,7 @@ export default function CoursesManagement() {
                 />
               </div>
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-full md:w-[250px]">
+                <SelectTrigger className="w-full md:w-[200px]">
                   <SelectValue placeholder="Kategori filtrele" />
                 </SelectTrigger>
                 <SelectContent>
@@ -447,6 +447,17 @@ export default function CoursesManagement() {
                       {cat.name}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full md:w-[180px]">
+                  <SelectValue placeholder="Durum" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Durumlar</SelectItem>
+                  <SelectItem value="active">Aktif</SelectItem>
+                  <SelectItem value="inactive">Pasif</SelectItem>
+                  <SelectItem value="archived">Arşivlenmiş</SelectItem>
                 </SelectContent>
               </Select>
             </div>
