@@ -26,6 +26,9 @@ import {
   FileQuestion,
   ArrowUpRight,
   Activity,
+  Shield,
+  Clock,
+  FileText,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ActiveUsersMonitor } from "@/components/admin/ActiveUsersMonitor";
