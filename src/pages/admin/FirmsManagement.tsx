@@ -465,6 +465,8 @@ export default function FirmsManagement() {
       footer_text: "",
       custom_css: "",
       favicon_url: "",
+      sector_id: "",
+      hazard_class_new: "az_tehlikeli",
     });
   };
 
