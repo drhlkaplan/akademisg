@@ -46,7 +46,7 @@ const features = [
   },
   {
     icon: Building2,
-    title: "Sektöre Özel Konu 4",
+    title: "Sektöre Özel İşyeri Konuları",
     description: "Her firma ve sektör için işyerine özgü risk eğitimlerini otomatik atayın. Firma izolasyonlu multi-tenant yapı.",
   },
 ];
