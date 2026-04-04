@@ -17,8 +17,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
-import { useCertificateGeneration } from "@/hooks/useCertificateGeneration";
 import { useDeliveryMethodEnforcement } from "@/hooks/useDeliveryMethodEnforcement";
+import { useCompletionEngine } from "@/hooks/useCompletionEngine";
 
 type DangerClass = Database["public"]["Enums"]["danger_class"];
 type HazardClass = Database["public"]["Enums"]["hazard_class_enum"];
@@ -63,7 +63,7 @@ export default function CourseLearning() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { generateCertificate } = useCertificateGeneration();
+  const { checkAndComplete } = useCompletionEngine();
 
   useEffect(() => {
     if (user && courseId) fetchCourseData();
@@ -157,33 +157,25 @@ export default function CourseLearning() {
   };
 
   const checkAndCompleteCourse = useCallback(async (enrollId: string) => {
-    const { data: allLessons } = await supabase
-      .from("lessons").select("id").eq("course_id", courseId!).eq("is_active", true);
+    const result = await checkAndComplete({
+      enrollmentId: enrollId,
+      courseId: courseId!,
+      userId: user!.id,
+      hazardClass: course?.hazard_class_new,
+      autoCertificate: course?.auto_certificate !== false,
+    });
+
+    // Refresh progress
     const { data: progressData } = await supabase
       .from("lesson_progress").select("lesson_id, lesson_status").eq("enrollment_id", enrollId);
-
     if (progressData) setLessonProgress(progressData as LessonProgressItem[]);
 
-    const completedIds = new Set(
-      progressData?.filter((p) => p.lesson_status === "completed" || p.lesson_status === "passed").map((p) => p.lesson_id) || []
-    );
-
-    const allCompleted = allLessons?.every((l) => completedIds.has(l.id)) ?? false;
-
-    if (allCompleted) {
-      await supabase.rpc("update_enrollment_progress", { _enrollment_id: enrollId, _progress_percent: 100 });
-      await supabase.rpc("complete_enrollment", { _enrollment_id: enrollId });
-      setEnrollment((prev) => prev ? { ...prev, progress_percent: 100, status: "completed" } : prev);
-      const autoCert = course?.auto_certificate !== false;
-      if (autoCert) await generateCertificate(enrollId);
-    } else {
-      const total = allLessons?.length || 1;
-      const completed = completedIds.size;
-      const pct = Math.round((completed / total) * 100);
-      await supabase.rpc("update_enrollment_progress", { _enrollment_id: enrollId, _progress_percent: pct });
-      setEnrollment((prev) => (prev ? { ...prev, progress_percent: pct } : prev));
-    }
-  }, [courseId, generateCertificate, course]);
+    setEnrollment((prev) => prev ? {
+      ...prev,
+      progress_percent: result.progress,
+      status: result.completed ? "completed" : prev.status,
+    } : prev);
+  }, [courseId, course, user, checkAndComplete]);
 
   const handleScormComplete = useCallback(() => {
     if (enrollment) checkAndCompleteCourse(enrollment.id);
