@@ -2356,6 +2356,20 @@ export type Database = {
         Args: { _record_id: string; _table_name: string }
         Returns: undefined
       }
+      trainer_update_attendance: {
+        Args: {
+          _attendance_id: string
+          _check_in_time?: string
+          _check_out_time?: string
+          _duration_minutes?: number
+          _end_of_session_ack?: boolean
+          _notes?: string
+          _status?: Database["public"]["Enums"]["attendance_status_enum"]
+          _trainer_verified?: boolean
+          _verification_method?: string
+        }
+        Returns: undefined
+      }
       update_enrollment_progress: {
         Args: {
           _enrollment_id: string
