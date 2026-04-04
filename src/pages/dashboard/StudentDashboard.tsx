@@ -520,6 +520,9 @@ export default function StudentDashboard() {
               </div>
             )}
 
+            {/* Recurrence Info */}
+            <RecurrenceAlert userId={user?.id} />
+
             {/* Quick Actions */}
             <div className="dashboard-card bg-gradient-accent p-5">
               <h3 className="font-semibold text-accent-foreground text-sm mb-2">
