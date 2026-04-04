@@ -125,7 +125,7 @@ export default function Topic4PacksManagement() {
             </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>{editingId ? "Paketi Düzenle" : "Yeni Konu 4 Paketi"}</DialogTitle>
+                <DialogTitle>{editingId ? "Paketi Düzenle" : "Yeni İşyeri Konusu Paketi"}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 max-h-[60vh] overflow-y-auto">
                 <div>

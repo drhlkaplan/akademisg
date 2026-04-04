@@ -128,7 +128,7 @@ export default function CompanyTopic4Assignment() {
               <div className="flex items-start gap-3">
                 <AlertTriangle className="h-5 w-5 text-warning mt-0.5" />
                 <div>
-                  <p className="font-medium text-foreground">{unassignedFirms.length} firma Konu 4 paketi atanmamış</p>
+                  <p className="font-medium text-foreground">{unassignedFirms.length} firma İşyeri Konusu paketi atanmamış</p>
                   <p className="text-sm text-muted-foreground mt-1">
                     {unassignedFirms.slice(0, 5).map((f: any) => f.name).join(", ")}
                     {unassignedFirms.length > 5 && ` ve ${unassignedFirms.length - 5} firma daha...`}
