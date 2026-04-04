@@ -216,9 +216,9 @@ export default function CourseTemplateRules() {
               <div className="text-sm space-y-1">
                 <p className="font-medium text-foreground">Yönetmelik Kuralları Otomatik Uygulanır</p>
                 <ul className="text-muted-foreground space-y-0.5">
-                  <li>• <strong>Tehlikeli</strong> ve <strong>Çok Tehlikeli</strong> sınıflarda Konu 4 (İşyerine Özgü Riskler) <strong>yüz yüze zorunludur</strong></li>
+                  <li>• <strong>Tehlikeli</strong> ve <strong>Çok Tehlikeli</strong> sınıflarda İşe ve İşyerine Özgü Konular <strong>yüz yüze zorunludur</strong></li>
                   <li>• Minimum süre: Az Tehlikeli 8 saat / Tehlikeli 12 saat / Çok Tehlikeli 16 saat</li>
-                  <li>• Konu 4 minimum: Az Tehlikeli 2 saat / Tehlikeli 3 saat / Çok Tehlikeli 4 saat</li>
+                  <li>• İşyeri Konusu minimum: Az Tehlikeli 2 saat / Tehlikeli 3 saat / Çok Tehlikeli 4 saat</li>
                   <li>• Final sınavı geçme notu minimum 60/100, en fazla 3 deneme hakkı</li>
                 </ul>
               </div>
