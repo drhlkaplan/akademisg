@@ -79,6 +79,7 @@ const ComplianceReport = lazyRetry(() => import("./pages/admin/ComplianceReport"
 const RecurrenceReport = lazyRetry(() => import("./pages/admin/RecurrenceReport"));
 const F2FAttendanceReport = lazyRetry(() => import("./pages/admin/F2FAttendanceReport"));
 const DocumentGeneration = lazyRetry(() => import("./pages/admin/DocumentGeneration"));
+const MigrationDashboard = lazyRetry(() => import("./pages/admin/MigrationDashboard"));
 const RegulationInfo = lazyRetry(() => import("./pages/RegulationInfo"));
 const FirmDashboard = lazyRetry(() => import("./pages/firm/FirmDashboard"));
 const FirmEmployees = lazyRetry(() => import("./pages/firm/FirmEmployees"));
