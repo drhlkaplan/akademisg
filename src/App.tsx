@@ -315,8 +315,11 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route path="/admin/compliance-report" element={<ProtectedRoute requireAdmin><ComplianceReport /></ProtectedRoute>} />
+            <Route path="/admin/recurrence-report" element={<ProtectedRoute requireAdmin><RecurrenceReport /></ProtectedRoute>} />
+            <Route path="/admin/f2f-attendance-report" element={<ProtectedRoute requireAdmin><F2FAttendanceReport /></ProtectedRoute>} />
+            <Route path="/admin/documents" element={<ProtectedRoute requireAdmin><DocumentGeneration /></ProtectedRoute>} />
             
-            {/* Firm Admin Dashboard */}
             <Route
               path="/firm"
               element={
