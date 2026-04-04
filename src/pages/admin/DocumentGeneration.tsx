@@ -31,7 +31,7 @@ const DOC_LABELS: Record<string, string> = {
 
 export default function DocumentGeneration() {
   const [generateOpen, setGenerateOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<DocumentType>("katilim_tutanagi");
+  const [selectedType, setSelectedType] = useState<DocumentType>("yuz_yuze_katilim_tutanagi");
   const [selectedFirm, setSelectedFirm] = useState("");
   const queryClient = useQueryClient();
 
