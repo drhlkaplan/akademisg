@@ -75,7 +75,7 @@ export default function CompanyTopic4Assignment() {
       setSelectedFirmId("");
       setSelectedPackId("");
       setCustomNotes("");
-      toast({ title: "Konu 4 paketi firmaya atandı" });
+      toast({ title: "İşyeri konusu paketi firmaya atandı" });
     },
     onError: (e: any) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
   });
