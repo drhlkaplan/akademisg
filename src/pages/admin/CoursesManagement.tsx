@@ -92,6 +92,7 @@ const dangerClassColors: Record<DangerClass, "success" | "warning" | "destructiv
 export default function CoursesManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("active");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<CourseWithCategory | null>(null);
