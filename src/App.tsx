@@ -396,6 +396,14 @@ const App = () => (
               }
             />
             <Route
+              path="/dashboard/face-to-face"
+              element={
+                <ProtectedRoute>
+                  <MyFaceToFaceSessions />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/dashboard/profile"
               element={
                 <ProtectedRoute>
