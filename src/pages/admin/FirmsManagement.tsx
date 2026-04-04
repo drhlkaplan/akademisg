@@ -604,11 +604,20 @@ export default function FirmsManagement() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <span className="text-muted-foreground">
-                          {firm.sector || "-"}
-                        </span>
-                      </TableCell>
+                       <TableCell className="hidden md:table-cell">
+                         <span className="text-muted-foreground">
+                           {firm.sector || "-"}
+                         </span>
+                       </TableCell>
+                       <TableCell className="hidden md:table-cell">
+                         {firm.hazard_class_new === "cok_tehlikeli" ? (
+                           <Badge variant="destructive">Çok Tehlikeli</Badge>
+                         ) : firm.hazard_class_new === "tehlikeli" ? (
+                           <Badge variant="default">Tehlikeli</Badge>
+                         ) : (
+                           <Badge variant="secondary">Az Tehlikeli</Badge>
+                         )}
+                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
                         <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                           {firm.phone && (
