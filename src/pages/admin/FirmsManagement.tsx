@@ -721,8 +721,35 @@ export default function FirmsManagement() {
                 <Input id="tax_number" value={formData.tax_number} onChange={(e) => setFormData({ ...formData, tax_number: e.target.value })} placeholder="1234567890" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="sector">Sektör</Label>
+                <Label htmlFor="sector">Sektör (Metin)</Label>
                 <Input id="sector" value={formData.sector} onChange={(e) => setFormData({ ...formData, sector: e.target.value })} placeholder="İnşaat" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Sektör Tanımı</Label>
+                <Select value={formData.sector_id || "__none__"} onValueChange={v => setFormData({ ...formData, sector_id: v === "__none__" ? "" : v })}>
+                  <SelectTrigger><SelectValue placeholder="Sektör seçin..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Seçilmedi</SelectItem>
+                    {sectors.map((s: any) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Yönetmelik uyumlu sektör eşlemesi</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Tehlike Sınıfı</Label>
+                <Select value={formData.hazard_class_new} onValueChange={v => setFormData({ ...formData, hazard_class_new: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="az_tehlikeli">Az Tehlikeli</SelectItem>
+                    <SelectItem value="tehlikeli">Tehlikeli</SelectItem>
+                    <SelectItem value="cok_tehlikeli">Çok Tehlikeli</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Eğitim süresi ve yöntemi buna göre belirlenir</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
