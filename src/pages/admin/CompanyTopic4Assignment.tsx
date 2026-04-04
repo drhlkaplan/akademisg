@@ -75,7 +75,7 @@ export default function CompanyTopic4Assignment() {
       setSelectedFirmId("");
       setSelectedPackId("");
       setCustomNotes("");
-      toast({ title: "Konu 4 paketi firmaya atandı" });
+      toast({ title: "İşyeri konusu paketi firmaya atandı" });
     },
     onError: (e: any) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
   });
@@ -114,7 +114,7 @@ export default function CompanyTopic4Assignment() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Firma Konu 4 Atama</h1>
+            <h1 className="text-2xl font-bold text-foreground">Firma İşyeri Konusu Atama</h1>
             <p className="text-muted-foreground">Firmalara sektöre özel İşe ve İşyerine Özgü Riskler eğitim paketlerini atayın</p>
           </div>
           <Button onClick={() => setDialogOpen(true)}>
@@ -128,7 +128,7 @@ export default function CompanyTopic4Assignment() {
               <div className="flex items-start gap-3">
                 <AlertTriangle className="h-5 w-5 text-warning mt-0.5" />
                 <div>
-                  <p className="font-medium text-foreground">{unassignedFirms.length} firma Konu 4 paketi atanmamış</p>
+                  <p className="font-medium text-foreground">{unassignedFirms.length} firma İşyeri Konusu paketi atanmamış</p>
                   <p className="text-sm text-muted-foreground mt-1">
                     {unassignedFirms.slice(0, 5).map((f: any) => f.name).join(", ")}
                     {unassignedFirms.length > 5 && ` ve ${unassignedFirms.length - 5} firma daha...`}
@@ -150,7 +150,7 @@ export default function CompanyTopic4Assignment() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Firma</TableHead>
-                  <TableHead>Konu 4 Paketi</TableHead>
+                  <TableHead>İşyeri Konusu Paketi</TableHead>
                   <TableHead>Sektör</TableHead>
                   <TableHead>Tehlike Sınıfı</TableHead>
                   <TableHead>Durum</TableHead>

@@ -216,9 +216,9 @@ export default function CourseTemplateRules() {
               <div className="text-sm space-y-1">
                 <p className="font-medium text-foreground">Yönetmelik Kuralları Otomatik Uygulanır</p>
                 <ul className="text-muted-foreground space-y-0.5">
-                  <li>• <strong>Tehlikeli</strong> ve <strong>Çok Tehlikeli</strong> sınıflarda Konu 4 (İşyerine Özgü Riskler) <strong>yüz yüze zorunludur</strong></li>
+                  <li>• <strong>Tehlikeli</strong> ve <strong>Çok Tehlikeli</strong> sınıflarda İşe ve İşyerine Özgü Konular <strong>yüz yüze zorunludur</strong></li>
                   <li>• Minimum süre: Az Tehlikeli 8 saat / Tehlikeli 12 saat / Çok Tehlikeli 16 saat</li>
-                  <li>• Konu 4 minimum: Az Tehlikeli 2 saat / Tehlikeli 3 saat / Çok Tehlikeli 4 saat</li>
+                  <li>• İşyeri Konusu minimum: Az Tehlikeli 2 saat / Tehlikeli 3 saat / Çok Tehlikeli 4 saat</li>
                   <li>• Final sınavı geçme notu minimum 60/100, en fazla 3 deneme hakkı</li>
                 </ul>
               </div>
@@ -249,8 +249,8 @@ export default function CourseTemplateRules() {
                     <TableHead>Eğitim Türü</TableHead>
                     <TableHead>Tehlike Sınıfı</TableHead>
                     <TableHead>Min. Süre</TableHead>
-                    <TableHead>Konu 4 Min.</TableHead>
-                    <TableHead>Konu 4 Yöntemi</TableHead>
+                    <TableHead>İşyeri K. Min.</TableHead>
+                    <TableHead>İşyeri K. Yöntemi</TableHead>
                     <TableHead>Tekrar Periyodu</TableHead>
                     <TableHead>Geçme Notu</TableHead>
                     <TableHead></TableHead>
@@ -363,7 +363,7 @@ export default function CourseTemplateRules() {
                 />
               </div>
               <div>
-                <Label>Konu 4 Min. Süre (saat)</Label>
+                <Label>İşyeri Konusu Min. Süre (saat)</Label>
                 <Input
                   type="number"
                   value={formData.min_topic4_hours}
@@ -373,12 +373,12 @@ export default function CourseTemplateRules() {
             </div>
 
             <div>
-              <Label>Konu 4 Teslimat Yöntemi</Label>
+              <Label>İşyeri Konusu Teslimat Yöntemi</Label>
               {isTopic4ForcedF2F ? (
                 <div className="flex items-center gap-2 p-3 rounded-md bg-destructive/10 border border-destructive/20">
                   <AlertTriangle className="h-4 w-4 text-destructive" />
                   <span className="text-sm text-destructive font-medium">
-                    {hazardLabels[formData.hazard_class]} sınıfında Konu 4 yüz yüze zorunludur
+                    {hazardLabels[formData.hazard_class]} sınıfında İşyeri Konusu yüz yüze zorunludur
                   </span>
                 </div>
               ) : (

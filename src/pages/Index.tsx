@@ -37,7 +37,7 @@ const features = [
   {
     icon: GraduationCap,
     title: "Hibrit Eğitim Modeli",
-    description: "SCORM, canlı ders ve yüz yüze oturumları tek kursta birleştirin. Konu 4 yüz yüze zorunluluğu otomatik uygulanır.",
+    description: "SCORM, canlı ders ve yüz yüze oturumları tek kursta birleştirin. İşe ve İşyerine Özgü Konular yüz yüze zorunluluğu otomatik uygulanır.",
   },
   {
     icon: FileCheck,
@@ -46,7 +46,7 @@ const features = [
   },
   {
     icon: Building2,
-    title: "Sektöre Özel Konu 4",
+    title: "Sektöre Özel İşyeri Konuları",
     description: "Her firma ve sektör için işyerine özgü risk eğitimlerini otomatik atayın. Firma izolasyonlu multi-tenant yapı.",
   },
 ];

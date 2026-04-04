@@ -66,6 +66,8 @@ import {
   Eye,
   EyeOff,
   Sparkles,
+  Archive,
+  RotateCcw,
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -92,6 +94,7 @@ const dangerClassColors: Record<DangerClass, "success" | "warning" | "destructiv
 export default function CoursesManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("active");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<CourseWithCategory | null>(null);
@@ -123,8 +126,23 @@ export default function CoursesManagement() {
           *,
           course_categories (*)
         `)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
+      if (error) throw error;
+      return data as CourseWithCategory[];
+    },
+  });
+
+  // Fetch archived courses
+  const { data: archivedCourses } = useQuery({
+    queryKey: ["admin-courses-archived"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("courses")
+        .select(`*, course_categories (*)`)
+        .not("deleted_at", "is", null)
+        .order("deleted_at", { ascending: false });
       if (error) throw error;
       return data as CourseWithCategory[];
     },
@@ -241,8 +259,41 @@ export default function CoursesManagement() {
     },
   });
 
+  // Archive course (soft delete)
+  const archiveMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("courses")
+        .update({ deleted_at: new Date().toISOString(), is_active: false } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-courses-archived"] });
+      toast({ title: "Başarılı", description: "Kurs arşive taşındı." });
+    },
+  });
+
+  // Restore course from archive
+  const restoreMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("courses")
+        .update({ deleted_at: null, is_active: false } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-courses-archived"] });
+      toast({ title: "Başarılı", description: "Kurs arşivden geri yüklendi." });
+    },
+  });
+
   // Filter courses
-  const filteredCourses = courses?.filter((course) => {
+  const displayCourses = statusFilter === "archived" ? archivedCourses : courses;
+  const filteredCourses = displayCourses?.filter((course) => {
     const matchesSearch =
       searchQuery === "" ||
       course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -251,7 +302,13 @@ export default function CoursesManagement() {
     const matchesCategory =
       categoryFilter === "all" || course.category_id === categoryFilter;
 
-    return matchesSearch && matchesCategory;
+    const matchesStatus =
+      statusFilter === "all" ||
+      statusFilter === "archived" ||
+      (statusFilter === "active" && course.is_active) ||
+      (statusFilter === "inactive" && !course.is_active);
+
+    return matchesSearch && matchesCategory && matchesStatus;
   });
 
   const handleOpenCreate = () => {
@@ -382,7 +439,7 @@ export default function CoursesManagement() {
                 />
               </div>
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-full md:w-[250px]">
+                <SelectTrigger className="w-full md:w-[200px]">
                   <SelectValue placeholder="Kategori filtrele" />
                 </SelectTrigger>
                 <SelectContent>
@@ -392,6 +449,17 @@ export default function CoursesManagement() {
                       {cat.name}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full md:w-[180px]">
+                  <SelectValue placeholder="Durum" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Durumlar</SelectItem>
+                  <SelectItem value="active">Aktif</SelectItem>
+                  <SelectItem value="inactive">Pasif</SelectItem>
+                  <SelectItem value="archived">Arşivlenmiş</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -535,13 +603,31 @@ export default function CoursesManagement() {
                               AI Açıklama Üret
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => handleOpenDelete(course)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Sil
-                            </DropdownMenuItem>
+                            {statusFilter === "archived" ? (
+                              <DropdownMenuItem
+                                onClick={() => restoreMutation.mutate(course.id)}
+                              >
+                                <RotateCcw className="mr-2 h-4 w-4" />
+                                Arşivden Geri Yükle
+                              </DropdownMenuItem>
+                            ) : (
+                              <>
+                                <DropdownMenuItem
+                                  className="text-warning"
+                                  onClick={() => archiveMutation.mutate(course.id)}
+                                >
+                                  <Archive className="mr-2 h-4 w-4" />
+                                  Arşivle
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => handleOpenDelete(course)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Kalıcı Sil
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

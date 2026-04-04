@@ -13,7 +13,7 @@ const trainingMatrix = [
   { type: "Temel Eğitim", az: "8 saat", teh: "12 saat", cok: "16 saat" },
   { type: "Tekrar Eğitim", az: "8 saat", teh: "8 saat", cok: "8 saat" },
   { type: "İşe Başlama", az: "2 saat", teh: "2 saat", cok: "2 saat" },
-  { type: "Konu 4 Min.", az: "2 saat", teh: "3 saat", cok: "4 saat" },
+  { type: "İşyeri Konusu Min.", az: "2 saat", teh: "3 saat", cok: "4 saat" },
   { type: "Tekrar Periyodu", az: "3 yıl", teh: "2 yıl", cok: "1 yıl" },
 ];
 
@@ -62,7 +62,7 @@ export default function RegulationInfo() {
               { icon: Users, title: "İşe Başlama Eğitimi", desc: "Çalışanın işe başlamadan önce aldığı 2 saatlik yüz yüze ve pratik eğitim." },
               { icon: BookOpen, title: "Temel Eğitim", desc: "Tehlike sınıfına göre 8-16 saat süren kapsamlı İSG eğitimi. 4 konu grubundan oluşur." },
               { icon: Clock, title: "Tekrar Temel Eğitim", desc: "Periyodik olarak yenilenen 8 saatlik eğitim. Tehlike sınıfına göre 1-3 yılda bir tekrarlanır." },
-              { icon: AlertTriangle, title: "Bilgi Yenileme Eğitimi", desc: "İşyeri değişikliği veya 6 aydan uzun devamsızlık sonrası Konu 4 odaklı eğitim." },
+              { icon: AlertTriangle, title: "Bilgi Yenileme Eğitimi", desc: "İşyeri değişikliği veya 6 aydan uzun devamsızlık sonrası İşe ve İşyerine Özgü Konular odaklı eğitim." },
             ].map((item, i) => (
               <Card key={i}>
                 <CardContent className="p-5">

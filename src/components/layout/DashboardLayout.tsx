@@ -35,6 +35,12 @@ import {
   UserCog,
   ArrowRightLeft,
   Link2,
+  FolderOpen,
+  Briefcase,
+  ClipboardCheck,
+  Archive,
+  Database,
+  PieChart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFirmBranding } from "@/contexts/FirmBrandingContext";
@@ -71,41 +77,49 @@ const adminNavGroups = [
     ],
   },
   {
-    label: "Yönetim",
+    label: "Kullanıcı ve Kurum Yönetimi",
     items: [
       { icon: Users, label: "Kullanıcılar", href: "/admin/users" },
       { icon: Building2, label: "Firmalar", href: "/admin/companies" },
       { icon: KeyRound, label: "Gruplar", href: "/admin/groups" },
-      { icon: Building2, label: "Sektörler", href: "/admin/sectors" },
+      { icon: Briefcase, label: "Sektörler", href: "/admin/sectors" },
     ],
   },
   {
-    label: "Eğitim",
+    label: "Eğitim Yönetimi",
     items: [
       { icon: GraduationCap, label: "Eğitimler", href: "/admin/courses" },
-      { icon: BookOpen, label: "Eğitim Türleri", href: "/admin/training-types" },
-      { icon: Settings, label: "Şablon Kuralları", href: "/admin/course-template-rules" },
+      { icon: FolderOpen, label: "Eğitim Türleri", href: "/admin/training-types" },
+      { icon: ClipboardCheck, label: "Şablon Kuralları", href: "/admin/course-template-rules" },
       { icon: FileCheck, label: "Sınavlar", href: "/admin/exams" },
-      { icon: Video, label: "Canlı Oturumlar", href: "/admin/live-sessions" },
-      { icon: Users, label: "Yüz Yüze Oturumlar", href: "/admin/face-to-face" },
-      { icon: Shield, label: "Konu 4 Paketleri", href: "/admin/topic4-packs" },
-      { icon: Link2, label: "Firma Konu 4 Atama", href: "/admin/company-topic4" },
-      { icon: Award, label: "Sertifikalar", href: "/admin/certificates" },
-      { icon: FileText, label: "Şablonlar", href: "/admin/certificate-templates" },
     ],
   },
   {
-    label: "Raporlama",
+    label: "Oturum ve İçerik",
     items: [
+      { icon: Video, label: "Canlı Oturumlar", href: "/admin/live-sessions" },
+      { icon: Users, label: "Yüz Yüze Oturumlar", href: "/admin/face-to-face" },
+      { icon: Shield, label: "İşyeri Konuları", href: "/admin/topic4-packs" },
+      { icon: Link2, label: "Firma İşyeri Konusu", href: "/admin/company-topic4" },
+    ],
+  },
+  {
+    label: "Sertifika ve Belge",
+    items: [
+      { icon: Award, label: "Sertifikalar", href: "/admin/certificates" },
+      { icon: FileText, label: "Sertifika Şablonları", href: "/admin/certificate-templates" },
+      { icon: FileText, label: "Belge Üretimi", href: "/admin/documents" },
+    ],
+  },
+  {
+    label: "Raporlama ve Analiz",
+    items: [
+      { icon: PieChart, label: "Analiz Paneli", href: "/admin/analytics" },
       { icon: BarChart3, label: "Sınav Raporları", href: "/admin/reports" },
-      { icon: BarChart3, label: "Analiz", href: "/admin/analytics" },
       { icon: FileText, label: "Rapor Merkezi", href: "/admin/report-center" },
       { icon: Shield, label: "Uyumluluk Raporu", href: "/admin/compliance-report" },
       { icon: ArrowRightLeft, label: "Tekrar Eğitim Vadesi", href: "/admin/recurrence-report" },
-      { icon: Users, label: "Yüz Yüze Katılım", href: "/admin/f2f-attendance-report" },
-      { icon: FileText, label: "Belge Üretimi", href: "/admin/documents" },
-      { icon: ArrowRightLeft, label: "Migrasyon", href: "/admin/migration" },
-      { icon: FileText, label: "Loglar", href: "/admin/logs" },
+      { icon: ClipboardCheck, label: "Yüz Yüze Katılım", href: "/admin/f2f-attendance-report" },
     ],
   },
   {
@@ -113,6 +127,8 @@ const adminNavGroups = [
     items: [
       { icon: Settings, label: "Ayarlar", href: "/admin/settings" },
       { icon: Search, label: "SSS Yönetimi", href: "/admin/faq" },
+      { icon: Database, label: "Migrasyon", href: "/admin/migration" },
+      { icon: Archive, label: "Aktivite Logları", href: "/admin/logs" },
     ],
   },
 ];
