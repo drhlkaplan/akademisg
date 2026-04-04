@@ -116,7 +116,7 @@ export default function Topic4PacksManagement() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Konu 4 Paketleri</h1>
+            <h1 className="text-2xl font-bold text-foreground">İşe ve İşyerine Özgü Konular</h1>
             <p className="text-muted-foreground">İşe ve İşyerine Özgü Riskler eğitim içerik paketleri</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={v => { setDialogOpen(v); if (!v) { setEditingId(null); setForm(emptyPack); } }}>
