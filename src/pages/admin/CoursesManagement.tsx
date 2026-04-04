@@ -257,8 +257,41 @@ export default function CoursesManagement() {
     },
   });
 
+  // Archive course (soft delete)
+  const archiveMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("courses")
+        .update({ deleted_at: new Date().toISOString(), is_active: false } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-courses-archived"] });
+      toast({ title: "Başarılı", description: "Kurs arşive taşındı." });
+    },
+  });
+
+  // Restore course from archive
+  const restoreMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("courses")
+        .update({ deleted_at: null, is_active: false } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-courses"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-courses-archived"] });
+      toast({ title: "Başarılı", description: "Kurs arşivden geri yüklendi." });
+    },
+  });
+
   // Filter courses
-  const filteredCourses = courses?.filter((course) => {
+  const displayCourses = statusFilter === "archived" ? archivedCourses : courses;
+  const filteredCourses = displayCourses?.filter((course) => {
     const matchesSearch =
       searchQuery === "" ||
       course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -267,7 +300,13 @@ export default function CoursesManagement() {
     const matchesCategory =
       categoryFilter === "all" || course.category_id === categoryFilter;
 
-    return matchesSearch && matchesCategory;
+    const matchesStatus =
+      statusFilter === "all" ||
+      statusFilter === "archived" ||
+      (statusFilter === "active" && course.is_active) ||
+      (statusFilter === "inactive" && !course.is_active);
+
+    return matchesSearch && matchesCategory && matchesStatus;
   });
 
   const handleOpenCreate = () => {
