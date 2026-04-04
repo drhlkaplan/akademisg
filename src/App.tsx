@@ -269,6 +269,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
               path="/admin/face-to-face"
               element={
                 <ProtectedRoute requireAdmin>
