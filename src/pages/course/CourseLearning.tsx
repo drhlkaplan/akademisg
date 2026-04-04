@@ -63,7 +63,7 @@ export default function CourseLearning() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { generateCertificate } = useCertificateGeneration();
+  const { checkAndComplete } = useCompletionEngine();
 
   useEffect(() => {
     if (user && courseId) fetchCourseData();
