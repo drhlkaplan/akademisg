@@ -684,6 +684,13 @@ Deno.serve(async (req) => {
         });
       }
 
+      // Prepend subdirectory to SCO paths if manifest was in a subfolder
+      if (actualManifestDir) {
+        for (const sco of manifest.scos) {
+          sco.launchPath = `${actualManifestDir}/${sco.launchPath}`;
+        }
+      }
+
       if (body.packageId) {
         await adminClient
           .from("scorm_packages")
