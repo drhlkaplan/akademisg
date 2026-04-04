@@ -105,6 +105,18 @@ export default function FirmsManagement() {
     footer_text: "",
     custom_css: "",
     favicon_url: "",
+    sector_id: "",
+    hazard_class_new: "az_tehlikeli",
+  });
+
+  // Fetch sectors for dropdown
+  const { data: sectors = [] } = useQuery({
+    queryKey: ["sectors-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sectors").select("*").eq("is_active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
   });
 
   const { toast } = useToast();
