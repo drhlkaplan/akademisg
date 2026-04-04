@@ -150,7 +150,7 @@ export default function CompanyTopic4Assignment() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Firma</TableHead>
-                  <TableHead>Konu 4 Paketi</TableHead>
+                  <TableHead>İşyeri Konusu Paketi</TableHead>
                   <TableHead>Sektör</TableHead>
                   <TableHead>Tehlike Sınıfı</TableHead>
                   <TableHead>Durum</TableHead>

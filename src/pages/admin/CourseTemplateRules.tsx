@@ -373,12 +373,12 @@ export default function CourseTemplateRules() {
             </div>
 
             <div>
-              <Label>Konu 4 Teslimat Yöntemi</Label>
+              <Label>İşyeri Konusu Teslimat Yöntemi</Label>
               {isTopic4ForcedF2F ? (
                 <div className="flex items-center gap-2 p-3 rounded-md bg-destructive/10 border border-destructive/20">
                   <AlertTriangle className="h-4 w-4 text-destructive" />
                   <span className="text-sm text-destructive font-medium">
-                    {hazardLabels[formData.hazard_class]} sınıfında Konu 4 yüz yüze zorunludur
+                    {hazardLabels[formData.hazard_class]} sınıfında İşyeri Konusu yüz yüze zorunludur
                   </span>
                 </div>
               ) : (
