@@ -1999,11 +1999,13 @@ export type Database = {
           new_hazard_class:
             | Database["public"]["Enums"]["hazard_class_enum"]
             | null
+          new_sector_id: string | null
           notes: string | null
           previous_firm_id: string | null
           previous_hazard_class:
             | Database["public"]["Enums"]["hazard_class_enum"]
             | null
+          previous_sector_id: string | null
           requires_ise_baslama: boolean | null
           requires_topic4_update: boolean | null
           user_id: string
@@ -2018,11 +2020,13 @@ export type Database = {
           new_hazard_class?:
             | Database["public"]["Enums"]["hazard_class_enum"]
             | null
+          new_sector_id?: string | null
           notes?: string | null
           previous_firm_id?: string | null
           previous_hazard_class?:
             | Database["public"]["Enums"]["hazard_class_enum"]
             | null
+          previous_sector_id?: string | null
           requires_ise_baslama?: boolean | null
           requires_topic4_update?: boolean | null
           user_id: string
@@ -2037,11 +2041,13 @@ export type Database = {
           new_hazard_class?:
             | Database["public"]["Enums"]["hazard_class_enum"]
             | null
+          new_sector_id?: string | null
           notes?: string | null
           previous_firm_id?: string | null
           previous_hazard_class?:
             | Database["public"]["Enums"]["hazard_class_enum"]
             | null
+          previous_sector_id?: string | null
           requires_ise_baslama?: boolean | null
           requires_topic4_update?: boolean | null
           user_id?: string
@@ -2055,10 +2061,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "workplace_change_records_new_sector_id_fkey"
+            columns: ["new_sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "workplace_change_records_previous_firm_id_fkey"
             columns: ["previous_firm_id"]
             isOneToOne: false
             referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workplace_change_records_previous_sector_id_fkey"
+            columns: ["previous_sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
             referencedColumns: ["id"]
           },
         ]
