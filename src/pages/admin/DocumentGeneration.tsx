@@ -20,13 +20,13 @@ import { formatDateTR } from "@/lib/reportExport";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-type DocumentType = "katilim_tutanagi" | "ise_baslama_karti" | "faaliyet_raporu" | "egitim_belgesi";
+type DocumentType = "yuz_yuze_katilim_tutanagi" | "ise_baslama_kaydi" | "faaliyet_raporu" | "temel_egitim_belgesi";
 
 const DOC_LABELS: Record<string, string> = {
-  katilim_tutanagi: "Yüz Yüze Katılım Tutanağı",
-  ise_baslama_karti: "İşe Başlama Eğitim Kartı",
+  yuz_yuze_katilim_tutanagi: "Yüz Yüze Katılım Tutanağı",
+  ise_baslama_kaydi: "İşe Başlama Eğitim Kartı",
   faaliyet_raporu: "Eğitim Faaliyet Raporu",
-  egitim_belgesi: "Eğitim Belgesi",
+  temel_egitim_belgesi: "Eğitim Belgesi",
 };
 
 export default function DocumentGeneration() {
