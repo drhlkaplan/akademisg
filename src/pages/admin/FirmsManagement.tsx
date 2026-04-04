@@ -249,6 +249,8 @@ export default function FirmsManagement() {
           footer_text: data.footer_text || null,
           custom_css: data.custom_css || null,
           favicon_url: data.favicon_url || null,
+          sector_id: data.sector_id || null,
+          hazard_class_new: (data.hazard_class_new || "az_tehlikeli") as any,
         })
         .eq("id", data.id);
       if (error) throw error;
