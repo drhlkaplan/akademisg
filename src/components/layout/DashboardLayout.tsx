@@ -104,6 +104,7 @@ const adminNavGroups = [
       { icon: ArrowRightLeft, label: "Tekrar Eğitim Vadesi", href: "/admin/recurrence-report" },
       { icon: Users, label: "Yüz Yüze Katılım", href: "/admin/f2f-attendance-report" },
       { icon: FileText, label: "Belge Üretimi", href: "/admin/documents" },
+      { icon: ArrowRightLeft, label: "Migrasyon", href: "/admin/migration" },
       { icon: FileText, label: "Loglar", href: "/admin/logs" },
     ],
   },
