@@ -13,7 +13,7 @@ const trainingMatrix = [
   { type: "Temel Eğitim", az: "8 saat", teh: "12 saat", cok: "16 saat" },
   { type: "Tekrar Eğitim", az: "8 saat", teh: "8 saat", cok: "8 saat" },
   { type: "İşe Başlama", az: "2 saat", teh: "2 saat", cok: "2 saat" },
-  { type: "Konu 4 Min.", az: "2 saat", teh: "3 saat", cok: "4 saat" },
+  { type: "İşyeri Konusu Min.", az: "2 saat", teh: "3 saat", cok: "4 saat" },
   { type: "Tekrar Periyodu", az: "3 yıl", teh: "2 yıl", cok: "1 yıl" },
 ];
 
