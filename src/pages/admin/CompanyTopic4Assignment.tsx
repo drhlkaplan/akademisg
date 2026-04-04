@@ -114,7 +114,7 @@ export default function CompanyTopic4Assignment() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Firma Konu 4 Atama</h1>
+            <h1 className="text-2xl font-bold text-foreground">Firma İşyeri Konusu Atama</h1>
             <p className="text-muted-foreground">Firmalara sektöre özel İşe ve İşyerine Özgü Riskler eğitim paketlerini atayın</p>
           </div>
           <Button onClick={() => setDialogOpen(true)}>
