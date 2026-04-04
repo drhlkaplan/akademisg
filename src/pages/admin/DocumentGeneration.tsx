@@ -99,7 +99,7 @@ export default function DocumentGeneration() {
       const firm = firms?.find(f => f.id === selectedFirm);
       const firmName = firm?.name || "Firma";
 
-      if (selectedType === "katilim_tutanagi") {
+      if (selectedType === "yuz_yuze_katilim_tutanagi") {
         const firmSessions = sessions?.filter(s => s.firm_id === selectedFirm) || [];
         if (firmSessions.length === 0) throw new Error("Bu firmaya ait tamamlanmış oturum bulunamadı");
 
