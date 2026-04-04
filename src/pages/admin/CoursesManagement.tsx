@@ -66,6 +66,8 @@ import {
   Eye,
   EyeOff,
   Sparkles,
+  Archive,
+  RotateCcw,
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
