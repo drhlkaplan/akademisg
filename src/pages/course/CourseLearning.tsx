@@ -17,8 +17,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
-import { useCertificateGeneration } from "@/hooks/useCertificateGeneration";
 import { useDeliveryMethodEnforcement } from "@/hooks/useDeliveryMethodEnforcement";
+import { useCompletionEngine } from "@/hooks/useCompletionEngine";
 
 type DangerClass = Database["public"]["Enums"]["danger_class"];
 type HazardClass = Database["public"]["Enums"]["hazard_class_enum"];
