@@ -262,6 +262,13 @@ const App = () => (
               }
             />
             <Route
+              path="/admin/company-topic4"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <CompanyTopic4Assignment />
+                </ProtectedRoute>
+              }
+            />
               path="/admin/face-to-face"
               element={
                 <ProtectedRoute requireAdmin>
