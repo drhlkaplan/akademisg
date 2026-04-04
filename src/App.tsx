@@ -75,6 +75,10 @@ const FaqManagement = lazyRetry(() => import("./pages/admin/FaqManagement"));
 const MyFaceToFaceSessions = lazyRetry(() => import("./pages/dashboard/MyFaceToFaceSessions"));
 const CourseTemplateRules = lazyRetry(() => import("./pages/admin/CourseTemplateRules"));
 const CompanyTopic4Assignment = lazyRetry(() => import("./pages/admin/CompanyTopic4Assignment"));
+const ComplianceReport = lazyRetry(() => import("./pages/admin/ComplianceReport"));
+const RecurrenceReport = lazyRetry(() => import("./pages/admin/RecurrenceReport"));
+const F2FAttendanceReport = lazyRetry(() => import("./pages/admin/F2FAttendanceReport"));
+const DocumentGeneration = lazyRetry(() => import("./pages/admin/DocumentGeneration"));
 const RegulationInfo = lazyRetry(() => import("./pages/RegulationInfo"));
 const FirmDashboard = lazyRetry(() => import("./pages/firm/FirmDashboard"));
 const FirmEmployees = lazyRetry(() => import("./pages/firm/FirmEmployees"));
@@ -311,8 +315,11 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route path="/admin/compliance-report" element={<ProtectedRoute requireAdmin><ComplianceReport /></ProtectedRoute>} />
+            <Route path="/admin/recurrence-report" element={<ProtectedRoute requireAdmin><RecurrenceReport /></ProtectedRoute>} />
+            <Route path="/admin/f2f-attendance-report" element={<ProtectedRoute requireAdmin><F2FAttendanceReport /></ProtectedRoute>} />
+            <Route path="/admin/documents" element={<ProtectedRoute requireAdmin><DocumentGeneration /></ProtectedRoute>} />
             
-            {/* Firm Admin Dashboard */}
             <Route
               path="/firm"
               element={
