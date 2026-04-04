@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,9 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, MapPin, Calendar, Clock, Users, ClipboardCheck } from "lucide-react";
-import { format } from "date-fns";
-import { tr } from "date-fns/locale";
+import { Plus, MapPin, Calendar, Clock, Users, ClipboardCheck, UserCog } from "lucide-react";
 
 const statusLabels: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   scheduled: { label: "Planlandı", variant: "secondary" },
@@ -27,6 +26,7 @@ interface SessionForm {
   lesson_id: string;
   course_id: string;
   firm_id: string;
+  trainer_id: string;
   session_date: string;
   start_time: string;
   end_time: string;
@@ -36,7 +36,7 @@ interface SessionForm {
 }
 
 const emptyForm: SessionForm = {
-  lesson_id: "", course_id: "", firm_id: "",
+  lesson_id: "", course_id: "", firm_id: "", trainer_id: "",
   session_date: "", start_time: "09:00", end_time: "17:00",
   location: "", capacity: 30, notes: "",
 };
@@ -46,6 +46,7 @@ export default function FaceToFaceSessionsManagement() {
   const [form, setForm] = useState<SessionForm>(emptyForm);
   const { toast } = useToast();
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ["f2f-sessions"],
@@ -77,6 +78,19 @@ export default function FaceToFaceSessionsManagement() {
     },
   });
 
+  // Fetch trainers (users with trainer role)
+  const { data: trainers = [] } = useQuery({
+    queryKey: ["trainers-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("user_id, profiles!inner(user_id, first_name, last_name)")
+        .eq("role", "trainer");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const { data: lessons = [] } = useQuery({
     queryKey: ["lessons-for-course", form.course_id],
     queryFn: async () => {
@@ -88,18 +102,23 @@ export default function FaceToFaceSessionsManagement() {
     enabled: !!form.course_id,
   });
 
+  // Generate random attendance code
+  const generateCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
+
   const createMutation = useMutation({
     mutationFn: async (data: SessionForm) => {
       const { error } = await supabase.from("face_to_face_sessions").insert({
         lesson_id: data.lesson_id || null,
         course_id: data.course_id || null,
         firm_id: data.firm_id || null,
+        trainer_id: data.trainer_id || null,
         session_date: data.session_date,
         start_time: data.start_time,
         end_time: data.end_time,
         location: data.location,
         capacity: data.capacity,
         notes: data.notes || null,
+        attendance_code: generateCode(),
       });
       if (error) throw error;
     },
@@ -123,13 +142,27 @@ export default function FaceToFaceSessionsManagement() {
     },
   });
 
+  // Fetch trainer profiles for display
+  const { data: trainerProfiles = [] } = useQuery({
+    queryKey: ["trainer-profiles-for-sessions", sessions],
+    queryFn: async () => {
+      const trainerIds = sessions.map((s: any) => s.trainer_id).filter(Boolean);
+      if (trainerIds.length === 0) return [];
+      const { data } = await supabase.from("profiles").select("user_id, first_name, last_name").in("user_id", trainerIds);
+      return data || [];
+    },
+    enabled: sessions.length > 0,
+  });
+
+  const trainerMap = new Map(trainerProfiles.map((t: any) => [t.user_id, `${t.first_name} ${t.last_name}`]));
+
   return (
     <DashboardLayout userRole="admin">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Yüz Yüze Oturumlar</h1>
-            <p className="text-muted-foreground">Yüz yüze eğitim oturumlarını planlayın ve yoklama alın</p>
+            <p className="text-muted-foreground">Yüz yüze eğitim oturumlarını planlayın, eğitmen atayın ve yoklama alın</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={v => { setDialogOpen(v); if (!v) setForm(emptyForm); }}>
             <DialogTrigger asChild>
@@ -161,6 +194,23 @@ export default function FaceToFaceSessionsManagement() {
                   <Select value={form.firm_id} onValueChange={v => setForm({ ...form, firm_id: v })}>
                     <SelectTrigger><SelectValue placeholder="Firma seçin" /></SelectTrigger>
                     <SelectContent>{firms.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Eğitmen</Label>
+                  <Select value={form.trainer_id} onValueChange={v => setForm({ ...form, trainer_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Eğitmen seçin" /></SelectTrigger>
+                    <SelectContent>
+                      {trainers.length === 0 ? (
+                        <SelectItem value="_none" disabled>Eğitmen bulunamadı</SelectItem>
+                      ) : (
+                        trainers.map((t: any) => (
+                          <SelectItem key={t.user_id} value={t.user_id}>
+                            {t.profiles?.first_name} {t.profiles?.last_name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
                   </Select>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
@@ -205,6 +255,7 @@ export default function FaceToFaceSessionsManagement() {
                   <TableHead>Tarih</TableHead>
                   <TableHead>Kurs / Ders</TableHead>
                   <TableHead>Firma</TableHead>
+                  <TableHead>Eğitmen</TableHead>
                   <TableHead>Mekan</TableHead>
                   <TableHead>Saat</TableHead>
                   <TableHead>Kapasite</TableHead>
@@ -214,9 +265,9 @@ export default function FaceToFaceSessionsManagement() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8">Yükleniyor...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-8">Yükleniyor...</TableCell></TableRow>
                 ) : sessions.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8">Oturum bulunamadı</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-8">Oturum bulunamadı</TableCell></TableRow>
                 ) : sessions.map((s: any) => {
                   const st = statusLabels[s.status] || statusLabels.scheduled;
                   return (
@@ -232,6 +283,18 @@ export default function FaceToFaceSessionsManagement() {
                         <div className="text-xs text-muted-foreground">{(s as any).lessons?.title || ""}</div>
                       </TableCell>
                       <TableCell>{(s as any).firms?.name || "—"}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 text-sm">
+                          {s.trainer_id ? (
+                            <>
+                              <UserCog className="h-3.5 w-3.5 text-muted-foreground" />
+                              {trainerMap.get(s.trainer_id) || "—"}
+                            </>
+                          ) : (
+                            <span className="text-muted-foreground">Atanmadı</span>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
@@ -253,13 +316,18 @@ export default function FaceToFaceSessionsManagement() {
                       <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/admin/attendance/${s.id}`)}
+                          >
+                            <ClipboardCheck className="h-4 w-4 mr-1" />Yoklama
+                          </Button>
                           {s.status === "scheduled" && (
                             <Button variant="outline" size="sm" onClick={() => updateStatus.mutate({ id: s.id, status: "in_progress" })}>Başlat</Button>
                           )}
                           {s.status === "in_progress" && (
-                            <Button variant="outline" size="sm" onClick={() => updateStatus.mutate({ id: s.id, status: "completed" })}>
-                              <ClipboardCheck className="h-4 w-4 mr-1" />Tamamla
-                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => updateStatus.mutate({ id: s.id, status: "completed" })}>Tamamla</Button>
                           )}
                         </div>
                       </TableCell>
