@@ -793,6 +793,13 @@ export type Database = {
             foreignKeyName: "face_to_face_attendance_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
+            referencedRelation: "f2f_sessions_student_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "face_to_face_attendance_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
             referencedRelation: "face_to_face_sessions"
             referencedColumns: ["id"]
           },
@@ -2123,6 +2130,79 @@ export type Database = {
       }
     }
     Views: {
+      f2f_sessions_student_view: {
+        Row: {
+          capacity: number | null
+          course_id: string | null
+          created_at: string | null
+          end_time: string | null
+          firm_id: string | null
+          id: string | null
+          lesson_id: string | null
+          location: string | null
+          notes: string | null
+          session_date: string | null
+          start_time: string | null
+          status: Database["public"]["Enums"]["f2f_session_status"] | null
+          trainer_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          capacity?: number | null
+          course_id?: string | null
+          created_at?: string | null
+          end_time?: string | null
+          firm_id?: string | null
+          id?: string | null
+          lesson_id?: string | null
+          location?: string | null
+          notes?: string | null
+          session_date?: string | null
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["f2f_session_status"] | null
+          trainer_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          capacity?: number | null
+          course_id?: string | null
+          created_at?: string | null
+          end_time?: string | null
+          firm_id?: string | null
+          id?: string | null
+          lesson_id?: string | null
+          location?: string | null
+          notes?: string | null
+          session_date?: string | null
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["f2f_session_status"] | null
+          trainer_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "face_to_face_sessions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "face_to_face_sessions_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "face_to_face_sessions_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       public_certificates: {
         Row: {
           certificate_number: string | null
@@ -2210,6 +2290,15 @@ export type Database = {
       join_live_session: { Args: { _live_session_id: string }; Returns: string }
       leave_live_session: {
         Args: { _duration_seconds: number; _tracking_id: string }
+        Returns: undefined
+      }
+      log_activity: {
+        Args: {
+          _action: string
+          _details?: Json
+          _entity_id?: string
+          _entity_type?: string
+        }
         Returns: undefined
       }
       mask_tc_identity: { Args: { tc: string }; Returns: string }
