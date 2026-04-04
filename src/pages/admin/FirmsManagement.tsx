@@ -105,6 +105,18 @@ export default function FirmsManagement() {
     footer_text: "",
     custom_css: "",
     favicon_url: "",
+    sector_id: "",
+    hazard_class_new: "az_tehlikeli",
+  });
+
+  // Fetch sectors for dropdown
+  const { data: sectors = [] } = useQuery({
+    queryKey: ["sectors-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sectors").select("*").eq("is_active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
   });
 
   const { toast } = useToast();
@@ -194,6 +206,8 @@ export default function FirmsManagement() {
         footer_text: data.footer_text || null,
         custom_css: data.custom_css || null,
         favicon_url: data.favicon_url || null,
+        sector_id: data.sector_id || null,
+        hazard_class_new: (data.hazard_class_new || "az_tehlikeli") as any,
       });
       if (error) throw error;
     },
@@ -235,6 +249,8 @@ export default function FirmsManagement() {
           footer_text: data.footer_text || null,
           custom_css: data.custom_css || null,
           favicon_url: data.favicon_url || null,
+          sector_id: data.sector_id || null,
+          hazard_class_new: (data.hazard_class_new || "az_tehlikeli") as any,
         })
         .eq("id", data.id);
       if (error) throw error;
@@ -379,6 +395,8 @@ export default function FirmsManagement() {
       footer_text: "",
       custom_css: "",
       favicon_url: "",
+      sector_id: "",
+      hazard_class_new: "az_tehlikeli",
     });
     setDialogOpen(true);
   };
@@ -404,6 +422,8 @@ export default function FirmsManagement() {
       footer_text: (firm as any).footer_text || "",
       custom_css: (firm as any).custom_css || "",
       favicon_url: (firm as any).favicon_url || "",
+      sector_id: firm.sector_id || "",
+      hazard_class_new: firm.hazard_class_new || "az_tehlikeli",
     });
     setDialogOpen(true);
   };
@@ -445,6 +465,8 @@ export default function FirmsManagement() {
       footer_text: "",
       custom_css: "",
       favicon_url: "",
+      sector_id: "",
+      hazard_class_new: "az_tehlikeli",
     });
   };
 
@@ -541,14 +563,15 @@ export default function FirmsManagement() {
             ) : filteredFirms && filteredFirms.length > 0 ? (
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Firma</TableHead>
-                    <TableHead className="hidden md:table-cell">Sektör</TableHead>
-                    <TableHead className="hidden lg:table-cell">İletişim</TableHead>
-                    <TableHead>Çalışan</TableHead>
-                    <TableHead>Durum</TableHead>
-                    <TableHead className="text-right">İşlemler</TableHead>
-                  </TableRow>
+                   <TableRow>
+                     <TableHead>Firma</TableHead>
+                     <TableHead className="hidden md:table-cell">Sektör</TableHead>
+                     <TableHead className="hidden md:table-cell">Tehlike Sınıfı</TableHead>
+                     <TableHead className="hidden lg:table-cell">İletişim</TableHead>
+                     <TableHead>Çalışan</TableHead>
+                     <TableHead>Durum</TableHead>
+                     <TableHead className="text-right">İşlemler</TableHead>
+                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredFirms.map((firm) => (
@@ -581,11 +604,20 @@ export default function FirmsManagement() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <span className="text-muted-foreground">
-                          {firm.sector || "-"}
-                        </span>
-                      </TableCell>
+                       <TableCell className="hidden md:table-cell">
+                         <span className="text-muted-foreground">
+                           {firm.sector || "-"}
+                         </span>
+                       </TableCell>
+                       <TableCell className="hidden md:table-cell">
+                         {firm.hazard_class_new === "cok_tehlikeli" ? (
+                           <Badge variant="destructive">Çok Tehlikeli</Badge>
+                         ) : firm.hazard_class_new === "tehlikeli" ? (
+                           <Badge variant="default">Tehlikeli</Badge>
+                         ) : (
+                           <Badge variant="secondary">Az Tehlikeli</Badge>
+                         )}
+                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
                         <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                           {firm.phone && (
@@ -699,8 +731,35 @@ export default function FirmsManagement() {
                 <Input id="tax_number" value={formData.tax_number} onChange={(e) => setFormData({ ...formData, tax_number: e.target.value })} placeholder="1234567890" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="sector">Sektör</Label>
+                <Label htmlFor="sector">Sektör (Metin)</Label>
                 <Input id="sector" value={formData.sector} onChange={(e) => setFormData({ ...formData, sector: e.target.value })} placeholder="İnşaat" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Sektör Tanımı</Label>
+                <Select value={formData.sector_id || "__none__"} onValueChange={v => setFormData({ ...formData, sector_id: v === "__none__" ? "" : v })}>
+                  <SelectTrigger><SelectValue placeholder="Sektör seçin..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Seçilmedi</SelectItem>
+                    {sectors.map((s: any) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Yönetmelik uyumlu sektör eşlemesi</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Tehlike Sınıfı</Label>
+                <Select value={formData.hazard_class_new} onValueChange={v => setFormData({ ...formData, hazard_class_new: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="az_tehlikeli">Az Tehlikeli</SelectItem>
+                    <SelectItem value="tehlikeli">Tehlikeli</SelectItem>
+                    <SelectItem value="cok_tehlikeli">Çok Tehlikeli</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Eğitim süresi ve yöntemi buna göre belirlenir</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">

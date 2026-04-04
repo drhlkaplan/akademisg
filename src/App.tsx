@@ -72,6 +72,7 @@ const Topic4PacksManagement = lazyRetry(() => import("./pages/admin/Topic4PacksM
 const FaceToFaceSessionsManagement = lazyRetry(() => import("./pages/admin/FaceToFaceSessionsManagement"));
 const FaqManagement = lazyRetry(() => import("./pages/admin/FaqManagement"));
 const CourseTemplateRules = lazyRetry(() => import("./pages/admin/CourseTemplateRules"));
+const CompanyTopic4Assignment = lazyRetry(() => import("./pages/admin/CompanyTopic4Assignment"));
 const RegulationInfo = lazyRetry(() => import("./pages/RegulationInfo"));
 const FirmDashboard = lazyRetry(() => import("./pages/firm/FirmDashboard"));
 const FirmEmployees = lazyRetry(() => import("./pages/firm/FirmEmployees"));
@@ -257,6 +258,14 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <Topic4PacksManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/company-topic4"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <CompanyTopic4Assignment />
                 </ProtectedRoute>
               }
             />

@@ -34,6 +34,7 @@ import {
   Video,
   UserCog,
   ArrowRightLeft,
+  Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFirmBranding } from "@/contexts/FirmBrandingContext";
@@ -87,6 +88,7 @@ const adminNavGroups = [
       { icon: Video, label: "Canlı Oturumlar", href: "/admin/live-sessions" },
       { icon: Users, label: "Yüz Yüze Oturumlar", href: "/admin/face-to-face" },
       { icon: Shield, label: "Konu 4 Paketleri", href: "/admin/topic4-packs" },
+      { icon: Link2, label: "Firma Konu 4 Atama", href: "/admin/company-topic4" },
       { icon: Award, label: "Sertifikalar", href: "/admin/certificates" },
       { icon: FileText, label: "Şablonlar", href: "/admin/certificate-templates" },
     ],
