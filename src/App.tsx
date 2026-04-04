@@ -320,6 +320,7 @@ const App = () => (
             <Route path="/admin/recurrence-report" element={<ProtectedRoute requireAdmin><RecurrenceReport /></ProtectedRoute>} />
             <Route path="/admin/f2f-attendance-report" element={<ProtectedRoute requireAdmin><F2FAttendanceReport /></ProtectedRoute>} />
             <Route path="/admin/documents" element={<ProtectedRoute requireAdmin><DocumentGeneration /></ProtectedRoute>} />
+            <Route path="/admin/migration" element={<ProtectedRoute requireAdmin><MigrationDashboard /></ProtectedRoute>} />
             
             <Route
               path="/firm"
