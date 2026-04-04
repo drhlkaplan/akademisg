@@ -34,6 +34,7 @@ import {
   Video,
   UserCog,
   ArrowRightLeft,
+  Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFirmBranding } from "@/contexts/FirmBrandingContext";
