@@ -603,13 +603,31 @@ export default function CoursesManagement() {
                               AI Açıklama Üret
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => handleOpenDelete(course)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Sil
-                            </DropdownMenuItem>
+                            {statusFilter === "archived" ? (
+                              <DropdownMenuItem
+                                onClick={() => restoreMutation.mutate(course.id)}
+                              >
+                                <RotateCcw className="mr-2 h-4 w-4" />
+                                Arşivden Geri Yükle
+                              </DropdownMenuItem>
+                            ) : (
+                              <>
+                                <DropdownMenuItem
+                                  className="text-warning"
+                                  onClick={() => archiveMutation.mutate(course.id)}
+                                >
+                                  <Archive className="mr-2 h-4 w-4" />
+                                  Arşivle
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => handleOpenDelete(course)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Kalıcı Sil
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
