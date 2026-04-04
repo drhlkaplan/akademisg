@@ -26,6 +26,9 @@ import {
   FileQuestion,
   ArrowUpRight,
   Activity,
+  Shield,
+  Clock,
+  FileText,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ActiveUsersMonitor } from "@/components/admin/ActiveUsersMonitor";
@@ -295,6 +298,54 @@ export default function AdminDashboard() {
 
         {/* Active Users Monitor */}
         <ActiveUsersMonitor />
+
+        {/* Quick Access - Compliance & Reports */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Link to="/admin/compliance-report" className="stat-card group cursor-pointer hover:border-accent/30 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-success/10 flex items-center justify-center">
+                <Shield className="h-4 w-4 text-success" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">Uyumluluk Raporu</p>
+                <p className="text-xs text-muted-foreground">Firma bazlı durum</p>
+              </div>
+            </div>
+          </Link>
+          <Link to="/admin/recurrence-report" className="stat-card group cursor-pointer hover:border-accent/30 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-warning/10 flex items-center justify-center">
+                <Clock className="h-4 w-4 text-warning" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">Tekrar Eğitim Vadesi</p>
+                <p className="text-xs text-muted-foreground">Yaklaşan vadeler</p>
+              </div>
+            </div>
+          </Link>
+          <Link to="/admin/f2f-attendance-report" className="stat-card group cursor-pointer hover:border-accent/30 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-info/10 flex items-center justify-center">
+                <Users className="h-4 w-4 text-info" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">Yüz Yüze Katılım</p>
+                <p className="text-xs text-muted-foreground">Oturum istatistikleri</p>
+              </div>
+            </div>
+          </Link>
+          <Link to="/admin/documents" className="stat-card group cursor-pointer hover:border-accent/30 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-accent/10 flex items-center justify-center">
+                <FileText className="h-4 w-4 text-accent" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">Belge Üretimi</p>
+                <p className="text-xs text-muted-foreground">Tutanak ve raporlar</p>
+              </div>
+            </div>
+          </Link>
+        </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Recent Enrollments */}

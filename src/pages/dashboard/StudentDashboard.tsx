@@ -17,6 +17,9 @@ import {
   Loader2,
   FileQuestion,
   KeyRound,
+  CalendarClock,
+  AlertTriangle,
+  Users,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -517,6 +520,9 @@ export default function StudentDashboard() {
               </div>
             )}
 
+            {/* Recurrence Info */}
+            <RecurrenceAlert userId={user?.id} />
+
             {/* Quick Actions */}
             <div className="dashboard-card bg-gradient-accent p-5">
               <h3 className="font-semibold text-accent-foreground text-sm mb-2">
@@ -538,5 +544,64 @@ export default function StudentDashboard() {
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+function RecurrenceAlert({ userId }: { userId?: string }) {
+  const [rules, setRules] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .from("recurrence_rules")
+      .select("id, next_due_at, hazard_class, courses(title)")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .order("next_due_at")
+      .limit(3)
+      .then(({ data }) => setRules(data || []));
+  }, [userId]);
+
+  if (rules.length === 0) return null;
+
+  const now = new Date();
+  const upcoming = rules.filter(r => {
+    const due = new Date(r.next_due_at);
+    const daysLeft = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return daysLeft <= 90;
+  });
+
+  if (upcoming.length === 0) return null;
+
+  return (
+    <>
+      <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+        <CalendarClock className="h-4 w-4 text-warning" />
+        Yaklaşan Tekrar Eğitimler
+      </h3>
+      <div className="space-y-2">
+        {upcoming.map(rule => {
+          const due = new Date(rule.next_due_at);
+          const daysLeft = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          const isOverdue = daysLeft < 0;
+          return (
+            <div key={rule.id} className={`dashboard-card p-3 ${isOverdue ? "border-destructive/30" : "border-warning/30"}`}>
+              <div className="flex items-start gap-2">
+                <AlertTriangle className={`h-4 w-4 mt-0.5 flex-shrink-0 ${isOverdue ? "text-destructive" : "text-warning"}`} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{(rule.courses as any)?.title || "Eğitim"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Vade: {due.toLocaleDateString("tr-TR")} •{" "}
+                    <span className={`font-semibold ${isOverdue ? "text-destructive" : "text-warning"}`}>
+                      {isOverdue ? `${Math.abs(daysLeft)} gün geçmiş` : `${daysLeft} gün kaldı`}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }

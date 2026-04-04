@@ -31,23 +31,23 @@ const stats = [
 const features = [
   {
     icon: Shield,
-    title: "SCORM Uyumlu",
-    description: "SCORM 1.2 ve 2004 standartlarına uygun eğitim içerikleri ile profesyonel öğrenme deneyimi.",
+    title: "Yönetmeliğe Uyumlu",
+    description: "Yeni İSG eğitim yönetmeliğine tam uyumlu: 7 eğitim türü, tehlike sınıfına göre süre ve yöntem kontrolü.",
   },
   {
     icon: GraduationCap,
-    title: "Sertifikalı Eğitim",
-    description: "Eğitim ve sınavları başarıyla tamamlayanlara QR kodlu, doğrulanabilir sertifika.",
+    title: "Hibrit Eğitim Modeli",
+    description: "SCORM, canlı ders ve yüz yüze oturumları tek kursta birleştirin. Konu 4 yüz yüze zorunluluğu otomatik uygulanır.",
   },
   {
     icon: FileCheck,
-    title: "Kapsamlı Sınav",
-    description: "Ön test ve son sınav ile bilgi ölçümü, otomatik değerlendirme ve başarı takibi.",
+    title: "Denetime Hazır Belgeler",
+    description: "Katılım tutanağı, faaliyet raporu ve sertifika otomatik üretilir. QR kodlu doğrulama ile şeffaf belgelendirme.",
   },
   {
     icon: Building2,
-    title: "Kurumsal Çözümler",
-    description: "Çoklu firma desteği, toplu kullanıcı yönetimi ve detaylı raporlama.",
+    title: "Sektöre Özel Konu 4",
+    description: "Her firma ve sektör için işyerine özgü risk eğitimlerini otomatik atayın. Firma izolasyonlu multi-tenant yapı.",
   },
 ];
 
@@ -111,22 +111,21 @@ const Index = () => {
           <div className="max-w-2xl animate-slide-up">
             <Badge variant="active" className="mb-6 bg-accent/20 border-accent/30 text-accent">
               <Shield className="h-3 w-3 mr-1" />
-              ÇSGB Onaylı İSG Eğitimleri
+              Yeni Yönetmeliğe Tam Uyumlu
             </Badge>
 
             <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-extrabold text-primary-foreground mb-6 leading-[1.1] tracking-tight">
-              İş Sağlığı ve Güvenliği <span className="text-gradient">Online Eğitim Platformu</span>
+              Yeni Yönetmeliğe Uyumlu <span className="text-gradient">İSG Eğitim Platformu</span>
             </h1>
 
             <p className="text-base md:text-lg text-primary-foreground/75 mb-8 max-w-xl leading-relaxed">
-              Tehlike sınıfına göre SCORM uyumlu eğitimler, kapsamlı sınavlar ve QR kodlu sertifikalar ile İSG
-              eğitimlerinizi dijital ortama taşıyın.
+              Online, canlı ve yüz yüze eğitimleri tek platformda yönetin. Sektöre özel içerikler, ölçülebilir katılım ve denetime hazır belgeler.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3">
               <Button variant="hero" size="xl" asChild>
                 <Link to="/register">
-                  Hemen Başla
+                  Ücretsiz Demo Talep Edin
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
@@ -134,10 +133,12 @@ const Index = () => {
                 variant="ghost"
                 size="xl"
                 className="border border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 backdrop-blur-sm bg-transparent"
-                onClick={() => setVideoOpen(true)}
+                asChild
               >
-                <Play className="mr-2 h-5 w-5" />
-                Tanıtım Videosu
+                <Link to="/regulation">
+                  <BookOpen className="mr-2 h-5 w-5" />
+                  Yönetmelik Değişikliklerini İnceleyin
+                </Link>
               </Button>
             </div>
 
