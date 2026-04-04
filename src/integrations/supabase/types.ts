@@ -2344,6 +2344,7 @@ export type Database = {
         | "company_admin"
         | "student"
         | "firm_admin"
+        | "trainer"
       attendance_status_enum:
         | "pending"
         | "attended"
@@ -2524,6 +2525,7 @@ export const Constants = {
         "company_admin",
         "student",
         "firm_admin",
+        "trainer",
       ],
       attendance_status_enum: [
         "pending",

@@ -57,6 +57,7 @@ const studentNavItems = [
   { icon: LayoutDashboard, label: "Gösterge Paneli", href: "/dashboard" },
   { icon: BookOpen, label: "Eğitimlerim", href: "/dashboard/courses" },
   { icon: FileCheck, label: "Sınavlarım", href: "/dashboard/exams" },
+  { icon: Users, label: "Yüz Yüze Derslerim", href: "/dashboard/face-to-face" },
   { icon: Award, label: "Sertifikalarım", href: "/dashboard/certificates" },
   { icon: Settings, label: "Profil Ayarları", href: "/dashboard/profile" },
   { icon: HelpCircle, label: "Yardım", href: "/dashboard/help" },

@@ -70,7 +70,9 @@ const SectorsManagement = lazyRetry(() => import("./pages/admin/SectorsManagemen
 const TrainingTypesManagement = lazyRetry(() => import("./pages/admin/TrainingTypesManagement"));
 const Topic4PacksManagement = lazyRetry(() => import("./pages/admin/Topic4PacksManagement"));
 const FaceToFaceSessionsManagement = lazyRetry(() => import("./pages/admin/FaceToFaceSessionsManagement"));
+const SessionAttendance = lazyRetry(() => import("./pages/admin/SessionAttendance"));
 const FaqManagement = lazyRetry(() => import("./pages/admin/FaqManagement"));
+const MyFaceToFaceSessions = lazyRetry(() => import("./pages/dashboard/MyFaceToFaceSessions"));
 const CourseTemplateRules = lazyRetry(() => import("./pages/admin/CourseTemplateRules"));
 const CompanyTopic4Assignment = lazyRetry(() => import("./pages/admin/CompanyTopic4Assignment"));
 const RegulationInfo = lazyRetry(() => import("./pages/RegulationInfo"));
@@ -278,6 +280,14 @@ const App = () => (
               }
             />
             <Route
+              path="/admin/attendance/:sessionId"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <SessionAttendance />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/faq"
               element={
                 <ProtectedRoute requireAdmin>
@@ -382,6 +392,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Help />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/face-to-face"
+              element={
+                <ProtectedRoute>
+                  <MyFaceToFaceSessions />
                 </ProtectedRoute>
               }
             />
