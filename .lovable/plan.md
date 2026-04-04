@@ -894,11 +894,13 @@ destek_elemani → Destek Elemanı / Çalışan Temsilcisi Eğitimi
 - ✅ Otomatik recurrence_rules kaydı oluşturma (tamamlama sonrası)
 - ✅ CourseLearning sayfası useCompletionEngine ile entegre edildi
 
-### Faz 6: Raporlama ve Belge (6. Sprint)
-- Yeni rapor türleri
-- Uyumluluk durum raporu
-- Belge şablonları ve üretimi
-- Dışa aktarma
+### Faz 6: Raporlama ve Belge (6. Sprint) ✅ TAMAMLANDI
+- ✅ Uyumluluk durum raporu (/admin/compliance-report) — firma bazlı kapsam, tamamlanma, vadesi geçmiş analizi
+- ✅ Tekrar eğitim vadesi raporu (/admin/recurrence-report) — yaklaşan/geçmiş vade takibi
+- ✅ Yüz yüze katılım raporu (/admin/f2f-attendance-report) — oturum bazlı katılım istatistikleri
+- ✅ Belge üretim modülü (/admin/documents) — katılım tutanağı, faaliyet raporu PDF üretimi
+- ✅ Tüm raporlar PDF ve Excel dışa aktarma desteği
+- ✅ Admin navigasyonuna Raporlama grubuna 4 yeni menü eklendi
 
 ### Faz 7: UI/UX Güncellemeleri (7. Sprint)
 - Ana sayfa yeniden tasarım
