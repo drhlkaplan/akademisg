@@ -17,6 +17,7 @@ import {
 } from "./ScormProgressService";
 import { parseManifest, PRIORITY_ENTRY_FILES } from "./ScormManifestParser";
 import { ScormTopBar, ScormBottomBar } from "./ScormControls";
+import { ScormDebugPanel } from "./ScormDebugPanel";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
