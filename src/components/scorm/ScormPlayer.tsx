@@ -467,8 +467,8 @@ export function ScormPlayer({
           src={iframeSrc}
           className="flex-1 w-full border-0 bg-white"
           style={{ minHeight: "500px" }}
-          allow="fullscreen"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          allow="fullscreen; autoplay"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation allow-modals allow-downloads allow-presentation"
           title="SCORM Eğitim İçeriği"
           onLoad={handleIframeLoad}
         />
