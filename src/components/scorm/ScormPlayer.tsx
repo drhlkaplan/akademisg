@@ -205,6 +205,9 @@ export function ScormPlayer({
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [showControls, setShowControls] = useState(true);
   const [effectiveVersion, setEffectiveVersion] = useState<string | undefined>(scormVersion);
+  const [progressPercent, setProgressPercent] = useState(0);
+  const [showDebug, setShowDebug] = useState(false);
+  const lastCmiDataRef = useRef<ScormEventData | null>(null);
 
   // ─── Session timer ───────────────────────────────────────────────────────
 
