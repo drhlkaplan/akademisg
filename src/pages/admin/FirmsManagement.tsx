@@ -680,6 +680,13 @@ export default function FirmsManagement() {
                               <Users className="mr-2 h-4 w-4" />
                               Çalışanlar
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              setCourseAssignFirm(firm);
+                              setCourseAssignOpen(true);
+                            }}>
+                              <BookOpen className="mr-2 h-4 w-4" />
+                              Kurs Ata
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive"
