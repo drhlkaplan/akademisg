@@ -1053,6 +1053,14 @@ export default function FirmsManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Course Assign Dialog for Firm */}
+      <CourseAssignDialog
+        open={courseAssignOpen}
+        onOpenChange={setCourseAssignOpen}
+        firmId={courseAssignFirm?.id}
+        targetLabel={courseAssignFirm?.name || "Firma"}
+      />
     </DashboardLayout>
   );
 }
