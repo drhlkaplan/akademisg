@@ -128,18 +128,20 @@ export function LessonContent({
         const pkg = scormPackages[lesson.scorm_package_id];
         if (pkg) {
           return (
-            <ScormPlayer
-              key={lesson.id}
-              packageUrl={pkg.package_url}
-              entryPoint={pkg.entry_point || "index.html"}
-              enrollmentId={enrollmentId}
-              scormPackageId={pkg.id}
-              lessonId={lesson.id}
-              userId={userId}
-              scormVersion={pkg.scorm_version || "1.2"}
-              onComplete={onScormComplete}
-              {...scormProps}
-            />
+            <div className="h-full w-full">
+              <ScormPlayer
+                key={lesson.id}
+                packageUrl={pkg.package_url}
+                entryPoint={pkg.entry_point || "index.html"}
+                enrollmentId={enrollmentId}
+                scormPackageId={pkg.id}
+                lessonId={lesson.id}
+                userId={userId}
+                scormVersion={pkg.scorm_version || "1.2"}
+                onComplete={onScormComplete}
+                {...scormProps}
+              />
+            </div>
           );
         }
       }
