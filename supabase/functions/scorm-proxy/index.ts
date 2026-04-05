@@ -499,6 +499,7 @@ Deno.serve(async (req) => {
   // ═══════════════════════════════════════════════════════════════════════════
   if (req.method === "GET") {
     const tokenInfo = extractPathToken(reqUrl.pathname) || extractQueryToken(reqUrl);
+    if (tokenInfo) console.log("[SUB-RESOURCE] Path:", tokenInfo.subPath);
 
     if (tokenInfo) {
       const tokenPayload = await verifySessionToken(tokenInfo.token, serviceRoleKey);
