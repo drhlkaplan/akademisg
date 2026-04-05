@@ -120,6 +120,7 @@ interface ScormBottomBarProps {
 
 export function ScormBottomBar({
   lessonStatus,
+  progressPercent,
   visible,
   isFullscreen,
   hasPrevious,
@@ -128,7 +129,15 @@ export function ScormBottomBar({
   onNext,
   onReload,
   onToggleFullscreen,
+  onToggleDebug,
 }: ScormBottomBarProps) {
+  const computedProgress = progressPercent != null && progressPercent > 0
+    ? progressPercent
+    : lessonStatus === "completed" || lessonStatus === "passed"
+      ? 100
+      : lessonStatus === "incomplete"
+        ? 50
+        : 0;
   return (
     <div
       className={cn(
