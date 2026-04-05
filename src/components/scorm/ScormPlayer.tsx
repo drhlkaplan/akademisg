@@ -239,16 +239,6 @@ export function ScormPlayer({
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // ─── Auto-save every 30 seconds ─────────────────────────────────────────
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (lastCmiDataRef.current) {
-        handlePersist(lastCmiDataRef.current, "AutoSave");
-      }
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [handlePersist]);
   useEffect(() => {
     resetControlsTimer();
     return () => {
