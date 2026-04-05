@@ -226,7 +226,29 @@ export function ScormPlayer({
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 4000);
   }, []);
+  // ─── Debug toggle (Ctrl+Shift+D) ─────────────────────────────────────────
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === "D") {
+        e.preventDefault();
+        setShowDebug((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  // ─── Auto-save every 30 seconds ─────────────────────────────────────────
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (lastCmiDataRef.current) {
+        handlePersist(lastCmiDataRef.current, "AutoSave");
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [handlePersist]);
   useEffect(() => {
     resetControlsTimer();
     return () => {
