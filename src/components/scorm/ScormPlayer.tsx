@@ -272,12 +272,32 @@ export function ScormPlayer({
     [enrollmentId, lessonId, scormPackageId, onComplete, userId, sessionSeconds, courseTitle, lessonTitle],
   );
 
+  // ─── Auto-save every 30 seconds ─────────────────────────────────────────
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (lastCmiDataRef.current) {
+        handlePersist(lastCmiDataRef.current, "AutoSave");
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [handlePersist]);
+
   // ─── Listen for postMessage events ───────────────────────────────────────
 
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (!event.data || event.data.type !== "scorm_api_event") return;
       const { method, data } = event.data;
+
+      // Store latest CMI data for auto-save
+      lastCmiDataRef.current = data;
+
+      // Update progress from progress_measure
+      if (data.progress_measure) {
+        const pm = parseFloat(data.progress_measure);
+        if (!isNaN(pm)) setProgressPercent(Math.round(pm * 100));
+      }
 
       if (["LMSCommit", "Commit"].includes(method)) {
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
