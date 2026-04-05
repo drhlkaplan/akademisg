@@ -492,4 +492,4 @@ export const ScormPlayer = React.forwardRef<HTMLDivElement, ScormPlayerProps>(fu
       />
     </div>
   );
-}
+});
