@@ -60,17 +60,9 @@ export function LessonTabs({ lesson, courseTitle, category, dangerClass }: Lesso
   if (!lesson) return null;
 
   return (
-    <div className="border-t border-border bg-card">
-      <Tabs defaultValue="ai-tutor" className="w-full">
+    <div className="bg-card">
+      <Tabs defaultValue="notes" className="w-full">
         <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent h-auto p-0">
-          <TabsTrigger
-            value="ai-tutor"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-4 py-3 gap-2"
-          >
-            <Bot className="h-4 w-4" />
-            AI Tutor
-            <Badge variant="warning" className="text-[10px] px-1.5 py-0">YENİ</Badge>
-          </TabsTrigger>
           <TabsTrigger
             value="notes"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-4 py-3 gap-2"
@@ -86,6 +78,14 @@ export function LessonTabs({ lesson, courseTitle, category, dangerClass }: Lesso
             Tartışma
           </TabsTrigger>
           <TabsTrigger
+            value="ai-tutor"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-4 py-3 gap-2"
+          >
+            <Bot className="h-4 w-4" />
+            AI Tutor
+            <Badge variant="warning" className="text-[10px] px-1.5 py-0">YENİ</Badge>
+          </TabsTrigger>
+          <TabsTrigger
             value="help"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-4 py-3 gap-2"
           >
@@ -95,17 +95,7 @@ export function LessonTabs({ lesson, courseTitle, category, dangerClass }: Lesso
         </TabsList>
 
         <div className="p-4">
-          <TabsContent value="ai-tutor" className="mt-0">
-            <AiTutorChat
-              lesson={lesson}
-              courseTitle={courseTitle}
-              category={category}
-              dangerClass={dangerClass}
-            />
-          </TabsContent>
-
           <TabsContent value="notes" className="mt-0">
-            {/* AI Summary */}
             <div className="mb-4">
               <Button
                 variant="outline"
@@ -157,6 +147,15 @@ export function LessonTabs({ lesson, courseTitle, category, dangerClass }: Lesso
               <MessageSquare className="h-10 w-10 mx-auto mb-2 opacity-50" />
               <p>Tartışma alanı yakında aktif olacaktır.</p>
             </div>
+          </TabsContent>
+
+          <TabsContent value="ai-tutor" className="mt-0">
+            <AiTutorChat
+              lesson={lesson}
+              courseTitle={courseTitle}
+              category={category}
+              dangerClass={dangerClass}
+            />
           </TabsContent>
 
           <TabsContent value="help" className="mt-0">

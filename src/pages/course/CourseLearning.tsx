@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LessonSidebar, type LessonItem, type LessonProgressItem } from "@/components/course/LessonSidebar";
 import { LessonContent } from "@/components/course/LessonContent";
-import { LessonTabs } from "@/components/course/LessonTabs";
+import { LessonTabsDrawer } from "@/components/course/LessonTabsDrawer";
 import { Badge } from "@/components/ui/badge-custom";
 import { Button } from "@/components/ui/button";
 import {
@@ -311,7 +311,7 @@ export default function CourseLearning() {
         </div>
 
         <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
-          <div className="flex-1 min-h-0 overflow-auto">
+          <div className="flex-1 min-h-0">
             <LessonContent
               lesson={activeLesson}
               scormPackages={scormPackages}
@@ -326,7 +326,7 @@ export default function CourseLearning() {
               enforcement={enforcement}
             />
           </div>
-          <LessonTabs
+          <LessonTabsDrawer
             lesson={activeLesson}
             courseTitle={course.title}
             category={course.category?.name}
