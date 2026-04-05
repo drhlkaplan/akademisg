@@ -474,8 +474,12 @@ export function ScormPlayer({
         />
       )}
 
+      {/* Debug Panel */}
+      <ScormDebugPanel visible={showDebug} onClose={() => setShowDebug(false)} />
+
       <ScormBottomBar
         lessonStatus={lessonStatus}
+        progressPercent={progressPercent}
         visible={showControls}
         isFullscreen={isFullscreen}
         hasPrevious={hasPrevious}
@@ -484,6 +488,7 @@ export function ScormPlayer({
         onNext={onNext}
         onReload={loadContent}
         onToggleFullscreen={toggleFullscreen}
+        onToggleDebug={() => setShowDebug((prev) => !prev)}
       />
     </div>
   );
