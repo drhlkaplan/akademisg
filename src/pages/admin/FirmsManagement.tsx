@@ -86,6 +86,8 @@ export default function FirmsManagement() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [employeesDialogOpen, setEmployeesDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [courseAssignOpen, setCourseAssignOpen] = useState(false);
+  const [courseAssignFirm, setCourseAssignFirm] = useState<FirmWithEmployees | null>(null);
   const [selectedFirm, setSelectedFirm] = useState<FirmWithEmployees | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
