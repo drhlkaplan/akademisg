@@ -100,6 +100,10 @@ export default function UsersManagement() {
     tc_identity: "",
   });
   const [selectedRole, setSelectedRole] = useState<AppRole>("student");
+  const [courseAssignOpen, setCourseAssignOpen] = useState(false);
+  const [courseAssignUser, setCourseAssignUser] = useState<UserWithRoles | null>(null);
+  const [coursesViewOpen, setCoursesViewOpen] = useState(false);
+  const [coursesViewUser, setCoursesViewUser] = useState<UserWithRoles | null>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
