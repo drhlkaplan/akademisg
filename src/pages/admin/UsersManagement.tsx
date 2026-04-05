@@ -47,7 +47,11 @@ import {
   Users,
   Loader2,
   RefreshCw,
+  BookOpen,
+  Eye,
 } from "lucide-react";
+import { CourseAssignDialog } from "@/components/admin/CourseAssignDialog";
+import { UserCoursesDialog } from "@/components/admin/UserCoursesDialog";
 import type { Database } from "@/integrations/supabase/types";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
@@ -96,6 +100,10 @@ export default function UsersManagement() {
     tc_identity: "",
   });
   const [selectedRole, setSelectedRole] = useState<AppRole>("student");
+  const [courseAssignOpen, setCourseAssignOpen] = useState(false);
+  const [courseAssignUser, setCourseAssignUser] = useState<UserWithRoles | null>(null);
+  const [coursesViewOpen, setCoursesViewOpen] = useState(false);
+  const [coursesViewUser, setCoursesViewUser] = useState<UserWithRoles | null>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -447,6 +455,20 @@ export default function UsersManagement() {
                               <Shield className="mr-2 h-4 w-4" />
                               Rol Ata
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              setCourseAssignUser(user);
+                              setCourseAssignOpen(true);
+                            }}>
+                              <BookOpen className="mr-2 h-4 w-4" />
+                              Kurs Ata
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              setCoursesViewUser(user);
+                              setCoursesViewOpen(true);
+                            }}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Kurslarını Gör
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem className="text-destructive">
                               Kullanıcıyı Sil
@@ -583,6 +605,24 @@ export default function UsersManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Course Assign Dialog */}
+      <CourseAssignDialog
+        open={courseAssignOpen}
+        onOpenChange={setCourseAssignOpen}
+        userIds={courseAssignUser ? [courseAssignUser.user_id] : []}
+        targetLabel={courseAssignUser ? `${courseAssignUser.first_name} ${courseAssignUser.last_name}` : ""}
+      />
+
+      {/* User Courses Dialog */}
+      {coursesViewUser && (
+        <UserCoursesDialog
+          open={coursesViewOpen}
+          onOpenChange={setCoursesViewOpen}
+          userId={coursesViewUser.user_id}
+          userName={`${coursesViewUser.first_name} ${coursesViewUser.last_name}`}
+        />
+      )}
     </DashboardLayout>
   );
 }

@@ -66,8 +66,10 @@ import {
   Mail,
   MapPin,
   Palette,
+  BookOpen,
 } from "lucide-react";
 import { FileUploadField } from "@/components/admin/FileUploadField";
+import { CourseAssignDialog } from "@/components/admin/CourseAssignDialog";
 import type { Database } from "@/integrations/supabase/types";
 
 type Firm = Database["public"]["Tables"]["firms"]["Row"];
@@ -84,6 +86,8 @@ export default function FirmsManagement() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [employeesDialogOpen, setEmployeesDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [courseAssignOpen, setCourseAssignOpen] = useState(false);
+  const [courseAssignFirm, setCourseAssignFirm] = useState<FirmWithEmployees | null>(null);
   const [selectedFirm, setSelectedFirm] = useState<FirmWithEmployees | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
@@ -676,6 +680,13 @@ export default function FirmsManagement() {
                               <Users className="mr-2 h-4 w-4" />
                               Çalışanlar
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              setCourseAssignFirm(firm);
+                              setCourseAssignOpen(true);
+                            }}>
+                              <BookOpen className="mr-2 h-4 w-4" />
+                              Kurs Ata
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive"
@@ -1042,6 +1053,14 @@ export default function FirmsManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Course Assign Dialog for Firm */}
+      <CourseAssignDialog
+        open={courseAssignOpen}
+        onOpenChange={setCourseAssignOpen}
+        firmId={courseAssignFirm?.id}
+        targetLabel={courseAssignFirm?.name || "Firma"}
+      />
     </DashboardLayout>
   );
 }
