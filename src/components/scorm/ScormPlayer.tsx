@@ -5,7 +5,7 @@
  * No srcdoc, no document.write, no Blob URLs.
  */
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -174,7 +174,7 @@ async function resolveEntryFile(
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function ScormPlayer({
+export const ScormPlayer = React.forwardRef<HTMLDivElement, ScormPlayerProps>(function ScormPlayerInner({
   packageUrl,
   entryPoint,
   enrollmentId,
@@ -189,7 +189,7 @@ export function ScormPlayer({
   courseTitle,
   hasPrevious = false,
   hasNext = false,
-}: ScormPlayerProps) {
+}: ScormPlayerProps, _ref: React.Ref<HTMLDivElement>) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
@@ -467,8 +467,8 @@ export function ScormPlayer({
           src={iframeSrc}
           className="flex-1 w-full border-0 bg-white"
           style={{ minHeight: "500px" }}
-          allow="fullscreen"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          allow="fullscreen; autoplay"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation allow-modals allow-downloads allow-presentation"
           title="SCORM Eğitim İçeriği"
           onLoad={handleIframeLoad}
         />
@@ -492,4 +492,4 @@ export function ScormPlayer({
       />
     </div>
   );
-}
+});

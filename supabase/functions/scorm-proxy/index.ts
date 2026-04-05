@@ -417,8 +417,10 @@ Deno.serve(async (req) => {
   if (req.method === "GET") {
     const serveInfo = extractServeInfo(reqUrl.pathname);
     if (serveInfo) {
+      console.log("[SERVE] Entry path:", serveInfo.entryPath);
       const tokenPayload = await verifySessionToken(serveInfo.token, serviceRoleKey);
       if (!tokenPayload) {
+        console.error("[SERVE] Token verification failed");
         return new Response("<html><body><h1>Session expired</h1></body></html>", {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
@@ -427,6 +429,7 @@ Deno.serve(async (req) => {
 
       const adminClient = createClient(supabaseUrl, serviceRoleKey);
       const storagePath = `${tokenPayload.folderPath}/${serveInfo.entryPath}`;
+      console.log("[SERVE] Storage path:", storagePath);
 
       // Download HTML from storage
       const { data: fileData, error: dlError } = await adminClient.storage
@@ -434,11 +437,14 @@ Deno.serve(async (req) => {
         .download(storagePath);
 
       if (dlError || !fileData) {
-        return new Response("<html><body><h1>File not found</h1></body></html>", {
+        console.error("[SERVE] Download error:", dlError?.message || "No data", "Path:", storagePath);
+        return new Response(`<html><body><h1>File not found</h1><p>Path: ${storagePath}</p></body></html>`, {
           status: 404,
           headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
         });
       }
+
+      console.log("[SERVE] File downloaded, size:", fileData.size);
 
       const rawBytes = await fileData.arrayBuffer();
       let html = new TextDecoder("utf-8").decode(rawBytes);
@@ -493,6 +499,7 @@ Deno.serve(async (req) => {
   // ═══════════════════════════════════════════════════════════════════════════
   if (req.method === "GET") {
     const tokenInfo = extractPathToken(reqUrl.pathname) || extractQueryToken(reqUrl);
+    if (tokenInfo) console.log("[SUB-RESOURCE] Path:", tokenInfo.subPath);
 
     if (tokenInfo) {
       const tokenPayload = await verifySessionToken(tokenInfo.token, serviceRoleKey);
