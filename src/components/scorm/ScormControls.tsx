@@ -106,6 +106,7 @@ export function ScormTopBar({
 
 interface ScormBottomBarProps {
   lessonStatus: string;
+  progressPercent?: number;
   visible: boolean;
   isFullscreen: boolean;
   hasPrevious: boolean;
@@ -114,6 +115,7 @@ interface ScormBottomBarProps {
   onNext?: () => void;
   onReload: () => void;
   onToggleFullscreen: () => void;
+  onToggleDebug?: () => void;
 }
 
 export function ScormBottomBar({
