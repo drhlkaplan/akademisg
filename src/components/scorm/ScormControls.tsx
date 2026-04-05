@@ -194,6 +194,17 @@ export function ScormBottomBar({
           </Button>
         </div>
         <div className="flex items-center gap-1">
+          {onToggleDebug && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleDebug}
+              className="h-9 w-9 text-white/50 hover:text-emerald-400 hover:bg-white/10"
+              title="Debug Paneli (Ctrl+Shift+D)"
+            >
+              <Bug className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
