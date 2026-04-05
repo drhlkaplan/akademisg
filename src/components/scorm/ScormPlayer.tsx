@@ -492,4 +492,4 @@ export function ScormPlayer({
       />
     </div>
   );
-});
+}
