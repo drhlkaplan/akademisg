@@ -5,7 +5,7 @@
  * No srcdoc, no document.write, no Blob URLs.
  */
 
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -174,7 +174,7 @@ async function resolveEntryFile(
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export const ScormPlayer = React.forwardRef<HTMLDivElement, ScormPlayerProps>(function ScormPlayerInner({
+export function ScormPlayer({
   packageUrl,
   entryPoint,
   enrollmentId,
@@ -189,7 +189,7 @@ export const ScormPlayer = React.forwardRef<HTMLDivElement, ScormPlayerProps>(fu
   courseTitle,
   hasPrevious = false,
   hasNext = false,
-}: ScormPlayerProps, _ref: React.Ref<HTMLDivElement>) {
+}: ScormPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
@@ -492,4 +492,4 @@ export const ScormPlayer = React.forwardRef<HTMLDivElement, ScormPlayerProps>(fu
       />
     </div>
   );
-});
+}
