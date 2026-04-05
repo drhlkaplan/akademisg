@@ -174,7 +174,7 @@ async function resolveEntryFile(
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export const ScormPlayer = React.forwardRef<HTMLDivElement, ScormPlayerProps>(function ScormPlayer({
+export const ScormPlayer = React.forwardRef<HTMLDivElement, ScormPlayerProps>(function ScormPlayerInner({
   packageUrl,
   entryPoint,
   enrollmentId,
