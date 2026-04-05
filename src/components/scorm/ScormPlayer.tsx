@@ -174,7 +174,7 @@ async function resolveEntryFile(
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export const ScormPlayer = React.forwardRef<HTMLDivElement, ScormPlayerProps>(function ScormPlayerInner({
+export function ScormPlayer({
   packageUrl,
   entryPoint,
   enrollmentId,
@@ -189,7 +189,7 @@ export const ScormPlayer = React.forwardRef<HTMLDivElement, ScormPlayerProps>(fu
   courseTitle,
   hasPrevious = false,
   hasNext = false,
-}: ScormPlayerProps, _ref: React.Ref<HTMLDivElement>) {
+}: ScormPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
