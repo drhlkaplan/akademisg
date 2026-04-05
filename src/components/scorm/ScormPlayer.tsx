@@ -17,6 +17,7 @@ import {
 } from "./ScormProgressService";
 import { parseManifest, PRIORITY_ENTRY_FILES } from "./ScormManifestParser";
 import { ScormTopBar, ScormBottomBar } from "./ScormControls";
+import { ScormDebugPanel } from "./ScormDebugPanel";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -204,6 +205,9 @@ export function ScormPlayer({
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [showControls, setShowControls] = useState(true);
   const [effectiveVersion, setEffectiveVersion] = useState<string | undefined>(scormVersion);
+  const [progressPercent, setProgressPercent] = useState(0);
+  const [showDebug, setShowDebug] = useState(false);
+  const lastCmiDataRef = useRef<ScormEventData | null>(null);
 
   // ─── Session timer ───────────────────────────────────────────────────────
 
@@ -221,6 +225,18 @@ export function ScormPlayer({
     setShowControls(true);
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 4000);
+  }, []);
+  // ─── Debug toggle (Ctrl+Shift+D) ─────────────────────────────────────────
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === "D") {
+        e.preventDefault();
+        setShowDebug((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, []);
 
   useEffect(() => {
@@ -256,12 +272,32 @@ export function ScormPlayer({
     [enrollmentId, lessonId, scormPackageId, onComplete, userId, sessionSeconds, courseTitle, lessonTitle],
   );
 
+  // ─── Auto-save every 30 seconds ─────────────────────────────────────────
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (lastCmiDataRef.current) {
+        handlePersist(lastCmiDataRef.current, "AutoSave");
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [handlePersist]);
+
   // ─── Listen for postMessage events ───────────────────────────────────────
 
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (!event.data || event.data.type !== "scorm_api_event") return;
       const { method, data } = event.data;
+
+      // Store latest CMI data for auto-save
+      lastCmiDataRef.current = data;
+
+      // Update progress from progress_measure
+      if (data.progress_measure) {
+        const pm = parseFloat(data.progress_measure);
+        if (!isNaN(pm)) setProgressPercent(Math.round(pm * 100));
+      }
 
       if (["LMSCommit", "Commit"].includes(method)) {
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -438,8 +474,12 @@ export function ScormPlayer({
         />
       )}
 
+      {/* Debug Panel */}
+      <ScormDebugPanel visible={showDebug} onClose={() => setShowDebug(false)} />
+
       <ScormBottomBar
         lessonStatus={lessonStatus}
+        progressPercent={progressPercent}
         visible={showControls}
         isFullscreen={isFullscreen}
         hasPrevious={hasPrevious}
@@ -448,6 +488,7 @@ export function ScormPlayer({
         onNext={onNext}
         onReload={loadContent}
         onToggleFullscreen={toggleFullscreen}
+        onToggleDebug={() => setShowDebug((prev) => !prev)}
       />
     </div>
   );

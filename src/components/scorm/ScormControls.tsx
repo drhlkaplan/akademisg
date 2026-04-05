@@ -11,6 +11,7 @@ import {
   SkipForward,
   Clock,
   Award,
+  Bug,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -105,6 +106,7 @@ export function ScormTopBar({
 
 interface ScormBottomBarProps {
   lessonStatus: string;
+  progressPercent?: number;
   visible: boolean;
   isFullscreen: boolean;
   hasPrevious: boolean;
@@ -113,10 +115,12 @@ interface ScormBottomBarProps {
   onNext?: () => void;
   onReload: () => void;
   onToggleFullscreen: () => void;
+  onToggleDebug?: () => void;
 }
 
 export function ScormBottomBar({
   lessonStatus,
+  progressPercent,
   visible,
   isFullscreen,
   hasPrevious,
@@ -125,7 +129,15 @@ export function ScormBottomBar({
   onNext,
   onReload,
   onToggleFullscreen,
+  onToggleDebug,
 }: ScormBottomBarProps) {
+  const computedProgress = progressPercent != null && progressPercent > 0
+    ? progressPercent
+    : lessonStatus === "completed" || lessonStatus === "passed"
+      ? 100
+      : lessonStatus === "incomplete"
+        ? 50
+        : 0;
   return (
     <div
       className={cn(
@@ -141,9 +153,7 @@ export function ScormBottomBar({
         <div className="h-1 bg-white/10 rounded-full overflow-hidden group cursor-pointer">
           <div
             className="h-full bg-[hsl(var(--accent))] rounded-full transition-all duration-300 group-hover:h-1.5 relative"
-            style={{
-              width: `${lessonStatus === "completed" || lessonStatus === "passed" ? 100 : lessonStatus === "incomplete" ? 50 : 0}%`,
-            }}
+            style={{ width: `${computedProgress}%` }}
           >
             <div className="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-[hsl(var(--accent))] opacity-0 group-hover:opacity-100 transition-opacity shadow-lg" />
           </div>
@@ -184,6 +194,17 @@ export function ScormBottomBar({
           </Button>
         </div>
         <div className="flex items-center gap-1">
+          {onToggleDebug && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleDebug}
+              className="h-9 w-9 text-white/50 hover:text-emerald-400 hover:bg-white/10"
+              title="Debug Paneli (Ctrl+Shift+D)"
+            >
+              <Bug className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
