@@ -153,9 +153,7 @@ export function ScormBottomBar({
         <div className="h-1 bg-white/10 rounded-full overflow-hidden group cursor-pointer">
           <div
             className="h-full bg-[hsl(var(--accent))] rounded-full transition-all duration-300 group-hover:h-1.5 relative"
-            style={{
-              width: `${lessonStatus === "completed" || lessonStatus === "passed" ? 100 : lessonStatus === "incomplete" ? 50 : 0}%`,
-            }}
+            style={{ width: `${computedProgress}%` }}
           >
             <div className="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-[hsl(var(--accent))] opacity-0 group-hover:opacity-100 transition-opacity shadow-lg" />
           </div>
