@@ -605,6 +605,24 @@ export default function UsersManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Course Assign Dialog */}
+      <CourseAssignDialog
+        open={courseAssignOpen}
+        onOpenChange={setCourseAssignOpen}
+        userIds={courseAssignUser ? [courseAssignUser.user_id] : []}
+        targetLabel={courseAssignUser ? `${courseAssignUser.first_name} ${courseAssignUser.last_name}` : ""}
+      />
+
+      {/* User Courses Dialog */}
+      {coursesViewUser && (
+        <UserCoursesDialog
+          open={coursesViewOpen}
+          onOpenChange={setCoursesViewOpen}
+          userId={coursesViewUser.user_id}
+          userName={`${coursesViewUser.first_name} ${coursesViewUser.last_name}`}
+        />
+      )}
     </DashboardLayout>
   );
 }
