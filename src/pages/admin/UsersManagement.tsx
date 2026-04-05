@@ -455,6 +455,20 @@ export default function UsersManagement() {
                               <Shield className="mr-2 h-4 w-4" />
                               Rol Ata
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              setCourseAssignUser(user);
+                              setCourseAssignOpen(true);
+                            }}>
+                              <BookOpen className="mr-2 h-4 w-4" />
+                              Kurs Ata
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              setCoursesViewUser(user);
+                              setCoursesViewOpen(true);
+                            }}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Kurslarını Gör
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem className="text-destructive">
                               Kullanıcıyı Sil
