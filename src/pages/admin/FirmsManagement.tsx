@@ -70,6 +70,7 @@ import {
 } from "lucide-react";
 import { FileUploadField } from "@/components/admin/FileUploadField";
 import { CourseAssignDialog } from "@/components/admin/CourseAssignDialog";
+import type { Database } from "@/integrations/supabase/types";
 
 type Firm = Database["public"]["Tables"]["firms"]["Row"];
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
