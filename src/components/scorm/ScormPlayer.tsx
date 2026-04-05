@@ -189,7 +189,7 @@ export const ScormPlayer = React.forwardRef<HTMLDivElement, ScormPlayerProps>(fu
   courseTitle,
   hasPrevious = false,
   hasNext = false,
-}: ScormPlayerProps) {
+}: ScormPlayerProps, _ref: React.Ref<HTMLDivElement>) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
