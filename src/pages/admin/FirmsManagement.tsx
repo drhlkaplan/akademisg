@@ -66,9 +66,10 @@ import {
   Mail,
   MapPin,
   Palette,
+  BookOpen,
 } from "lucide-react";
 import { FileUploadField } from "@/components/admin/FileUploadField";
-import type { Database } from "@/integrations/supabase/types";
+import { CourseAssignDialog } from "@/components/admin/CourseAssignDialog";
 
 type Firm = Database["public"]["Tables"]["firms"]["Row"];
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
