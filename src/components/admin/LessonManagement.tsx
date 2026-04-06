@@ -585,6 +585,8 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     if (lesson.type === "exam") {
       setExamMode(lesson.scorm_package_id ? "scorm" : "platform");
     }
+    // Find linked f2f session
+    const linkedSession = f2fSessions?.find((s: any) => s.lesson_id === lesson.id);
     setFormData({
       title: lesson.title,
       type: lesson.type,
@@ -596,7 +598,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       exam_id: lesson.exam_id || "",
       scorm_package_id: lesson.scorm_package_id || "",
       min_live_duration_minutes: (lesson as any).min_live_duration_minutes || 0,
-      f2f_session_id: "",
+      f2f_session_id: linkedSession?.id || "",
     });
     setDialogOpen(true);
   };
