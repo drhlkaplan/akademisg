@@ -56,19 +56,41 @@ export function SessionDetailDialog({ open, onOpenChange, sessionId }: SessionDe
     enabled: !!sessionId && open,
   });
 
-  const { data: attendance = [] } = useQuery({
+  const { data: attendanceRaw = [] } = useQuery({
     queryKey: ["f2f-session-attendance", sessionId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("face_to_face_attendance")
-        .select("*, profiles:user_id(first_name, last_name, tc_identity)")
+        .select("*")
         .eq("session_id", sessionId!);
       if (error) throw error;
       return data || [];
     },
     enabled: !!sessionId && open,
-    refetchInterval: open ? 10000 : false, // Live refresh every 10s
+    refetchInterval: open ? 10000 : false,
   });
+
+  // Fetch profiles separately to avoid FK join issues
+  const attUserIds = attendanceRaw.map((a: any) => a.user_id);
+  const { data: attProfiles = [] } = useQuery({
+    queryKey: ["f2f-att-profiles", attUserIds.sort().join(",")],
+    queryFn: async () => {
+      if (attUserIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("user_id, first_name, last_name, tc_identity")
+        .in("user_id", attUserIds);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: attUserIds.length > 0 && open,
+  });
+
+  const profileMap = new Map(attProfiles.map((p: any) => [p.user_id, p]));
+  const attendance = attendanceRaw.map((a: any) => ({
+    ...a,
+    profiles: profileMap.get(a.user_id) || null,
+  }));
 
   if (!session) return null;
 
