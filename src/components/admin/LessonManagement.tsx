@@ -272,7 +272,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
   // Create lesson
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const { error } = await supabase.from("lessons").insert({
+      const { data: newLesson, error } = await supabase.from("lessons").insert({
         course_id: courseId,
         title: data.title,
         type: data.type,
@@ -283,11 +283,16 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
         exam_id: data.exam_id || null,
         scorm_package_id: data.scorm_package_id || null,
         min_live_duration_minutes: data.type === "live" ? data.min_live_duration_minutes : 0,
-      } as any);
+      } as any).select().single();
       if (error) throw error;
+      // Link f2f session to this lesson
+      if (data.type === "face_to_face" && data.f2f_session_id && newLesson) {
+        await supabase.from("face_to_face_sessions").update({ lesson_id: newLesson.id }).eq("id", data.f2f_session_id);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-lessons", courseId] });
+      queryClient.invalidateQueries({ queryKey: ["course-f2f-sessions", courseId] });
       toast({ title: "Başarılı", description: "Ders eklendi." });
       handleCloseDialog();
     },
