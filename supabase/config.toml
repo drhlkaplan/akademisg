@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.lookup-tc]
 verify_jwt = false
+
+[functions.attend-session]
+verify_jwt = false
