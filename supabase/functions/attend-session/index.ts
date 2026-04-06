@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Time-based validation
+    // Time-based validation (skip if session is already marked in_progress by admin)
     const now = new Date();
     const sessionDate = session.session_date; // "YYYY-MM-DD"
     const startTimeParts = session.start_time.split(":");
@@ -87,22 +87,22 @@ Deno.serve(async (req) => {
     const sessionStart = new Date(`${sessionDate}T${startTimeParts[0].padStart(2, "0")}:${startTimeParts[1].padStart(2, "0")}:00`);
     const sessionEnd = new Date(`${sessionDate}T${endTimeParts[0].padStart(2, "0")}:${endTimeParts[1].padStart(2, "0")}:00`);
 
-    // Allow 15 min early entry
-    const earlyEntry = new Date(sessionStart.getTime() - 15 * 60 * 1000);
-
-    if (now < earlyEntry) {
-      return new Response(JSON.stringify({
-        error: "Oturum henüz başlamadı",
-        session_start: sessionStart.toISOString(),
-      }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (now > sessionEnd) {
-      return new Response(JSON.stringify({ error: "Oturum sona ermiştir, yeni katılım kabul edilmiyor" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // If session is "scheduled", enforce time window; if "in_progress", admin already started it
+    if (session.status === "scheduled") {
+      const earlyEntry = new Date(sessionStart.getTime() - 15 * 60 * 1000);
+      if (now < earlyEntry) {
+        return new Response(JSON.stringify({
+          error: "Oturum henüz başlamadı",
+          session_start: sessionStart.toISOString(),
+        }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (now > sessionEnd) {
+        return new Response(JSON.stringify({ error: "Oturum sona ermiştir, yeni katılım kabul edilmiyor" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Check if user is enrolled in the course
