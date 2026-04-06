@@ -545,6 +545,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       exam_id: "",
       scorm_package_id: "",
       min_live_duration_minutes: 0,
+      f2f_session_id: "",
     });
     setDialogOpen(true);
   };
