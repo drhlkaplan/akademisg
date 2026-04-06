@@ -105,10 +105,17 @@ export default function DocumentGeneration() {
         if (firmSessions.length === 0) throw new Error("Bu firmaya ait tamamlanmış oturum bulunamadı");
 
         const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+        doc.addFileToVFS("Roboto-Regular.ttf", ROBOTO_REGULAR_BASE64);
+        doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+        doc.addFileToVFS("Roboto-Bold.ttf", ROBOTO_BOLD_BASE64);
+        doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
+        doc.setFont("Roboto");
         doc.setFontSize(16);
         doc.setTextColor(26, 39, 68);
+        doc.setFont("Roboto", "bold");
         doc.text(`${firmName} - Yüz Yüze Katılım Tutanağı`, 14, 18);
         doc.setFontSize(9);
+        doc.setFont("Roboto", "normal");
         doc.setTextColor(100, 100, 100);
         doc.text(`Oluşturulma: ${new Date().toLocaleDateString("tr-TR")}`, 14, 25);
 
