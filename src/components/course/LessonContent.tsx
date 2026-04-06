@@ -217,6 +217,16 @@ export function LessonContent({
       return <EmptyState icon={FileText} title="İçerik Henüz Yüklenmemiş" description="Bu ders için içerik henüz yüklenmemiştir." />;
     }
 
+    case "face_to_face": {
+      return (
+        <FaceToFaceLesson
+          lessonId={lesson.id}
+          enrollmentId={enrollmentId}
+          onComplete={onScormComplete}
+        />
+      );
+    }
+
     default:
       return <EmptyState icon={BookOpen} title="Bilinmeyen Ders Tipi" description="Bu ders tipi desteklenmemektedir." />;
   }
