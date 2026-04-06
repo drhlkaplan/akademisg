@@ -321,6 +321,13 @@ export default function FaceToFaceSessionsManagement() {
                           <Button
                             variant="outline"
                             size="sm"
+                            onClick={() => setDetailSessionId(s.id)}
+                          >
+                            <QrCode className="h-4 w-4 mr-1" />QR & Detay
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => navigate(`/admin/attendance/${s.id}`)}
                           >
                             <ClipboardCheck className="h-4 w-4 mr-1" />Yoklama
