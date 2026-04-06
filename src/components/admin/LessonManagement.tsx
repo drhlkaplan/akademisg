@@ -45,6 +45,7 @@ const lessonTypeLabels: Record<LessonType, string> = {
   exam: "Sınav",
   live: "Canlı Oturum",
   content: "İçerik (Video/PDF)",
+  face_to_face: "Yüz Yüze Eğitim",
 };
 
 const lessonTypeIcons: Record<LessonType, typeof BookOpen> = {
@@ -52,6 +53,7 @@ const lessonTypeIcons: Record<LessonType, typeof BookOpen> = {
   exam: FileQuestion,
   live: Video,
   content: FileText,
+  face_to_face: Users,
 };
 
 /** Sanitize filename/path segment for storage compatibility */
