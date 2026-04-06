@@ -1,6 +1,7 @@
 import { ScormPlayer } from "@/components/scorm/ScormPlayer";
 import { LiveSessionJoin } from "@/components/course/LiveSessionJoin";
 import { HtmlContentViewer } from "@/components/course/HtmlContentViewer";
+import { FaceToFaceLesson } from "@/components/course/FaceToFaceLesson";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
