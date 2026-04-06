@@ -201,6 +201,20 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     },
   });
 
+  // Fetch face-to-face sessions for this course
+  const { data: f2fSessions } = useQuery({
+    queryKey: ["course-f2f-sessions", courseId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("face_to_face_sessions")
+        .select("id, session_date, start_time, end_time, location, status, lesson_id, firms(name)")
+        .eq("course_id", courseId)
+        .order("session_date", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // Re-parse all SCORM manifests
   const handleReparseAll = async () => {
     if (!scormPackages || scormPackages.length === 0) return;
