@@ -320,9 +320,17 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
         } as any)
         .eq("id", data.id);
       if (error) throw error;
+      // Link f2f session to this lesson
+      if (data.type === "face_to_face" && data.f2f_session_id) {
+        // First unlink any previous session pointing to this lesson
+        await supabase.from("face_to_face_sessions").update({ lesson_id: null }).eq("lesson_id", data.id);
+        // Then link the selected session
+        await supabase.from("face_to_face_sessions").update({ lesson_id: data.id }).eq("id", data.f2f_session_id);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-lessons", courseId] });
+      queryClient.invalidateQueries({ queryKey: ["course-f2f-sessions", courseId] });
       toast({ title: "Başarılı", description: "Ders güncellendi." });
       handleCloseDialog();
     },
