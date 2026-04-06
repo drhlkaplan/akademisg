@@ -1,6 +1,7 @@
 import { ScormPlayer } from "@/components/scorm/ScormPlayer";
 import { LiveSessionJoin } from "@/components/course/LiveSessionJoin";
 import { HtmlContentViewer } from "@/components/course/HtmlContentViewer";
+import { FaceToFaceLesson } from "@/components/course/FaceToFaceLesson";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -214,6 +215,16 @@ export function LessonContent({
         );
       }
       return <EmptyState icon={FileText} title="İçerik Henüz Yüklenmemiş" description="Bu ders için içerik henüz yüklenmemiştir." />;
+    }
+
+    case "face_to_face": {
+      return (
+        <FaceToFaceLesson
+          lessonId={lesson.id}
+          enrollmentId={enrollmentId}
+          onComplete={onScormComplete}
+        />
+      );
     }
 
     default:
