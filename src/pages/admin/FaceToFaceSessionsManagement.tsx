@@ -45,6 +45,7 @@ const emptyForm: SessionForm = {
 export default function FaceToFaceSessionsManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<SessionForm>(emptyForm);
+  const [detailSessionId, setDetailSessionId] = useState<string | null>(null);
   const { toast } = useToast();
   const qc = useQueryClient();
   const navigate = useNavigate();
