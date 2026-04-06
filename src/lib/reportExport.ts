@@ -20,15 +20,18 @@ interface ExportOptions {
 
 export function exportToPDF({ title, headers, rows, fileName }: ExportOptions) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  setupTurkishFont(doc);
 
   // Header
   doc.setFontSize(16);
   doc.setTextColor(26, 39, 68);
+  doc.setFont("Roboto", "bold");
   doc.text(title, 14, 18);
 
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
-  doc.text(`Olusturulma Tarihi: ${new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}`, 14, 25);
+  doc.setFont("Roboto", "normal");
+  doc.text(`Oluşturulma Tarihi: ${new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}`, 14, 25);
 
   autoTable(doc, {
     startY: 30,
@@ -44,7 +47,7 @@ export function exportToPDF({ title, headers, rows, fileName }: ExportOptions) {
     bodyStyles: { fontSize: 7, textColor: [40, 40, 40] },
     alternateRowStyles: { fillColor: [245, 247, 250] },
     margin: { left: 14, right: 14 },
-    styles: { cellPadding: 3, overflow: "linebreak" },
+    styles: { cellPadding: 3, overflow: "linebreak", font: "Roboto" },
   });
 
   // Footer
@@ -53,7 +56,8 @@ export function exportToPDF({ title, headers, rows, fileName }: ExportOptions) {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(150);
-    doc.text(`ISG Akademi - Sayfa ${i}/${pageCount}`, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 8, { align: "center" });
+    doc.setFont("Roboto", "normal");
+    doc.text(`İSG Akademi - Sayfa ${i}/${pageCount}`, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 8, { align: "center" });
   }
 
   doc.save(`${fileName}.pdf`);
