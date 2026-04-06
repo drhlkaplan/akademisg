@@ -13,7 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, MapPin, Calendar, Clock, Users, ClipboardCheck, UserCog } from "lucide-react";
+import { Plus, MapPin, Calendar, Clock, Users, ClipboardCheck, UserCog, QrCode, Eye } from "lucide-react";
+import { SessionDetailDialog } from "@/components/admin/SessionDetailDialog";
 
 const statusLabels: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   scheduled: { label: "Planlandı", variant: "secondary" },
@@ -44,6 +45,7 @@ const emptyForm: SessionForm = {
 export default function FaceToFaceSessionsManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<SessionForm>(emptyForm);
+  const [detailSessionId, setDetailSessionId] = useState<string | null>(null);
   const { toast } = useToast();
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -319,6 +321,13 @@ export default function FaceToFaceSessionsManagement() {
                           <Button
                             variant="outline"
                             size="sm"
+                            onClick={() => setDetailSessionId(s.id)}
+                          >
+                            <QrCode className="h-4 w-4 mr-1" />QR & Detay
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => navigate(`/admin/attendance/${s.id}`)}
                           >
                             <ClipboardCheck className="h-4 w-4 mr-1" />Yoklama
@@ -338,6 +347,11 @@ export default function FaceToFaceSessionsManagement() {
             </Table>
           </CardContent>
         </Card>
+        <SessionDetailDialog
+          open={!!detailSessionId}
+          onOpenChange={(v) => { if (!v) setDetailSessionId(null); }}
+          sessionId={detailSessionId}
+        />
       </div>
     </DashboardLayout>
   );

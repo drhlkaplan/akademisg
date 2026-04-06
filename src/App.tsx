@@ -86,6 +86,7 @@ const FirmEmployees = lazyRetry(() => import("./pages/firm/FirmEmployees"));
 const FirmCourses = lazyRetry(() => import("./pages/firm/FirmCourses"));
 const FirmReports = lazyRetry(() => import("./pages/firm/FirmReports"));
 const FirmCertificates = lazyRetry(() => import("./pages/firm/FirmCertificates"));
+const AttendSession = lazyRetry(() => import("./pages/attend/AttendSession"));
 const NotFound = lazyRetry(() => import("./pages/NotFound"));
 const KVKK = lazyRetry(() => import("./pages/legal/KVKK"));
 const PrivacyPolicy = lazyRetry(() => import("./pages/legal/PrivacyPolicy"));
@@ -126,6 +127,7 @@ const App = () => (
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/cookies" element={<CookiePolicy />} />
             <Route path="/regulation" element={<RegulationInfo />} />
+            <Route path="/attend" element={<ProtectedRoute><AttendSession /></ProtectedRoute>} />
             
             {/* Protected Student Dashboard */}
             <Route

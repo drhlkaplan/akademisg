@@ -739,11 +739,14 @@ export type Database = {
           end_of_session_ack: boolean | null
           enrollment_id: string | null
           id: string
+          ip_address: string | null
+          join_method: string | null
           notes: string | null
           session_id: string
           status: Database["public"]["Enums"]["attendance_status_enum"] | null
           trainer_verified: boolean | null
           updated_at: string | null
+          user_agent: string | null
           user_id: string
           verification_method: string | null
         }
@@ -756,11 +759,14 @@ export type Database = {
           end_of_session_ack?: boolean | null
           enrollment_id?: string | null
           id?: string
+          ip_address?: string | null
+          join_method?: string | null
           notes?: string | null
           session_id: string
           status?: Database["public"]["Enums"]["attendance_status_enum"] | null
           trainer_verified?: boolean | null
           updated_at?: string | null
+          user_agent?: string | null
           user_id: string
           verification_method?: string | null
         }
@@ -773,11 +779,14 @@ export type Database = {
           end_of_session_ack?: boolean | null
           enrollment_id?: string | null
           id?: string
+          ip_address?: string | null
+          join_method?: string | null
           notes?: string | null
           session_id?: string
           status?: Database["public"]["Enums"]["attendance_status_enum"] | null
           trainer_verified?: boolean | null
           updated_at?: string | null
+          user_agent?: string | null
           user_id?: string
           verification_method?: string | null
         }
@@ -817,6 +826,7 @@ export type Database = {
           lesson_id: string | null
           location: string
           notes: string | null
+          qr_token: string | null
           session_date: string
           start_time: string
           status: Database["public"]["Enums"]["f2f_session_status"] | null
@@ -834,6 +844,7 @@ export type Database = {
           lesson_id?: string | null
           location: string
           notes?: string | null
+          qr_token?: string | null
           session_date: string
           start_time: string
           status?: Database["public"]["Enums"]["f2f_session_status"] | null
@@ -851,6 +862,7 @@ export type Database = {
           lesson_id?: string | null
           location?: string
           notes?: string | null
+          qr_token?: string | null
           session_date?: string
           start_time?: string
           status?: Database["public"]["Enums"]["f2f_session_status"] | null
