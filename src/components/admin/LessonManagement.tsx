@@ -849,6 +849,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
                     <SelectItem value="exam">Sınav</SelectItem>
                     <SelectItem value="live">Canlı Oturum</SelectItem>
                     <SelectItem value="content">İçerik (Video/PDF)</SelectItem>
+                    <SelectItem value="face_to_face">Yüz Yüze Eğitim</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
