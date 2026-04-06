@@ -1176,6 +1176,39 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
                 </div>
               </div>
             )}
+
+            {/* Face to face type: select existing session */}
+            {formData.type === "face_to_face" && (
+              <div className="space-y-3">
+                <Label>Yüz Yüze Eğitim Oturumu</Label>
+                {f2fSessions && f2fSessions.length > 0 ? (
+                  <Select
+                    value={formData.f2f_session_id}
+                    onValueChange={(val) => setFormData({ ...formData, f2f_session_id: val })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Oturum seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {f2fSessions.map((s: any) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.session_date} | {s.start_time?.slice(0,5)}-{s.end_time?.slice(0,5)} | {s.location}
+                          {s.firms?.name ? ` (${s.firms.name})` : ""}
+                          {s.lesson_id ? " ✓" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm text-muted-foreground p-3 border border-dashed rounded-lg text-center">
+                    Bu kursa ait yüz yüze oturum bulunamadı. Önce "Yüz Yüze Oturumlar" modülünden oturum oluşturun.
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Seçilen oturum bu derse bağlanacaktır. Öğrenciler QR kod veya ders kodu ile katılım sağlayabilir.
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={handleCloseDialog}>İptal</Button>
