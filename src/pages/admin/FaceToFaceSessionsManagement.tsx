@@ -347,6 +347,11 @@ export default function FaceToFaceSessionsManagement() {
             </Table>
           </CardContent>
         </Card>
+        <SessionDetailDialog
+          open={!!detailSessionId}
+          onOpenChange={(v) => { if (!v) setDetailSessionId(null); }}
+          sessionId={detailSessionId}
+        />
       </div>
     </DashboardLayout>
   );
