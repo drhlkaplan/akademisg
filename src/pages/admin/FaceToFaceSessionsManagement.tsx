@@ -13,7 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, MapPin, Calendar, Clock, Users, ClipboardCheck, UserCog } from "lucide-react";
+import { Plus, MapPin, Calendar, Clock, Users, ClipboardCheck, UserCog, QrCode, Eye } from "lucide-react";
+import { SessionDetailDialog } from "@/components/admin/SessionDetailDialog";
 
 const statusLabels: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   scheduled: { label: "Planlandı", variant: "secondary" },
