@@ -1,5 +1,14 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { ROBOTO_REGULAR_BASE64, ROBOTO_BOLD_BASE64 } from "./pdfFonts";
+
+function setupTurkishFont(doc: jsPDF) {
+  doc.addFileToVFS("Roboto-Regular.ttf", ROBOTO_REGULAR_BASE64);
+  doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+  doc.addFileToVFS("Roboto-Bold.ttf", ROBOTO_BOLD_BASE64);
+  doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
+  doc.setFont("Roboto");
+}
 
 const statusLabels: Record<string, string> = {
   attended: "Katıldı",
@@ -11,16 +20,17 @@ const statusLabels: Record<string, string> = {
 
 export function generateF2FAttendancePDF(session: any, attendance: any[]) {
   const doc = new jsPDF("p", "mm", "a4");
+  setupTurkishFont(doc);
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 15;
 
   // Header
   doc.setFontSize(16);
-  doc.setFont("helvetica", "bold");
+  doc.setFont("Roboto", "bold");
   doc.text("YÜZ YÜZE EĞİTİM YOKLAMA TUTANAĞI", pageWidth / 2, 20, { align: "center" });
 
   doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
+  doc.setFont("Roboto", "normal");
   doc.text("İş Sağlığı ve Güvenliği Eğitimi", pageWidth / 2, 27, { align: "center" });
 
   // Separator line
@@ -43,7 +53,7 @@ export function generateF2FAttendancePDF(session: any, attendance: any[]) {
     startY: 36,
     body: infoData,
     theme: "plain",
-    styles: { fontSize: 9, cellPadding: 2 },
+    styles: { fontSize: 9, cellPadding: 2, font: "Roboto" },
     columnStyles: {
       0: { fontStyle: "bold", cellWidth: 30 },
       1: { cellWidth: 55 },
@@ -57,7 +67,7 @@ export function generateF2FAttendancePDF(session: any, attendance: any[]) {
   const tableStartY = (doc as any).lastAutoTable?.finalY + 8 || 70;
 
   doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
+  doc.setFont("Roboto", "bold");
   doc.text("KATILIMCI LİSTESİ", margin, tableStartY);
 
   const attendanceData = attendance.map((a: any, idx: number) => {
@@ -84,7 +94,7 @@ export function generateF2FAttendancePDF(session: any, attendance: any[]) {
     head: [["#", "Ad Soyad", "TC Kimlik", "Durum", "Giriş Saati", "Yöntem", "İmza"]],
     body: attendanceData,
     theme: "grid",
-    styles: { fontSize: 8, cellPadding: 3 },
+    styles: { fontSize: 8, cellPadding: 3, font: "Roboto" },
     headStyles: { fillColor: [26, 39, 68], textColor: 255, fontStyle: "bold" },
     columnStyles: {
       0: { cellWidth: 10, halign: "center" },
@@ -103,19 +113,19 @@ export function generateF2FAttendancePDF(session: any, attendance: any[]) {
 
   if (finalY < 260) {
     doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
+    doc.setFont("Roboto", "bold");
 
     // Trainer signature
     doc.text("Eğitmen", margin + 10, finalY);
     doc.line(margin, finalY + 15, margin + 60, finalY + 15);
-    doc.setFont("helvetica", "normal");
+    doc.setFont("Roboto", "normal");
     doc.text("Ad Soyad / İmza", margin + 10, finalY + 20);
 
     // Admin signature
-    doc.setFont("helvetica", "bold");
+    doc.setFont("Roboto", "bold");
     doc.text("İşveren / Vekili", pageWidth - margin - 50, finalY);
     doc.line(pageWidth - margin - 60, finalY + 15, pageWidth - margin, finalY + 15);
-    doc.setFont("helvetica", "normal");
+    doc.setFont("Roboto", "normal");
     doc.text("Ad Soyad / İmza / Kaşe", pageWidth - margin - 50, finalY + 20);
   }
 
