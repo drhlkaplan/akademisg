@@ -151,13 +151,20 @@ export default function DocumentGeneration() {
       } else if (selectedType === "faaliyet_raporu") {
         const firmProfiles = profiles?.filter(p => p.firm_id === selectedFirm) || [];
         const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+        doc.addFileToVFS("Roboto-Regular.ttf", ROBOTO_REGULAR_BASE64);
+        doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+        doc.addFileToVFS("Roboto-Bold.ttf", ROBOTO_BOLD_BASE64);
+        doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
+        doc.setFont("Roboto");
         doc.setFontSize(16);
         doc.setTextColor(26, 39, 68);
-        doc.text(`${firmName} - Egitim Faaliyet Raporu`, 14, 18);
+        doc.setFont("Roboto", "bold");
+        doc.text(`${firmName} - Eğitim Faaliyet Raporu`, 14, 18);
         doc.setFontSize(9);
+        doc.setFont("Roboto", "normal");
         doc.setTextColor(100, 100, 100);
         doc.text(`Tarih: ${new Date().toLocaleDateString("tr-TR")}`, 14, 25);
-        doc.text(`Toplam Calisan: ${firmProfiles.length}`, 14, 32);
+        doc.text(`Toplam Çalışan: ${firmProfiles.length}`, 14, 32);
 
         const firmSessionCount = sessions?.filter(s => s.firm_id === selectedFirm).length || 0;
         const firmAttCount = attendance?.filter(a => {
@@ -167,9 +174,9 @@ export default function DocumentGeneration() {
 
         doc.setFontSize(11);
         doc.setTextColor(40, 40, 40);
-        doc.text(`Tamamlanan Oturum Sayisi: ${firmSessionCount}`, 14, 42);
-        doc.text(`Toplam Katilim: ${firmAttCount}`, 14, 50);
-        doc.text(`Imza: ____________________`, 14, 70);
+        doc.text(`Tamamlanan Oturum Sayısı: ${firmSessionCount}`, 14, 42);
+        doc.text(`Toplam Katılım: ${firmAttCount}`, 14, 50);
+        doc.text(`İmza: ____________________`, 14, 70);
         doc.text(`Tarih: ____________________`, 14, 80);
 
         doc.save(`${firmName.replace(/\s/g, "_")}_Faaliyet_Raporu.pdf`);
