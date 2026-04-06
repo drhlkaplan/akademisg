@@ -64,6 +64,7 @@ const lessonTypeIcon: Record<LessonType, typeof BookOpen> = {
   exam: FileQuestion,
   live: Video,
   content: FileText,
+  face_to_face: Video,
 };
 
 const lessonTypeLabel: Record<LessonType, string> = {
@@ -71,6 +72,7 @@ const lessonTypeLabel: Record<LessonType, string> = {
   exam: "Sınav",
   live: "Canlı",
   content: "İçerik",
+  face_to_face: "Yüz Yüze",
 };
 
 function getLessonStatus(lessonId: string, progress: LessonProgressItem[]): string {

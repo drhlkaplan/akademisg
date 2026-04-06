@@ -1,0 +1,1 @@
+ALTER TYPE public.lesson_type ADD VALUE IF NOT EXISTS 'face_to_face';

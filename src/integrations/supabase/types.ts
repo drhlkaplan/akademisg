@@ -2435,7 +2435,7 @@ export type Database = {
         | "cancelled"
       hazard_class_enum: "az_tehlikeli" | "tehlikeli" | "cok_tehlikeli"
       lesson_delivery_method: "scorm" | "bbb_live" | "face_to_face" | "hybrid"
-      lesson_type: "scorm" | "exam" | "live" | "content"
+      lesson_type: "scorm" | "exam" | "live" | "content" | "face_to_face"
       question_type: "multiple_choice" | "true_false"
       training_type_enum:
         | "ise_baslama"
@@ -2622,7 +2622,7 @@ export const Constants = {
       ],
       hazard_class_enum: ["az_tehlikeli", "tehlikeli", "cok_tehlikeli"],
       lesson_delivery_method: ["scorm", "bbb_live", "face_to_face", "hybrid"],
-      lesson_type: ["scorm", "exam", "live", "content"],
+      lesson_type: ["scorm", "exam", "live", "content", "face_to_face"],
       question_type: ["multiple_choice", "true_false"],
       training_type_enum: [
         "ise_baslama",

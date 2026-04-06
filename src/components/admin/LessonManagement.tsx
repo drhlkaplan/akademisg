@@ -26,6 +26,7 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import {
   Plus, Edit, Trash2, GripVertical, BookOpen, FileQuestion, Video,
   FileText, Loader2, Upload, ArrowLeft, Package, ExternalLink, RefreshCw,
+  Users,
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { ScormScoDetails } from "./ScormScoDetails";
@@ -45,6 +46,7 @@ const lessonTypeLabels: Record<LessonType, string> = {
   exam: "Sınav",
   live: "Canlı Oturum",
   content: "İçerik (Video/PDF)",
+  face_to_face: "Yüz Yüze Eğitim",
 };
 
 const lessonTypeIcons: Record<LessonType, typeof BookOpen> = {
@@ -52,6 +54,7 @@ const lessonTypeIcons: Record<LessonType, typeof BookOpen> = {
   exam: FileQuestion,
   live: Video,
   content: FileText,
+  face_to_face: Users,
 };
 
 /** Sanitize filename/path segment for storage compatibility */
@@ -154,6 +157,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     exam_id: "",
     scorm_package_id: "",
     min_live_duration_minutes: 0,
+    f2f_session_id: "",
   });
 
   // Fetch lessons
@@ -192,6 +196,20 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
         .from("scorm_packages")
         .select("id, package_url, entry_point, scorm_version, manifest_data")
         .eq("course_id", courseId);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch face-to-face sessions for this course
+  const { data: f2fSessions } = useQuery({
+    queryKey: ["course-f2f-sessions", courseId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("face_to_face_sessions")
+        .select("id, session_date, start_time, end_time, location, status, lesson_id, firms(name)")
+        .eq("course_id", courseId)
+        .order("session_date", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -254,7 +272,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
   // Create lesson
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const { error } = await supabase.from("lessons").insert({
+      const { data: newLesson, error } = await supabase.from("lessons").insert({
         course_id: courseId,
         title: data.title,
         type: data.type,
@@ -265,11 +283,16 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
         exam_id: data.exam_id || null,
         scorm_package_id: data.scorm_package_id || null,
         min_live_duration_minutes: data.type === "live" ? data.min_live_duration_minutes : 0,
-      } as any);
+      } as any).select().single();
       if (error) throw error;
+      // Link f2f session to this lesson
+      if (data.type === "face_to_face" && data.f2f_session_id && newLesson) {
+        await supabase.from("face_to_face_sessions").update({ lesson_id: newLesson.id }).eq("id", data.f2f_session_id);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-lessons", courseId] });
+      queryClient.invalidateQueries({ queryKey: ["course-f2f-sessions", courseId] });
       toast({ title: "Başarılı", description: "Ders eklendi." });
       handleCloseDialog();
     },
@@ -297,9 +320,17 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
         } as any)
         .eq("id", data.id);
       if (error) throw error;
+      // Link f2f session to this lesson
+      if (data.type === "face_to_face" && data.f2f_session_id) {
+        // First unlink any previous session pointing to this lesson
+        await supabase.from("face_to_face_sessions").update({ lesson_id: null }).eq("lesson_id", data.id);
+        // Then link the selected session
+        await supabase.from("face_to_face_sessions").update({ lesson_id: data.id }).eq("id", data.f2f_session_id);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-lessons", courseId] });
+      queryClient.invalidateQueries({ queryKey: ["course-f2f-sessions", courseId] });
       toast({ title: "Başarılı", description: "Ders güncellendi." });
       handleCloseDialog();
     },
@@ -541,6 +572,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       exam_id: "",
       scorm_package_id: "",
       min_live_duration_minutes: 0,
+      f2f_session_id: "",
     });
     setDialogOpen(true);
   };
@@ -553,6 +585,8 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     if (lesson.type === "exam") {
       setExamMode(lesson.scorm_package_id ? "scorm" : "platform");
     }
+    // Find linked f2f session
+    const linkedSession = f2fSessions?.find((s: any) => s.lesson_id === lesson.id);
     setFormData({
       title: lesson.title,
       type: lesson.type,
@@ -564,6 +598,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       exam_id: lesson.exam_id || "",
       scorm_package_id: lesson.scorm_package_id || "",
       min_live_duration_minutes: (lesson as any).min_live_duration_minutes || 0,
+      f2f_session_id: linkedSession?.id || "",
     });
     setDialogOpen(true);
   };
@@ -829,6 +864,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
                     <SelectItem value="exam">Sınav</SelectItem>
                     <SelectItem value="live">Canlı Oturum</SelectItem>
                     <SelectItem value="content">İçerik (Video/PDF)</SelectItem>
+                    <SelectItem value="face_to_face">Yüz Yüze Eğitim</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1154,6 +1190,39 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
                     Öğrencinin dersi tamamlanmış sayılması için gereken minimum katılım süresi. 0 ise süre kontrolü yapılmaz.
                   </p>
                 </div>
+              </div>
+            )}
+
+            {/* Face to face type: select existing session */}
+            {formData.type === "face_to_face" && (
+              <div className="space-y-3">
+                <Label>Yüz Yüze Eğitim Oturumu</Label>
+                {f2fSessions && f2fSessions.length > 0 ? (
+                  <Select
+                    value={formData.f2f_session_id}
+                    onValueChange={(val) => setFormData({ ...formData, f2f_session_id: val })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Oturum seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {f2fSessions.map((s: any) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.session_date} | {s.start_time?.slice(0,5)}-{s.end_time?.slice(0,5)} | {s.location}
+                          {s.firms?.name ? ` (${s.firms.name})` : ""}
+                          {s.lesson_id ? " ✓" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm text-muted-foreground p-3 border border-dashed rounded-lg text-center">
+                    Bu kursa ait yüz yüze oturum bulunamadı. Önce "Yüz Yüze Oturumlar" modülünden oturum oluşturun.
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Seçilen oturum bu derse bağlanacaktır. Öğrenciler QR kod veya ders kodu ile katılım sağlayabilir.
+                </p>
               </div>
             )}
           </div>
