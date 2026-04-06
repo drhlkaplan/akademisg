@@ -127,6 +127,7 @@ const App = () => (
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/cookies" element={<CookiePolicy />} />
             <Route path="/regulation" element={<RegulationInfo />} />
+            <Route path="/attend" element={<ProtectedRoute><AttendSession /></ProtectedRoute>} />
             
             {/* Protected Student Dashboard */}
             <Route
