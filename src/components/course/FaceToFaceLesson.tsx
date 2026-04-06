@@ -222,7 +222,7 @@ export function FaceToFaceLesson({ lessonId, enrollmentId, onComplete }: FaceToF
     return (
       <div className="flex flex-col items-center justify-center h-full gap-6 p-8">
         <div className="h-20 w-20 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-          <CheckCircle2 className="h-10 w-10 text-green-600" />
+          <CheckCircle2 className="h-10 w-10 text-green-600 dark:text-green-400" />
         </div>
         <div className="text-center space-y-2">
           <h3 className="text-xl font-semibold text-foreground">Ders Tamamlandı</h3>
