@@ -479,13 +479,17 @@ export function DashboardLayout({
                       Panelim
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Settings className="mr-2 h-4 w-4" />
-                    Profil Ayarları
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/profile" className="cursor-pointer">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Profil Ayarları
+                    </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <HelpCircle className="mr-2 h-4 w-4" />
-                    Yardım
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/help" className="cursor-pointer">
+                      <HelpCircle className="mr-2 h-4 w-4" />
+                      Yardım
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
