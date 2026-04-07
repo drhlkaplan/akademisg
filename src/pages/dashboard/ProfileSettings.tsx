@@ -1,21 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { User, Lock, Loader2, CheckCircle, Eye, EyeOff } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { User, Lock, Loader2, CheckCircle, Eye, EyeOff, Building2, Mail, Phone, CreditCard, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export default function ProfileSettings() {
-  const { profile, user, refreshProfile } = useAuth();
-  const [firstName, setFirstName] = useState(profile?.first_name || "");
-  const [lastName, setLastName] = useState(profile?.last_name || "");
-  const [phone, setPhone] = useState(profile?.phone || "");
+  const { profile, user, roles, refreshProfile, isFirmAdmin } = useAuth();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
+  const [firmName, setFirmName] = useState<string | null>(null);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -23,18 +26,55 @@ export default function ProfileSettings() {
   const [showPasswords, setShowPasswords] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
 
+  useEffect(() => {
+    if (profile) {
+      setFirstName(profile.first_name || "");
+      setLastName(profile.last_name || "");
+      setPhone(profile.phone || "");
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    if (profile?.firm_id) {
+      supabase.from("firms").select("name").eq("id", profile.firm_id).maybeSingle()
+        .then(({ data }) => setFirmName(data?.name || null));
+    }
+  }, [profile?.firm_id]);
+
+  const getInitials = () => {
+    if (profile?.first_name && profile?.last_name) {
+      return `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase();
+    }
+    return "U";
+  };
+
+  const getRoleLabel = (role: string) => {
+    const map: Record<string, string> = {
+      super_admin: "Süper Admin",
+      admin: "Admin",
+      firm_admin: "Firma Yetkilisi",
+      instructor: "Eğitmen",
+      student: "Öğrenci",
+    };
+    return map[role] || role;
+  };
+
   const handleSaveProfile = async () => {
-    if (!profile) return;
+    if (!profile || !user) return;
+    if (!firstName.trim() || !lastName.trim()) {
+      toast.error("Ad ve soyad boş bırakılamaz");
+      return;
+    }
     setSaving(true);
     try {
       const { error } = await supabase
         .from("profiles")
         .update({
-          first_name: firstName,
-          last_name: lastName,
-          phone: phone || null,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          phone: phone.trim() || null,
         })
-        .eq("user_id", user!.id);
+        .eq("user_id", user.id);
 
       if (error) throw error;
       await refreshProfile();
@@ -58,7 +98,6 @@ export default function ProfileSettings() {
 
     setChangingPassword(true);
     try {
-      // Verify current password by re-signing in
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: user!.email!,
         password: currentPassword,
@@ -92,6 +131,39 @@ export default function ProfileSettings() {
           <p className="text-muted-foreground text-sm">Kişisel bilgilerinizi ve şifrenizi yönetin</p>
         </div>
 
+        {/* Profile Summary Card */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16">
+                <AvatarFallback className="bg-accent text-accent-foreground text-xl font-bold">
+                  {getInitials()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg font-semibold text-foreground truncate">
+                  {profile?.first_name} {profile?.last_name}
+                </h2>
+                <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {roles.map((role) => (
+                    <Badge key={role} variant="secondary" className="text-xs">
+                      <Shield className="h-3 w-3 mr-1" />
+                      {getRoleLabel(role)}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {firmName && (
+              <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+                <Building2 className="h-4 w-4 shrink-0" />
+                <span>Firma: <span className="font-medium text-foreground">{firmName}</span></span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Profile Info */}
         <Card>
           <CardHeader>
@@ -100,28 +172,42 @@ export default function ProfileSettings() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Ad</Label>
-                <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                <Label htmlFor="firstName">Ad</Label>
+                <Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Adınız" />
               </div>
               <div className="space-y-2">
-                <Label>Soyad</Label>
-                <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                <Label htmlFor="lastName">Soyad</Label>
+                <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Soyadınız" />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>E-posta</Label>
-              <Input value={user?.email || ""} disabled className="bg-muted" />
+              <Label htmlFor="email">
+                <div className="flex items-center gap-1.5">
+                  <Mail className="h-3.5 w-3.5" /> E-posta
+                </div>
+              </Label>
+              <Input id="email" value={user?.email || ""} disabled className="bg-muted" />
               <p className="text-xs text-muted-foreground">E-posta adresi değiştirilemez</p>
             </div>
             <div className="space-y-2">
-              <Label>TC Kimlik No</Label>
-              <Input value={profile?.tc_identity || ""} disabled className="bg-muted" />
+              <Label htmlFor="tc">
+                <div className="flex items-center gap-1.5">
+                  <CreditCard className="h-3.5 w-3.5" /> TC Kimlik No
+                </div>
+              </Label>
+              <Input id="tc" value={profile?.tc_identity || ""} disabled className="bg-muted" />
+              <p className="text-xs text-muted-foreground">TC Kimlik numarası değiştirilemez</p>
             </div>
             <div className="space-y-2">
-              <Label>Telefon</Label>
+              <Label htmlFor="phone">
+                <div className="flex items-center gap-1.5">
+                  <Phone className="h-3.5 w-3.5" /> Telefon
+                </div>
+              </Label>
               <Input
+                id="phone"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="05XX XXX XX XX"
