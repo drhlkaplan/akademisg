@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Shield,
@@ -411,12 +412,44 @@ export function DashboardLayout({
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="relative h-9 w-9">
-                <Bell className="h-4 w-4 text-muted-foreground" />
-                <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-accent text-[9px] font-bold text-accent-foreground flex items-center justify-center">
-                  3
-                </span>
-              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative h-9 w-9">
+                    <Bell className="h-4 w-4 text-muted-foreground" />
+                    <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-accent text-[9px] font-bold text-accent-foreground flex items-center justify-center">
+                      3
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-80 p-0">
+                  <div className="p-3 border-b border-border">
+                    <h4 className="font-semibold text-sm">Bildirimler</h4>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div className="flex gap-3 items-start">
+                      <div className="h-2 w-2 rounded-full bg-accent mt-1.5 shrink-0" />
+                      <div>
+                        <p className="text-sm">Yeni eğitim ataması yapıldı</p>
+                        <p className="text-xs text-muted-foreground">2 saat önce</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3 items-start">
+                      <div className="h-2 w-2 rounded-full bg-accent mt-1.5 shrink-0" />
+                      <div>
+                        <p className="text-sm">Sertifikanız hazır</p>
+                        <p className="text-xs text-muted-foreground">1 gün önce</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3 items-start">
+                      <div className="h-2 w-2 rounded-full bg-accent mt-1.5 shrink-0" />
+                      <div>
+                        <p className="text-sm">Sınav sonucunuz açıklandı</p>
+                        <p className="text-xs text-muted-foreground">2 gün önce</p>
+                      </div>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
 
               <div className="h-6 w-px bg-border mx-1" />
 
@@ -446,13 +479,17 @@ export function DashboardLayout({
                       Panelim
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Settings className="mr-2 h-4 w-4" />
-                    Profil Ayarları
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/profile" className="cursor-pointer">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Profil Ayarları
+                    </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <HelpCircle className="mr-2 h-4 w-4" />
-                    Yardım
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/help" className="cursor-pointer">
+                      <HelpCircle className="mr-2 h-4 w-4" />
+                      Yardım
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
