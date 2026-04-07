@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Menu, Shield, User, LogOut, LayoutDashboard, Settings } from "lucide-react";
+import { Menu, Shield, User, LogOut, LayoutDashboard, Settings, HelpCircle } from "lucide-react";
 
 const navigation = [
   { name: "Ana Sayfa", href: "/" },
