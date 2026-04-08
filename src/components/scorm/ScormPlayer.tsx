@@ -82,7 +82,7 @@ async function getAuthToken(): Promise<string | null> {
 async function proxyPost(
   token: string,
   body: { action: string; folderPath: string; filePath?: string; courseId: string },
-): Promise<any> {
+): Promise<unknown> {
   const res = await fetch(proxyUrl, {
     method: "POST",
     headers: {
@@ -313,7 +313,7 @@ export function ScormPlayer({
     return () => {
       if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     };
-  }, []);
+  }, [resetControlsTimer]);
 
   // ─── Persist progress ────────────────────────────────────────────────────
 
@@ -445,11 +445,12 @@ export function ScormPlayer({
 
       // Track launch
       await trackLessonLaunch(userId, lessonId, enrollmentId, courseTitle, lessonTitle);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("SCORM load error:", err);
-      if (err.message?.includes("Unauthorized"))
+      const message = err instanceof Error ? err.message : "";
+      if (message.includes("Unauthorized"))
         setError("Oturumunuz sona ermiş. Lütfen sayfayı yenileyip tekrar giriş yapın.");
-      else if (err.message?.includes("Not enrolled"))
+      else if (message.includes("Not enrolled"))
         setError("Bu eğitim içeriğine erişim yetkiniz yok.");
       else setError("Eğitim içeriği yüklenirken bir hata oluştu.");
       setIsLoading(false);
