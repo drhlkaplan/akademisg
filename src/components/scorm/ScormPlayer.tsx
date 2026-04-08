@@ -15,7 +15,7 @@ import {
   trackLessonLaunch,
   type ScormEventData,
 } from "./ScormProgressService";
-import { parseManifest, PRIORITY_ENTRY_FILES, type ParsedSco } from "./ScormManifestParser";
+import { parseManifest } from "./ScormManifestParser";
 import { ScormTopBar, ScormBottomBar } from "./ScormControls";
 import { ScormDebugPanel } from "./ScormDebugPanel";
 
@@ -42,6 +42,23 @@ interface ScormPlayerProps {
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const proxyUrl = `${supabaseUrl}/functions/v1/scorm-proxy`;
+
+const DIRECT_LAUNCH_ENTRY_FILES = [
+  "index_lms_html5.html",
+  "story_html5.html",
+  "index.html",
+  "player.html",
+  "launch.html",
+  "story.html",
+  "index_lms.html",
+];
+
+const WRAPPER_ENTRY_FILES = new Set([
+  "index_lms.html",
+  "index_lms_flash.html",
+  "story.html",
+  "story_flash.html",
+]);
 
 // ─── Utility functions ───────────────────────────────────────────────────────
 
@@ -106,6 +123,30 @@ async function listFiles(
   }
 }
 
+function getEntryDirectory(entryPath: string): string {
+  const normalizedPath = entryPath.replace(/\\/g, "/").replace(/^\/+/, "");
+  const lastSlashIndex = normalizedPath.lastIndexOf("/");
+  return lastSlashIndex === -1 ? "" : normalizedPath.slice(0, lastSlashIndex);
+}
+
+function joinEntryPath(directory: string, fileName: string): string {
+  return directory ? `${directory}/${fileName}` : fileName;
+}
+
+function pickPreferredEntry(currentEntry: string, availableFiles: string[]): string | null {
+  const currentFileName = currentEntry.split("/").pop()?.toLowerCase();
+  if (!currentFileName || !WRAPPER_ENTRY_FILES.has(currentFileName)) return null;
+
+  const availableSet = new Set(availableFiles.map((file) => file.toLowerCase()));
+  for (const candidate of DIRECT_LAUNCH_ENTRY_FILES) {
+    if (candidate.toLowerCase() !== currentFileName && availableSet.has(candidate.toLowerCase())) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
 interface ResolvedEntry {
   entryFile: string | null;
   detectedVersion?: string;
@@ -142,6 +183,12 @@ async function resolveEntryFile(
         const manifest = parseManifest(xml);
         if (manifest && manifest.scos.length > 0) {
           const sco = manifest.scos[0];
+          const manifestEntry = sco.launchPath.replace(/\\/g, "/").replace(/^\/+/, "");
+          const manifestDir = getEntryDirectory(manifestEntry);
+          const siblingFiles = manifestDir
+            ? await listFiles(token, folderPath, manifestDir, courseId)
+            : rootFiles;
+          const preferredEntry = pickPreferredEntry(manifestEntry, siblingFiles.map((file) => file.name));
           const scoMeta: ResolvedEntry["scoMeta"] = {};
           if (sco.masteryScore != null) scoMeta.mastery_score = sco.masteryScore;
           if (sco.maxTimeAllowed) scoMeta.max_time_allowed = sco.maxTimeAllowed;
@@ -150,7 +197,7 @@ async function resolveEntryFile(
           if (sco.completionThreshold != null) scoMeta.completion_threshold = sco.completionThreshold;
           if (sco.scaledPassingScore != null) scoMeta.scaled_passing_score = sco.scaledPassingScore;
           return {
-            entryFile: sco.launchPath,
+            entryFile: preferredEntry ? joinEntryPath(manifestDir, preferredEntry) : manifestEntry,
             detectedVersion: manifest.version,
             scoMeta: Object.keys(scoMeta).length > 0 ? scoMeta : undefined,
           };
@@ -159,7 +206,7 @@ async function resolveEntryFile(
     } catch { /* continue with heuristics */ }
   }
 
-  for (const file of PRIORITY_ENTRY_FILES) {
+  for (const file of DIRECT_LAUNCH_ENTRY_FILES) {
     if (rootFileNames.has(file)) return { entryFile: file };
   }
 
@@ -176,7 +223,7 @@ async function resolveEntryFile(
       const subPath = entryParts.slice(0, depth).join("/");
       const subFiles = await listFiles(token, folderPath, subPath, courseId);
       const subFileNames = new Set(subFiles.map((f) => f.name));
-      for (const file of PRIORITY_ENTRY_FILES) {
+      for (const file of DIRECT_LAUNCH_ENTRY_FILES) {
         if (subFileNames.has(file)) return { entryFile: `${subPath}/${file}` };
       }
     }
@@ -186,7 +233,7 @@ async function resolveEntryFile(
   for (const folder of subfolders) {
     const subFiles = await listFiles(token, folderPath, folder.name, courseId);
     const subFileNames = new Set(subFiles.map((f) => f.name));
-    for (const file of PRIORITY_ENTRY_FILES) {
+    for (const file of DIRECT_LAUNCH_ENTRY_FILES) {
       if (subFileNames.has(file)) return { entryFile: `${folder.name}/${file}` };
     }
   }
@@ -369,7 +416,7 @@ export function ScormPlayer({
       return;
     }
 
-    const activeVersion = scormVersion || detectedVersion || "1.2";
+    const activeVersion = detectedVersion || scormVersion || "1.2";
     setEffectiveVersion(activeVersion);
 
     try {
