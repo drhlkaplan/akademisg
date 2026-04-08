@@ -79,10 +79,10 @@ async function getAuthToken(): Promise<string | null> {
   return data.session?.access_token ?? null;
 }
 
-async function proxyPost(
+async function proxyPost<T>(
   token: string,
   body: { action: string; folderPath: string; filePath?: string; courseId: string },
-): Promise<unknown> {
+): Promise<T> {
   const res = await fetch(proxyUrl, {
     method: "POST",
     headers: {
@@ -95,7 +95,7 @@ async function proxyPost(
     const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
     throw new Error(err.error || `HTTP ${res.status}`);
   }
-  return res.json();
+  return res.json() as Promise<T>;
 }
 
 // ─── Entry file resolution ───────────────────────────────────────────────────
@@ -112,7 +112,7 @@ async function listFiles(
   courseId: string,
 ): Promise<StorageItem[]> {
   try {
-    return (await proxyPost(token, {
+    return (await proxyPost<StorageItem[]>(token, {
       action: "list",
       folderPath,
       filePath: subPath || undefined,
@@ -171,7 +171,7 @@ async function resolveEntryFile(
 
   if (rootFileNames.has("imsmanifest.xml")) {
     try {
-      const { signedUrl } = await proxyPost(token, {
+      const { signedUrl } = await proxyPost<{ signedUrl: string }>(token, {
         action: "sign",
         folderPath,
         filePath: "imsmanifest.xml",
@@ -421,7 +421,7 @@ export function ScormPlayer({
 
     try {
       // 2. Get session token via sign action
-      const { sessionToken } = await proxyPost(token, {
+      const { sessionToken } = await proxyPost<{ sessionToken: string }>(token, {
         action: "sign",
         folderPath,
         filePath: entryFile,
