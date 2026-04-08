@@ -15,7 +15,7 @@ import {
   trackLessonLaunch,
   type ScormEventData,
 } from "./ScormProgressService";
-import { parseManifest, PRIORITY_ENTRY_FILES } from "./ScormManifestParser";
+import { parseManifest, PRIORITY_ENTRY_FILES, type ParsedSco } from "./ScormManifestParser";
 import { ScormTopBar, ScormBottomBar } from "./ScormControls";
 import { ScormDebugPanel } from "./ScormDebugPanel";
 
