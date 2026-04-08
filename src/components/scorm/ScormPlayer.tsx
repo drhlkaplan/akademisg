@@ -15,7 +15,7 @@ import {
   trackLessonLaunch,
   type ScormEventData,
 } from "./ScormProgressService";
-import { parseManifest, PRIORITY_ENTRY_FILES } from "./ScormManifestParser";
+import { parseManifest, PRIORITY_ENTRY_FILES, type ParsedSco } from "./ScormManifestParser";
 import { ScormTopBar, ScormBottomBar } from "./ScormControls";
 import { ScormDebugPanel } from "./ScormDebugPanel";
 
@@ -106,12 +106,25 @@ async function listFiles(
   }
 }
 
+interface ResolvedEntry {
+  entryFile: string | null;
+  detectedVersion?: string;
+  scoMeta?: {
+    mastery_score?: number;
+    max_time_allowed?: string;
+    time_limit_action?: string;
+    launch_data?: string;
+    completion_threshold?: number;
+    scaled_passing_score?: number;
+  };
+}
+
 async function resolveEntryFile(
   token: string,
   folderPath: string,
   entryPoint: string,
   courseId: string,
-): Promise<{ entryFile: string | null; detectedVersion?: string }> {
+): Promise<ResolvedEntry> {
   const rootFiles = await listFiles(token, folderPath, "", courseId);
   const rootFileNames = new Set(rootFiles.map((f) => f.name));
 
@@ -128,9 +141,18 @@ async function resolveEntryFile(
         const xml = await res.text();
         const manifest = parseManifest(xml);
         if (manifest && manifest.scos.length > 0) {
+          const sco = manifest.scos[0];
+          const scoMeta: ResolvedEntry["scoMeta"] = {};
+          if (sco.masteryScore != null) scoMeta.mastery_score = sco.masteryScore;
+          if (sco.maxTimeAllowed) scoMeta.max_time_allowed = sco.maxTimeAllowed;
+          if (sco.timeLimitAction) scoMeta.time_limit_action = sco.timeLimitAction;
+          if (sco.dataFromLms) scoMeta.launch_data = sco.dataFromLms;
+          if (sco.completionThreshold != null) scoMeta.completion_threshold = sco.completionThreshold;
+          if (sco.scaledPassingScore != null) scoMeta.scaled_passing_score = sco.scaledPassingScore;
           return {
-            entryFile: manifest.scos[0].launchPath,
+            entryFile: sco.launchPath,
             detectedVersion: manifest.version,
+            scoMeta: Object.keys(scoMeta).length > 0 ? scoMeta : undefined,
           };
         }
       }
@@ -340,7 +362,7 @@ export function ScormPlayer({
     const courseId = extractCourseId(folderPath);
 
     // 1. Resolve entry file
-    const { entryFile, detectedVersion } = await resolveEntryFile(token, folderPath, entryPoint, courseId);
+    const { entryFile, detectedVersion, scoMeta } = await resolveEntryFile(token, folderPath, entryPoint, courseId);
     if (!entryFile) {
       setError("SCORM başlangıç dosyası bulunamadı.");
       setIsLoading(false);
@@ -367,7 +389,9 @@ export function ScormPlayer({
       // 4. Build serve URL — proxy will download HTML, inject base + SCORM API, serve as text/html
       const initDataB64 = btoa(JSON.stringify(initialData));
       const encodedToken = encodeURIComponent(sessionToken);
-      const serveUrl = `${proxyUrl}/_serve_/${encodedToken}/${entryFile}?v=${encodeURIComponent(activeVersion)}&d=${encodeURIComponent(initDataB64)}`;
+      // Include SCO metadata (mastery_score, launch_data, etc.) if available
+      const metaParam = scoMeta ? `&m=${encodeURIComponent(btoa(JSON.stringify(scoMeta)))}` : "";
+      const serveUrl = `${proxyUrl}/_serve_/${encodedToken}/${entryFile}?v=${encodeURIComponent(activeVersion)}&d=${encodeURIComponent(initDataB64)}${metaParam}`;
 
       // 5. Set iframe src — browser will render it as a real HTML page
       setIframeSrc(serveUrl);

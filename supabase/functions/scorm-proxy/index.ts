@@ -87,7 +87,29 @@ async function verifyAccess(
   return !!isAdmin;
 }
 
-// ─── Manifest parser ─────────────────────────────────────────────────────────
+// ─── Learner info helper ─────────────────────────────────────────────────────
+
+async function getLearnerInfo(
+  adminClient: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<{ id: string; name: string }> {
+  try {
+    const { data: profile } = await adminClient
+      .from("profiles")
+      .select("first_name, last_name, tc_identity")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (profile) {
+      return {
+        id: profile.tc_identity || userId,
+        name: `${profile.last_name || ""}, ${profile.first_name || ""}`.trim(),
+      };
+    }
+  } catch { /* fallback */ }
+  return { id: userId, name: "" };
+}
+
+// ─── Manifest parser (enhanced with eFront-compatible fields) ────────────────
 
 interface ParsedSco {
   identifier: string;
@@ -96,6 +118,12 @@ interface ParsedSco {
   parameters?: string;
   orderIndex: number;
   scormType: string;
+  masteryScore?: number;
+  maxTimeAllowed?: string;
+  timeLimitAction?: string;
+  dataFromLms?: string;
+  completionThreshold?: number;
+  scaledPassingScore?: number;
 }
 
 interface ParsedManifest {
@@ -123,10 +151,13 @@ function parseManifestXml(xmlContent: string): ParsedManifest | null {
     }
 
     const scos: ParsedSco[] = [];
-    const itemRegex = /<item\s+([^>]*)>[\s\S]*?<title>([^<]*)<\/title>/gi;
+    // Parse items with extended metadata
+    const itemRegex = /<item\s+([^>]*)>([\s\S]*?)<\/item>/gi;
     while ((match = itemRegex.exec(xmlContent)) !== null) {
       const attrs = match[1];
-      const itemTitle = match[2].trim();
+      const itemContent = match[2];
+      const titleMatch = itemContent.match(/<title>([^<]*)<\/title>/i);
+      const itemTitle = titleMatch ? titleMatch[1].trim() : "";
       const identifier = getAttr(attrs, "identifier") || `item_${scos.length}`;
       const identifierref = getAttr(attrs, "identifierref");
       const parameters = getAttr(attrs, "parameters");
@@ -134,14 +165,51 @@ function parseManifestXml(xmlContent: string): ParsedManifest | null {
       if (identifierref && resourceMap.has(identifierref)) {
         const resource = resourceMap.get(identifierref)!;
         if (resource.href) {
-          scos.push({
+          const sco: ParsedSco = {
             identifier,
-            title: itemTitle,
+            title: itemTitle || identifier,
             launchPath: resource.href,
             parameters: parameters || undefined,
             orderIndex: scos.length,
             scormType: resource.type === "asset" ? "asset" : "sco",
-          });
+          };
+
+          // Extract eFront-compatible extended metadata from item content
+
+          // mastery score
+          const msMatch = itemContent.match(/<adlcp:masteryscore[^>]*>([^<]*)<\/adlcp:masteryscore>/i);
+          if (msMatch) {
+            const val = parseFloat(msMatch[1].trim());
+            if (!isNaN(val)) sco.masteryScore = val;
+          }
+
+          // max time allowed
+          const mtaMatch = itemContent.match(/<adlcp:maxtimeallowed[^>]*>([^<]*)<\/adlcp:maxtimeallowed>/i);
+          if (mtaMatch) sco.maxTimeAllowed = mtaMatch[1].trim();
+
+          // time limit action
+          const tlaMatch = itemContent.match(/<adlcp:timelimitaction[^>]*>([^<]*)<\/adlcp:timelimitaction>/i);
+          if (tlaMatch) sco.timeLimitAction = tlaMatch[1].trim();
+
+          // data from LMS
+          const dflMatch = itemContent.match(/<adlcp:datafromlms[^>]*>([^<]*)<\/adlcp:datafromlms>/i);
+          if (dflMatch) sco.dataFromLms = dflMatch[1].trim();
+
+          // SCORM 2004: completion threshold
+          const ctMatch = itemContent.match(/<adlcp:completionThreshold[^>]*minProgressMeasure\s*=\s*["']([^"']*)["']/i);
+          if (ctMatch) {
+            const val = parseFloat(ctMatch[1]);
+            if (!isNaN(val)) sco.completionThreshold = val;
+          }
+
+          // SCORM 2004: scaled passing score from primaryObjective
+          const spsMatch = itemContent.match(/<imsss:minNormalizedMeasure[^>]*>([^<]*)<\/imsss:minNormalizedMeasure>/i);
+          if (spsMatch) {
+            const val = parseFloat(spsMatch[1].trim());
+            if (!isNaN(val)) sco.scaledPassingScore = val;
+          }
+
+          scos.push(sco);
         }
       }
     }
@@ -247,7 +315,7 @@ function extractServeInfo(pathname: string): { token: string; entryPath: string 
   };
 }
 
-// ─── SCORM API script builder (server-side) ──────────────────────────────────
+// ─── SCORM API script builder (server-side, eFront-enhanced) ─────────────────
 
 interface ScormInitData {
   lesson_status?: string;
@@ -255,12 +323,21 @@ interface ScormInitData {
   suspend_data?: string;
   score_raw?: string;
   total_time?: string;
+  student_id?: string;
+  student_name?: string;
+  launch_data?: string;
+  mastery_score?: number;
+  max_time_allowed?: string;
+  time_limit_action?: string;
+  completion_threshold?: number;
+  scaled_passing_score?: number;
 }
 
 function buildScorm12Script(d: ScormInitData): string {
   return `<script>
 (function() {
   var _init = false, _fin = false, _err = '0';
+  var _masteryScore = ${d.mastery_score != null ? d.mastery_score : "null"};
   var cmi = {
     'cmi.core.lesson_status': ${JSON.stringify(d.lesson_status || "not attempted")},
     'cmi.core.lesson_location': ${JSON.stringify(d.lesson_location || "")},
@@ -269,12 +346,23 @@ function buildScorm12Script(d: ScormInitData): string {
     'cmi.core.score.min': '0', 'cmi.core.score.max': '100',
     'cmi.core.total_time': ${JSON.stringify(d.total_time || "0000:00:00")},
     'cmi.core.session_time': '0000:00:00',
-    'cmi.core.student_id': '', 'cmi.core.student_name': '',
+    'cmi.core.student_id': ${JSON.stringify(d.student_id || "")},
+    'cmi.core.student_name': ${JSON.stringify(d.student_name || "")},
     'cmi.core.credit': 'credit',
     'cmi.core.entry': ${JSON.stringify(d.lesson_status && d.lesson_status !== "not attempted" ? "resume" : "ab-initio")},
     'cmi.core.exit': '', 'cmi.core.lesson_mode': 'normal',
-    'cmi.launch_data': '', 'cmi.comments': '', 'cmi.comments_from_lms': ''
+    'cmi.launch_data': ${JSON.stringify(d.launch_data || "")},
+    'cmi.comments': '', 'cmi.comments_from_lms': '',
+    'cmi.student_data.mastery_score': ${JSON.stringify(d.mastery_score != null ? String(d.mastery_score) : "")},
+    'cmi.student_data.max_time_allowed': ${JSON.stringify(d.max_time_allowed || "")},
+    'cmi.student_data.time_limit_action': ${JSON.stringify(d.time_limit_action || "")}
   };
+  function applyMastery() {
+    if (_masteryScore !== null && cmi['cmi.core.score.raw'] !== '') {
+      var s = parseFloat(cmi['cmi.core.score.raw']);
+      if (!isNaN(s)) cmi['cmi.core.lesson_status'] = s >= _masteryScore ? 'passed' : 'failed';
+    }
+  }
   function send(m) {
     try { window.parent.postMessage({ type: 'scorm_api_event', scormVersion: '1.2', method: m, data: {
       lesson_status: cmi['cmi.core.lesson_status'], lesson_location: cmi['cmi.core.lesson_location'],
@@ -285,10 +373,10 @@ function buildScorm12Script(d: ScormInitData): string {
   }
   window.API = {
     LMSInitialize: function() { _init = true; _fin = false; _err = '0'; send('LMSInitialize'); return 'true'; },
-    LMSFinish: function() { if (!_init) { _err = '301'; return 'false'; } _fin = true; _init = false; _err = '0'; send('LMSFinish'); return 'true'; },
+    LMSFinish: function() { if (!_init) { _err = '301'; return 'false'; } applyMastery(); _fin = true; _init = false; _err = '0'; send('LMSFinish'); return 'true'; },
     LMSGetValue: function(el) { if (!_init) { _err = '301'; return ''; } _err = '0'; if (el in cmi) return cmi[el]; if (el.match(/_count$/)) return '0'; return ''; },
-    LMSSetValue: function(el, v) { if (!_init) { _err = '301'; return 'false'; } _err = '0'; cmi[el] = v; return 'true'; },
-    LMSCommit: function() { if (!_init) { _err = '301'; return 'false'; } _err = '0'; send('LMSCommit'); return 'true'; },
+    LMSSetValue: function(el, v) { if (!_init) { _err = '301'; return 'false'; } _err = '0'; cmi[el] = v; if (el === 'cmi.core.score.raw') applyMastery(); return 'true'; },
+    LMSCommit: function() { if (!_init) { _err = '301'; return 'false'; } _err = '0'; applyMastery(); send('LMSCommit'); return 'true'; },
     LMSGetLastError: function() { return _err; },
     LMSGetErrorString: function(c) { return {'0':'No Error','101':'General Exception','301':'Not initialized','401':'Not implemented'}[c]||'Unknown'; },
     LMSGetDiagnostic: function(c) { return c||''; }
@@ -307,6 +395,8 @@ function buildScorm2004Script(d: ScormInitData): string {
   return `<script>
 (function() {
   var _init = false, _term = false, _err = '0';
+  var _scaledPassingScore = ${d.scaled_passing_score != null ? d.scaled_passing_score : "null"};
+  var _completionThreshold = ${d.completion_threshold != null ? d.completion_threshold : "null"};
   var cmi = {
     'cmi.completion_status': ${JSON.stringify(cs)},
     'cmi.success_status': ${JSON.stringify(ss)},
@@ -317,17 +407,31 @@ function buildScorm2004Script(d: ScormInitData): string {
     'cmi.score.scaled': ${JSON.stringify(d.score_raw ? (parseFloat(d.score_raw) / 100).toString() : "")},
     'cmi.total_time': ${JSON.stringify(isoT)},
     'cmi.session_time': 'PT0S',
-    'cmi.learner_id': '', 'cmi.learner_name': '',
+    'cmi.learner_id': ${JSON.stringify(d.student_id || "")},
+    'cmi.learner_name': ${JSON.stringify(d.student_name || "")},
     'cmi.credit': 'credit',
     'cmi.entry': ${JSON.stringify(cs !== "unknown" ? "resume" : "ab-initio")},
-    'cmi.exit': '', 'cmi.mode': 'normal', 'cmi.launch_data': '',
+    'cmi.exit': '', 'cmi.mode': 'normal',
+    'cmi.launch_data': ${JSON.stringify(d.launch_data || "")},
     'cmi.comments_from_learner._count': '0', 'cmi.comments_from_lms._count': '0',
     'cmi.interactions._count': '0', 'cmi.objectives._count': '0',
     'cmi.learner_preference.audio_level': '1', 'cmi.learner_preference.language': '',
     'cmi.learner_preference.delivery_speed': '1', 'cmi.learner_preference.audio_captioning': '0',
-    'cmi.completion_threshold': '', 'cmi.scaled_passing_score': '', 'cmi.progress_measure': '',
+    'cmi.completion_threshold': ${JSON.stringify(d.completion_threshold != null ? String(d.completion_threshold) : "")},
+    'cmi.scaled_passing_score': ${JSON.stringify(d.scaled_passing_score != null ? String(d.scaled_passing_score) : "")},
+    'cmi.progress_measure': '',
     'adl.nav.request': '_none_'
   };
+  function applyLogic() {
+    if (_scaledPassingScore !== null && cmi['cmi.score.scaled'] !== '') {
+      var sc = parseFloat(cmi['cmi.score.scaled']);
+      if (!isNaN(sc)) cmi['cmi.success_status'] = sc >= _scaledPassingScore ? 'passed' : 'failed';
+    }
+    if (_completionThreshold !== null && cmi['cmi.progress_measure'] !== '') {
+      var pm = parseFloat(cmi['cmi.progress_measure']);
+      if (!isNaN(pm)) cmi['cmi.completion_status'] = pm >= _completionThreshold ? 'completed' : 'incomplete';
+    }
+  }
   function send(m) {
     try {
       var ls = cmi['cmi.completion_status']||'unknown', s = cmi['cmi.success_status']||'unknown';
@@ -344,7 +448,7 @@ function buildScorm2004Script(d: ScormInitData): string {
   }
   window.API_1484_11 = {
     Initialize: function() { if (_init) { _err='103'; return 'false'; } _init=true; _term=false; _err='0'; send('Initialize'); return 'true'; },
-    Terminate: function() { if (!_init) { _err='112'; return 'false'; } if (_term) { _err='113'; return 'false'; } _term=true; _init=false; _err='0'; send('Terminate'); return 'true'; },
+    Terminate: function() { if (!_init) { _err='112'; return 'false'; } if (_term) { _err='113'; return 'false'; } applyLogic(); _term=true; _init=false; _err='0'; send('Terminate'); return 'true'; },
     GetValue: function(el) {
       if (!_init) { _err='122'; return ''; } _err='0';
       if (el in cmi) return cmi[el]; if (el.match(/\\._count$/)) return '0';
@@ -356,9 +460,13 @@ function buildScorm2004Script(d: ScormInitData): string {
       if (!_init) { _err='132'; return 'false'; } _err='0'; cmi[el]=v;
       var m = el.match(/^cmi\\.(interactions|objectives|comments_from_learner)\\.(\\d+)\\./);
       if (m) { var ck='cmi.'+m[1]+'._count'; var c=parseInt(cmi[ck]||'0'); if (parseInt(m[2])>=c) cmi[ck]=String(parseInt(m[2])+1); }
+      if (el === 'cmi.score.scaled' || el === 'cmi.score.raw' || el === 'cmi.progress_measure') {
+        if (el === 'cmi.score.raw' && v !== '') { var r=parseFloat(v); if (!isNaN(r)) cmi['cmi.score.scaled']=String(r/100); }
+        applyLogic();
+      }
       return 'true';
     },
-    Commit: function() { if (!_init) { _err='142'; return 'false'; } _err='0'; send('Commit'); return 'true'; },
+    Commit: function() { if (!_init) { _err='142'; return 'false'; } _err='0'; applyLogic(); send('Commit'); return 'true'; },
     GetLastError: function() { return _err; },
     GetErrorString: function(c) { return {'0':'No Error','101':'General Exception','103':'Already Initialized','112':'Termination Before Init','113':'Termination After Termination','122':'Retrieve Data Before Init','132':'Store Data Before Init','142':'Commit Before Init','401':'Undefined Data Model'}[c]||'Unknown Error'; },
     GetDiagnostic: function(c) { return c||''; }
@@ -412,7 +520,8 @@ Deno.serve(async (req) => {
 
   // ═══════════════════════════════════════════════════════════════════════════
   // MODE 0: Serve HTML with injected SCORM API (GET /_serve_/TOKEN/path)
-  // Downloads HTML from storage, injects <base>, SCORM API, returns text/html
+  // Downloads HTML from storage, injects <base>, SCORM API with learner info,
+  // mastery score, launch data, and returns text/html
   // ═══════════════════════════════════════════════════════════════════════════
   if (req.method === "GET") {
     const serveInfo = extractServeInfo(reqUrl.pathname);
@@ -428,6 +537,10 @@ Deno.serve(async (req) => {
       }
 
       const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+      // Fetch learner info for SCORM API injection
+      const learnerInfo = await getLearnerInfo(adminClient, tokenPayload.userId);
+
       const storagePath = `${tokenPayload.folderPath}/${serveInfo.entryPath}`;
       console.log("[SERVE] Storage path:", storagePath);
 
@@ -457,6 +570,24 @@ Deno.serve(async (req) => {
         try {
           initData = JSON.parse(atob(initB64));
         } catch { /* ignore parse errors */ }
+      }
+
+      // Inject learner info
+      initData.student_id = learnerInfo.id;
+      initData.student_name = learnerInfo.name;
+
+      // Parse SCO-specific metadata from manifest (mastery_score, launch_data, etc.)
+      const scoMeta = reqUrl.searchParams.get("m");
+      if (scoMeta) {
+        try {
+          const meta = JSON.parse(atob(scoMeta));
+          if (meta.mastery_score != null) initData.mastery_score = meta.mastery_score;
+          if (meta.max_time_allowed) initData.max_time_allowed = meta.max_time_allowed;
+          if (meta.time_limit_action) initData.time_limit_action = meta.time_limit_action;
+          if (meta.launch_data) initData.launch_data = meta.launch_data;
+          if (meta.completion_threshold != null) initData.completion_threshold = meta.completion_threshold;
+          if (meta.scaled_passing_score != null) initData.scaled_passing_score = meta.scaled_passing_score;
+        } catch { /* ignore */ }
       }
 
       // Build base URL for sub-resource loading via path-based token proxy
@@ -658,7 +789,6 @@ Deno.serve(async (req) => {
 
         if (entries) {
           for (const entry of entries) {
-            // Check if it's a folder (no metadata means folder)
             if (!entry.metadata) {
               const subManifestPath = `${body.folderPath}/${entry.name}/imsmanifest.xml`;
               const { data: subData, error: subError } = await adminClient.storage
