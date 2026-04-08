@@ -362,7 +362,7 @@ export function ScormPlayer({
     const courseId = extractCourseId(folderPath);
 
     // 1. Resolve entry file
-    const { entryFile, detectedVersion } = await resolveEntryFile(token, folderPath, entryPoint, courseId);
+    const { entryFile, detectedVersion, scoMeta } = await resolveEntryFile(token, folderPath, entryPoint, courseId);
     if (!entryFile) {
       setError("SCORM başlangıç dosyası bulunamadı.");
       setIsLoading(false);
@@ -389,7 +389,9 @@ export function ScormPlayer({
       // 4. Build serve URL — proxy will download HTML, inject base + SCORM API, serve as text/html
       const initDataB64 = btoa(JSON.stringify(initialData));
       const encodedToken = encodeURIComponent(sessionToken);
-      const serveUrl = `${proxyUrl}/_serve_/${encodedToken}/${entryFile}?v=${encodeURIComponent(activeVersion)}&d=${encodeURIComponent(initDataB64)}`;
+      // Include SCO metadata (mastery_score, launch_data, etc.) if available
+      const metaParam = scoMeta ? `&m=${encodeURIComponent(btoa(JSON.stringify(scoMeta)))}` : "";
+      const serveUrl = `${proxyUrl}/_serve_/${encodedToken}/${entryFile}?v=${encodeURIComponent(activeVersion)}&d=${encodeURIComponent(initDataB64)}${metaParam}`;
 
       // 5. Set iframe src — browser will render it as a real HTML page
       setIframeSrc(serveUrl);
