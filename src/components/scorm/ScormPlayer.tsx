@@ -133,13 +133,37 @@ function joinEntryPath(directory: string, fileName: string): string {
   return directory ? `${directory}/${fileName}` : fileName;
 }
 
+function getEntryFileName(entryPath: string): string {
+  return entryPath.split("/").pop()?.toLowerCase() || "";
+}
+
+function forceDirectLaunchEntry(entryPath: string, availableFiles: string[]): string {
+  const currentFileName = getEntryFileName(entryPath);
+  if (!WRAPPER_ENTRY_FILES.has(currentFileName)) return entryPath;
+
+  const entryDirectory = getEntryDirectory(entryPath);
+  const availableSet = new Set(availableFiles.map((file) => file.toLowerCase()));
+
+  for (const candidate of DIRECT_LAUNCH_ENTRY_FILES) {
+    const candidateFileName = candidate.toLowerCase();
+    if (WRAPPER_ENTRY_FILES.has(candidateFileName)) continue;
+    if (availableSet.has(candidateFileName)) {
+      return joinEntryPath(entryDirectory, candidate);
+    }
+  }
+
+  return entryPath;
+}
+
 function pickPreferredEntry(currentEntry: string, availableFiles: string[]): string | null {
-  const currentFileName = currentEntry.split("/").pop()?.toLowerCase();
+  const currentFileName = getEntryFileName(currentEntry);
   if (!currentFileName || !WRAPPER_ENTRY_FILES.has(currentFileName)) return null;
 
   const availableSet = new Set(availableFiles.map((file) => file.toLowerCase()));
   for (const candidate of DIRECT_LAUNCH_ENTRY_FILES) {
-    if (candidate.toLowerCase() !== currentFileName && availableSet.has(candidate.toLowerCase())) {
+    const candidateFileName = candidate.toLowerCase();
+    if (WRAPPER_ENTRY_FILES.has(candidateFileName)) continue;
+    if (candidateFileName !== currentFileName && availableSet.has(candidateFileName)) {
       return candidate;
     }
   }
@@ -409,12 +433,16 @@ export function ScormPlayer({
     const courseId = extractCourseId(folderPath);
 
     // 1. Resolve entry file
-    const { entryFile, detectedVersion, scoMeta } = await resolveEntryFile(token, folderPath, entryPoint, courseId);
+    let { entryFile, detectedVersion, scoMeta } = await resolveEntryFile(token, folderPath, entryPoint, courseId);
     if (!entryFile) {
       setError("SCORM başlangıç dosyası bulunamadı.");
       setIsLoading(false);
       return;
     }
+
+    const entryDirectory = getEntryDirectory(entryFile);
+    const siblingFiles = await listFiles(token, folderPath, entryDirectory, courseId);
+    entryFile = forceDirectLaunchEntry(entryFile, siblingFiles.map((file) => file.name));
 
     const activeVersion = detectedVersion || scormVersion || "1.2";
     setEffectiveVersion(activeVersion);
