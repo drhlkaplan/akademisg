@@ -406,7 +406,7 @@ function buildScorm12Script(d: ScormInitData): string {
     LMSGetDiagnostic: function(c) { return c||''; }
   };
 })();
-<\/script>`;
+</script>`;
 }
 
 function buildScorm2004Script(d: ScormInitData): string {
@@ -496,7 +496,7 @@ function buildScorm2004Script(d: ScormInitData): string {
     GetDiagnostic: function(c) { return c||''; }
   };
 })();
-<\/script>`;
+</script>`;
 }
 
 function buildScormScript(initData: ScormInitData, version: string): string {
@@ -900,7 +900,7 @@ Deno.serve(async (req) => {
         await adminClient
           .from("scorm_packages")
           .update({
-            manifest_data: manifest as any,
+            manifest_data: manifest as unknown as Record<string, unknown>,
             scorm_version: manifest.version,
             entry_point: manifest.scos.length > 0 ? manifest.scos[0].launchPath : null,
           })
