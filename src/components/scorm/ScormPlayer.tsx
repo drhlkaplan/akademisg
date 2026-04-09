@@ -99,6 +99,46 @@ async function listFiles(token: string, folderPath: string, subPath: string, cou
   } catch { return []; }
 }
 
+function normalizeEntryPath(entryPath: string): string {
+  return entryPath.replace(/\\/g, "/").replace(/^\/+/, "").replace(/\/+$/, "");
+}
+
+function getEntryDirectory(entryPath: string): string {
+  const normalizedPath = normalizeEntryPath(entryPath);
+  const lastSlashIndex = normalizedPath.lastIndexOf("/");
+  return lastSlashIndex === -1 ? "" : normalizedPath.slice(0, lastSlashIndex);
+}
+
+function getEntryFileName(entryPath: string): string {
+  const normalizedPath = normalizeEntryPath(entryPath);
+  const lastSlashIndex = normalizedPath.lastIndexOf("/");
+  return lastSlashIndex === -1 ? normalizedPath : normalizedPath.slice(lastSlashIndex + 1);
+}
+
+const WRAPPER_ENTRY_REPLACEMENTS: Record<string, string[]> = {
+  "index_lms.html": ["index_lms_html5.html", "story_html5.html"],
+  "story.html": ["story_html5.html", "index_lms_html5.html"],
+};
+
+function forceDirectLaunchEntry(entryPath: string, availableFiles: Iterable<string>): string {
+  const normalizedPath = normalizeEntryPath(entryPath);
+  const entryFileName = getEntryFileName(normalizedPath);
+  const preferredReplacements = WRAPPER_ENTRY_REPLACEMENTS[entryFileName];
+
+  if (!preferredReplacements) return normalizedPath;
+
+  const siblingFileNames = new Set(availableFiles);
+  const entryDirectory = getEntryDirectory(normalizedPath);
+
+  for (const replacement of preferredReplacements) {
+    if (siblingFileNames.has(replacement)) {
+      return entryDirectory ? `${entryDirectory}/${replacement}` : replacement;
+    }
+  }
+
+  return normalizedPath;
+}
+
 interface ResolvedEntry {
   entryFile: string | null;
   detectedVersion?: string;
@@ -110,6 +150,18 @@ async function resolveEntryFile(
 ): Promise<ResolvedEntry> {
   const rootFiles = await listFiles(token, folderPath, "", courseId);
   const rootFileNames = new Set(rootFiles.map((f) => f.name));
+
+  const resolvePreferredEntry = async (candidateEntry: string): Promise<string> => {
+    const normalizedEntry = normalizeEntryPath(candidateEntry);
+    const entryDirectory = getEntryDirectory(normalizedEntry);
+
+    if (!entryDirectory) {
+      return forceDirectLaunchEntry(normalizedEntry, rootFileNames);
+    }
+
+    const siblingFiles = await listFiles(token, folderPath, entryDirectory, courseId);
+    return forceDirectLaunchEntry(normalizedEntry, siblingFiles.map((file) => file.name));
+  };
 
   // Try manifest first
   if (rootFileNames.has("imsmanifest.xml")) {
@@ -123,7 +175,7 @@ async function resolveEntryFile(
         const manifest = parseManifest(xml);
         if (manifest && manifest.scos.length > 0) {
           const sco = manifest.scos[0];
-          const entry = sco.launchPath.replace(/\\/g, "/").replace(/^\/+/, "");
+          const entry = await resolvePreferredEntry(sco.launchPath);
           const scoMeta: Record<string, unknown> = {};
           if (sco.masteryScore != null) scoMeta.mastery_score = sco.masteryScore;
           if (sco.maxTimeAllowed) scoMeta.max_time_allowed = sco.maxTimeAllowed;
@@ -156,7 +208,7 @@ async function resolveEntryFile(
   }
 
   // Use provided entryPoint as last resort
-  if (entryPoint) return { entryFile: entryPoint.replace(/\\/g, "/").replace(/^\/+/, "") };
+  if (entryPoint) return { entryFile: await resolvePreferredEntry(entryPoint) };
 
   return { entryFile: null };
 }
