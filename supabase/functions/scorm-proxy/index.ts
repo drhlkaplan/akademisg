@@ -116,7 +116,7 @@ async function getLearnerInfo(
   return { id: userId, name: "" };
 }
 
-// ─── Manifest parser (enhanced with eFront-compatible fields) ────────────────
+// ─── Manifest parser ─────────────────────────────────────────────────────────
 
 interface ParsedSco {
   identifier: string;
@@ -158,7 +158,6 @@ function parseManifestXml(xmlContent: string): ParsedManifest | null {
     }
 
     const scos: ParsedSco[] = [];
-    // Parse items with extended metadata
     const itemRegex = /<item\s+([^>]*)>([\s\S]*?)<\/item>/gi;
     while ((match = itemRegex.exec(xmlContent)) !== null) {
       const attrs = match[1];
@@ -181,40 +180,18 @@ function parseManifestXml(xmlContent: string): ParsedManifest | null {
             scormType: resource.type === "asset" ? "asset" : "sco",
           };
 
-          // Extract eFront-compatible extended metadata from item content
-
-          // mastery score
           const msMatch = itemContent.match(/<adlcp:masteryscore[^>]*>([^<]*)<\/adlcp:masteryscore>/i);
-          if (msMatch) {
-            const val = parseFloat(msMatch[1].trim());
-            if (!isNaN(val)) sco.masteryScore = val;
-          }
-
-          // max time allowed
+          if (msMatch) { const val = parseFloat(msMatch[1].trim()); if (!isNaN(val)) sco.masteryScore = val; }
           const mtaMatch = itemContent.match(/<adlcp:maxtimeallowed[^>]*>([^<]*)<\/adlcp:maxtimeallowed>/i);
           if (mtaMatch) sco.maxTimeAllowed = mtaMatch[1].trim();
-
-          // time limit action
           const tlaMatch = itemContent.match(/<adlcp:timelimitaction[^>]*>([^<]*)<\/adlcp:timelimitaction>/i);
           if (tlaMatch) sco.timeLimitAction = tlaMatch[1].trim();
-
-          // data from LMS
           const dflMatch = itemContent.match(/<adlcp:datafromlms[^>]*>([^<]*)<\/adlcp:datafromlms>/i);
           if (dflMatch) sco.dataFromLms = dflMatch[1].trim();
-
-          // SCORM 2004: completion threshold
           const ctMatch = itemContent.match(/<adlcp:completionThreshold[^>]*minProgressMeasure\s*=\s*["']([^"']*)["']/i);
-          if (ctMatch) {
-            const val = parseFloat(ctMatch[1]);
-            if (!isNaN(val)) sco.completionThreshold = val;
-          }
-
-          // SCORM 2004: scaled passing score from primaryObjective
+          if (ctMatch) { const val = parseFloat(ctMatch[1]); if (!isNaN(val)) sco.completionThreshold = val; }
           const spsMatch = itemContent.match(/<imsss:minNormalizedMeasure[^>]*>([^<]*)<\/imsss:minNormalizedMeasure>/i);
-          if (spsMatch) {
-            const val = parseFloat(spsMatch[1].trim());
-            if (!isNaN(val)) sco.scaledPassingScore = val;
-          }
+          if (spsMatch) { const val = parseFloat(spsMatch[1].trim()); if (!isNaN(val)) sco.scaledPassingScore = val; }
 
           scos.push(sco);
         }
@@ -225,13 +202,7 @@ function parseManifestXml(xmlContent: string): ParsedManifest | null {
       let idx = 0;
       for (const [id, res] of resourceMap) {
         if (res.href && (res.href.endsWith(".html") || res.href.endsWith(".htm"))) {
-          scos.push({
-            identifier: id,
-            title: id,
-            launchPath: res.href,
-            orderIndex: idx++,
-            scormType: res.type === "asset" ? "asset" : "sco",
-          });
+          scos.push({ identifier: id, title: id, launchPath: res.href, orderIndex: idx++, scormType: res.type === "asset" ? "asset" : "sco" });
         }
       }
     }
@@ -250,16 +221,12 @@ function detectScormVersion(xml: string): string {
 
   const hasScorm2004Markers =
     /adlcp_v1p3|adlseq_v1p3|adlnav_v1p3|imsss/.test(normalizedXml) ||
-    manifestTag.includes("adlseq") ||
-    manifestTag.includes("imsss") ||
-    schemaVersion.includes("2004") ||
-    schemaVersion === "cam 1.3" ||
-    schema.includes("2004");
+    manifestTag.includes("adlseq") || manifestTag.includes("imsss") ||
+    schemaVersion.includes("2004") || schemaVersion === "cam 1.3" || schema.includes("2004");
 
   const hasScorm12Markers =
     /adlcp_rootv1p2|adlcp_rootv1p1/.test(normalizedXml) ||
-    schemaVersion === "1.2" ||
-    schemaVersion.includes("1.2");
+    schemaVersion === "1.2" || schemaVersion.includes("1.2");
 
   if (hasScorm12Markers && !hasScorm2004Markers) return "1.2";
   if (hasScorm2004Markers) return "2004";
@@ -284,62 +251,45 @@ function extractAttr(xml: string, tag: string, attr: string): string {
   return match ? match[1] : "";
 }
 
+// ─── MIME type helper ────────────────────────────────────────────────────────
+
+function getMimeType(filePath: string): string {
+  const ext = filePath.split(".").pop()?.toLowerCase() || "";
+  const mimeMap: Record<string, string> = {
+    html: "text/html", htm: "text/html",
+    js: "application/javascript", mjs: "application/javascript",
+    css: "text/css", json: "application/json", xml: "application/xml",
+    svg: "image/svg+xml", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
+    gif: "image/gif", webp: "image/webp", ico: "image/x-icon",
+    woff: "font/woff", woff2: "font/woff2", ttf: "font/ttf",
+    mp3: "audio/mpeg", mp4: "video/mp4", webm: "video/webm",
+    wav: "audio/wav", ogg: "audio/ogg", pdf: "application/pdf",
+    swf: "application/x-shockwave-flash", dat: "application/octet-stream",
+    lottie: "application/json",
+  };
+  return mimeMap[ext] || "application/octet-stream";
+}
+
+function isHtmlFile(filePath: string): boolean {
+  const normalizedPath = filePath.split("?")[0].toLowerCase();
+  return normalizedPath.endsWith(".html") || normalizedPath.endsWith(".htm");
+}
+
 // ─── Token extraction helpers ────────────────────────────────────────────────
 
-function extractPathToken(pathname: string): { token: string; subPath: string } | null {
-  const tMarker = "/_t_/";
-  const tIndex = pathname.indexOf(tMarker);
-  if (tIndex === -1) return null;
-
-  const afterMarker = pathname.slice(tIndex + tMarker.length);
-  const firstSlash = afterMarker.indexOf("/");
-  if (firstSlash === -1) return null;
-
-  const encodedToken = afterMarker.substring(0, firstSlash);
-  const subPath = afterMarker.substring(firstSlash + 1);
-
-  return {
-    token: decodeURIComponent(encodedToken),
-    subPath: decodeURIComponent(subPath).replace(/^\/?(?:___\/)+/, ""),
-  };
-}
-
-function extractQueryToken(reqUrl: URL): { token: string; subPath: string } | null {
-  const token = reqUrl.searchParams.get("t");
-  if (!token) return null;
-
-  const marker = "/scorm-proxy/";
-  const markerIndex = reqUrl.pathname.indexOf(marker);
-  let subPath = "";
-  if (markerIndex !== -1) {
-    subPath = decodeURIComponent(reqUrl.pathname.slice(markerIndex + marker.length));
-    subPath = subPath.replace(/^\/?(?:___\/)+/, "");
-  }
-
-  return { token, subPath };
-}
-
-// ─── Serve token extraction ──────────────────────────────────────────────────
-
-function extractServeInfo(pathname: string): { token: string; entryPath: string } | null {
-  const serveMarker = "/_serve_/";
-  const idx = pathname.indexOf(serveMarker);
+function extractPathToken(pathname: string, marker: string): { token: string; subPath: string } | null {
+  const idx = pathname.indexOf(marker);
   if (idx === -1) return null;
-
-  const afterMarker = pathname.slice(idx + serveMarker.length);
+  const afterMarker = pathname.slice(idx + marker.length);
   const firstSlash = afterMarker.indexOf("/");
-  if (firstSlash === -1) return null;
-
-  const encodedToken = afterMarker.substring(0, firstSlash);
-  const entryPath = afterMarker.substring(firstSlash + 1);
-
+  if (firstSlash === -1) return { token: decodeURIComponent(afterMarker), subPath: "" };
   return {
-    token: decodeURIComponent(encodedToken),
-    entryPath: decodeURIComponent(entryPath),
+    token: decodeURIComponent(afterMarker.substring(0, firstSlash)),
+    subPath: decodeURIComponent(afterMarker.substring(firstSlash + 1)).replace(/^\/?(?:___\/)+/, ""),
   };
 }
 
-// ─── SCORM API script builder (server-side, eFront-enhanced) ─────────────────
+// ─── SCORM API script builders ───────────────────────────────────────────────
 
 interface ScormInitData {
   lesson_status?: string;
@@ -357,9 +307,8 @@ interface ScormInitData {
   scaled_passing_score?: number;
 }
 
-function buildScorm12Script(d: ScormInitData): string {
-  return `<script>
-(function() {
+function buildScorm12Api(d: ScormInitData): string {
+  return `
   var _init = false, _fin = false, _err = '0';
   var _masteryScore = ${d.mastery_score != null ? d.mastery_score : "null"};
   var cmi = {
@@ -404,20 +353,17 @@ function buildScorm12Script(d: ScormInitData): string {
     LMSGetLastError: function() { return _err; },
     LMSGetErrorString: function(c) { return {'0':'No Error','101':'General Exception','301':'Not initialized','401':'Not implemented'}[c]||'Unknown'; },
     LMSGetDiagnostic: function(c) { return c||''; }
-  };
-})();
-</script>`;
+  };`;
 }
 
-function buildScorm2004Script(d: ScormInitData): string {
+function buildScorm2004Api(d: ScormInitData): string {
   const cs = (d.lesson_status === "completed" || d.lesson_status === "passed") ? "completed"
     : d.lesson_status === "incomplete" ? "incomplete" : "unknown";
   const ss = d.lesson_status === "passed" ? "passed" : d.lesson_status === "failed" ? "failed" : "unknown";
   const tp = (d.total_time || "0000:00:00").split(":");
   const isoT = tp.length === 3 ? "PT" + parseInt(tp[0]) + "H" + parseInt(tp[1]) + "M" + parseInt(tp[2]) + "S" : "PT0S";
 
-  return `<script>
-(function() {
+  return `
   var _init = false, _term = false, _err = '0';
   var _scaledPassingScore = ${d.scaled_passing_score != null ? d.scaled_passing_score : "null"};
   var _completionThreshold = ${d.completion_threshold != null ? d.completion_threshold : "null"};
@@ -494,147 +440,44 @@ function buildScorm2004Script(d: ScormInitData): string {
     GetLastError: function() { return _err; },
     GetErrorString: function(c) { return {'0':'No Error','101':'General Exception','103':'Already Initialized','112':'Termination Before Init','113':'Termination After Termination','122':'Retrieve Data Before Init','132':'Store Data Before Init','142':'Commit Before Init','401':'Undefined Data Model'}[c]||'Unknown Error'; },
     GetDiagnostic: function(c) { return c||''; }
-  };
+  };`;
+}
+
+// ─── Wrapper HTML builder ────────────────────────────────────────────────────
+// This is the KEY change: instead of injecting SCORM API into every HTML page,
+// we serve a wrapper page that CONTAINS the SCORM API and loads content in a
+// child iframe. The SCORM content finds the API by walking up window.parent
+// (standard SCORM API discovery). Internal redirects within the content iframe
+// never lose the API because it lives in the parent wrapper frame.
+
+function buildWrapperHtml(
+  contentUrl: string,
+  initData: ScormInitData,
+  version: string,
+): string {
+  const apiCode = version.startsWith("2004")
+    ? buildScorm2004Api(initData)
+    : buildScorm12Api(initData);
+
+  return `<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCORM Player</title>
+<style>
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#fff}
+iframe{width:100%;height:100%;border:0;display:block}
+</style>
+<script>
+(function(){
+${apiCode}
 })();
-</script>`;
-}
-
-function buildScormScript(initData: ScormInitData, version: string): string {
-  if (version.startsWith("2004")) return buildScorm2004Script(initData);
-  return buildScorm12Script(initData);
-}
-
-function isHtmlFile(filePath: string): boolean {
-  const normalizedPath = filePath.split("?")[0].toLowerCase();
-  return normalizedPath.endsWith(".html") || normalizedPath.endsWith(".htm");
-}
-
-function extractInitDataFromRequest(reqUrl: URL): { version: string; initData: ScormInitData } {
-  const version = reqUrl.searchParams.get("v") || "1.2";
-  let initData: ScormInitData = {};
-
-  const initB64 = reqUrl.searchParams.get("d");
-  if (initB64) {
-    try {
-      initData = JSON.parse(atob(initB64));
-    } catch {
-      initData = {};
-    }
-  }
-
-  const scoMeta = reqUrl.searchParams.get("m");
-  if (scoMeta) {
-    try {
-      const meta = JSON.parse(atob(scoMeta));
-      if (meta.mastery_score != null) initData.mastery_score = meta.mastery_score;
-      if (meta.max_time_allowed) initData.max_time_allowed = meta.max_time_allowed;
-      if (meta.time_limit_action) initData.time_limit_action = meta.time_limit_action;
-      if (meta.launch_data) initData.launch_data = meta.launch_data;
-      if (meta.completion_threshold != null) initData.completion_threshold = meta.completion_threshold;
-      if (meta.scaled_passing_score != null) initData.scaled_passing_score = meta.scaled_passing_score;
-    } catch {
-      // ignore malformed metadata
-    }
-  }
-
-  return { version, initData };
-}
-
-async function serveInjectedHtml({
-  adminClient,
-  reqUrl,
-  tokenPayload,
-  sessionToken,
-  entryPath,
-  supabaseUrl,
-}: {
-  adminClient: ReturnType<typeof createClient>;
-  reqUrl: URL;
-  tokenPayload: SessionTokenPayload;
-  sessionToken: string;
-  entryPath: string;
-  supabaseUrl: string;
-}): Promise<Response> {
-  const normalizedEntryPath = entryPath.replace(/^\/+/, "");
-  console.log("[SERVE] Entry path:", normalizedEntryPath);
-
-  const learnerInfo = await getLearnerInfo(adminClient, tokenPayload.userId);
-  const storagePath = `${tokenPayload.folderPath}/${normalizedEntryPath}`;
-  console.log("[SERVE] Storage path:", storagePath);
-
-  const { data: fileData, error: dlError } = await adminClient.storage
-    .from("scorm-packages")
-    .download(storagePath);
-
-  if (dlError || !fileData) {
-    console.error("[SERVE] Download error:", dlError?.message || "No data", "Path:", storagePath);
-    return new Response(`<html><body><h1>File not found</h1><p>Path: ${storagePath}</p></body></html>`, {
-      status: 404,
-      headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
-    });
-  }
-
-  console.log("[SERVE] File downloaded, size:", fileData.size);
-
-  const rawBytes = await fileData.arrayBuffer();
-  let html = new TextDecoder("utf-8").decode(rawBytes);
-  const { version, initData } = extractInitDataFromRequest(reqUrl);
-
-  initData.student_id = learnerInfo.id;
-  initData.student_name = learnerInfo.name;
-
-  const entryDir = normalizedEntryPath.includes("/")
-    ? normalizedEntryPath.substring(0, normalizedEntryPath.lastIndexOf("/") + 1)
-    : "";
-  const encodedToken = encodeURIComponent(sessionToken);
-  const basePath = entryDir
-    ? `${supabaseUrl}/functions/v1/scorm-proxy/_t_/${encodedToken}/${entryDir}`
-    : `${supabaseUrl}/functions/v1/scorm-proxy/_t_/${encodedToken}/`;
-  const baseHref = basePath.endsWith("/") ? basePath : `${basePath}/`;
-
-  const scormScript = buildScormScript(initData, version);
-  const baseTag = `<base href="${baseHref}">`;
-  const metaCharset = `<meta charset="UTF-8">`;
-
-  if (html.match(/<head[^>]*>/i)) {
-    html = html.replace(/<head[^>]*>/i, `$&\n${metaCharset}\n${baseTag}\n${scormScript}`);
-  } else if (html.match(/<html[^>]*>/i)) {
-    html = html.replace(/<html[^>]*>/i, `$&\n<head>${metaCharset}\n${baseTag}\n${scormScript}</head>`);
-  } else {
-    html = `<!DOCTYPE html><html><head>${metaCharset}\n${baseTag}\n${scormScript}</head><body>${html}</body></html>`;
-  }
-
-  return new Response(html, {
-    status: 200,
-    headers: {
-      ...corsHeaders,
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "private, no-cache",
-    },
-  });
-}
-
-// ─── MIME type helper ────────────────────────────────────────────────────────
-
-function getMimeType(filePath: string): string {
-  const ext = filePath.split(".").pop()?.toLowerCase() || "";
-  const mimeMap: Record<string, string> = {
-    html: "text/html", htm: "text/html",
-    js: "application/javascript", mjs: "application/javascript",
-    css: "text/css",
-    json: "application/json",
-    xml: "application/xml",
-    svg: "image/svg+xml",
-    png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
-    gif: "image/gif", webp: "image/webp", ico: "image/x-icon",
-    woff: "font/woff", woff2: "font/woff2", ttf: "font/ttf",
-    mp3: "audio/mpeg", mp4: "video/mp4", webm: "video/webm",
-    wav: "audio/wav", ogg: "audio/ogg",
-    pdf: "application/pdf",
-    swf: "application/x-shockwave-flash",
-    dat: "application/octet-stream",
-  };
-  return mimeMap[ext] || "application/octet-stream";
+</script>
+</head>
+<body>
+<iframe id="scorm-content" src="${contentUrl}" allow="fullscreen autoplay" allowfullscreen></iframe>
+</body>
+</html>`;
 }
 
 // ─── Main handler ────────────────────────────────────────────────────────────
@@ -653,83 +496,158 @@ Deno.serve(async (req) => {
   const reqUrl = new URL(req.url);
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // MODE 0: Serve HTML with injected SCORM API (GET /_serve_/TOKEN/path)
-  // Downloads HTML from storage, injects <base>, SCORM API with learner info,
-  // mastery score, launch data, and returns text/html
+  // MODE 0: WRAPPER — GET /_wrapper_/TOKEN/entryFile?v=...&d=...&m=...
+  // Serves a wrapper HTML page with SCORM API defined.
+  // Content loads in a child iframe via /_r_/TOKEN/entryFile (same origin).
+  // SCORM content discovers API by walking window.parent — standard behavior.
   // ═══════════════════════════════════════════════════════════════════════════
   if (req.method === "GET") {
-    const serveInfo = extractServeInfo(reqUrl.pathname);
-    if (serveInfo) {
-      const tokenPayload = await verifySessionToken(serveInfo.token, serviceRoleKey);
+    const wrapperInfo = extractPathToken(reqUrl.pathname, "/_wrapper_/");
+    if (wrapperInfo && wrapperInfo.subPath) {
+      console.log("[WRAPPER] Entry:", wrapperInfo.subPath);
+
+      const tokenPayload = await verifySessionToken(wrapperInfo.token, serviceRoleKey);
       if (!tokenPayload) {
-        console.error("[SERVE] Token verification failed");
         return new Response("<html><body><h1>Session expired</h1></body></html>", {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
+          status: 403, headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
         });
       }
 
       const adminClient = createClient(supabaseUrl, serviceRoleKey);
-      return await serveInjectedHtml({
-        adminClient,
-        reqUrl,
-        tokenPayload,
-        sessionToken: serveInfo.token,
-        entryPath: serveInfo.entryPath,
-        supabaseUrl,
+      const learnerInfo = await getLearnerInfo(adminClient, tokenPayload.userId);
+
+      // Parse init data and SCO metadata from query params
+      let initData: ScormInitData = {};
+      const initB64 = reqUrl.searchParams.get("d");
+      if (initB64) { try { initData = JSON.parse(atob(initB64)); } catch {} }
+      const scoMeta = reqUrl.searchParams.get("m");
+      if (scoMeta) {
+        try {
+          const meta = JSON.parse(atob(scoMeta));
+          if (meta.mastery_score != null) initData.mastery_score = meta.mastery_score;
+          if (meta.max_time_allowed) initData.max_time_allowed = meta.max_time_allowed;
+          if (meta.time_limit_action) initData.time_limit_action = meta.time_limit_action;
+          if (meta.launch_data) initData.launch_data = meta.launch_data;
+          if (meta.completion_threshold != null) initData.completion_threshold = meta.completion_threshold;
+          if (meta.scaled_passing_score != null) initData.scaled_passing_score = meta.scaled_passing_score;
+        } catch {}
+      }
+
+      initData.student_id = learnerInfo.id;
+      initData.student_name = learnerInfo.name;
+
+      const version = reqUrl.searchParams.get("v") || "1.2";
+
+      // Build content URL — points to /_r_/ which serves raw content (no API injection)
+      const encodedToken = encodeURIComponent(wrapperInfo.token);
+      const contentUrl = `${supabaseUrl}/functions/v1/scorm-proxy/_r_/${encodedToken}/${wrapperInfo.subPath}`;
+
+      const html = buildWrapperHtml(contentUrl, initData, version);
+      return new Response(html, {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, no-cache" },
       });
     }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // MODE 1: Token-based redirect (GET /_t_/TOKEN/path or ?t=TOKEN)
+  // MODE 1: RAW CONTENT — GET /_r_/TOKEN/path
+  // Serves HTML with <base> tag for relative URLs (NO SCORM API injection).
+  // Non-HTML files redirect to signed storage URLs.
+  // The SCORM content in this frame finds API via window.parent (the wrapper).
   // ═══════════════════════════════════════════════════════════════════════════
   if (req.method === "GET") {
-    const tokenInfo = extractPathToken(reqUrl.pathname) || extractQueryToken(reqUrl);
-    if (tokenInfo) console.log("[SUB-RESOURCE] Path:", tokenInfo.subPath);
-
-    if (tokenInfo) {
-      const tokenPayload = await verifySessionToken(tokenInfo.token, serviceRoleKey);
+    const rawInfo = extractPathToken(reqUrl.pathname, "/_r_/");
+    if (rawInfo) {
+      const tokenPayload = await verifySessionToken(rawInfo.token, serviceRoleKey);
       if (!tokenPayload) {
-        return new Response(JSON.stringify({ error: "Invalid or expired session" }), {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response("Session expired", { status: 403, headers: corsHeaders });
       }
 
-      const subPath = tokenInfo.subPath.replace(/^\/+/, "").replace(/\/+$/, "");
-      if (isHtmlFile(subPath)) {
-        const adminClient = createClient(supabaseUrl, serviceRoleKey);
-        return await serveInjectedHtml({
-          adminClient,
-          reqUrl,
-          tokenPayload,
-          sessionToken: tokenInfo.token,
-          entryPath: subPath,
-          supabaseUrl,
-        });
+      const subPath = rawInfo.subPath.replace(/^\/+/, "").replace(/\/+$/, "");
+      if (!subPath) {
+        return new Response("No file path", { status: 400, headers: corsHeaders });
       }
 
-      const storagePath = subPath
-        ? `${tokenPayload.folderPath}/${subPath}`
-        : tokenPayload.folderPath;
-
+      const storagePath = `${tokenPayload.folderPath}/${subPath}`;
       const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+      // For HTML files: download, inject <base> tag only (NOT SCORM API), serve as text/html
+      if (isHtmlFile(subPath)) {
+        console.log("[RAW-HTML] Serving:", subPath);
+
+        const { data: fileData, error: dlError } = await adminClient.storage
+          .from("scorm-packages")
+          .download(storagePath);
+
+        if (dlError || !fileData) {
+          console.error("[RAW-HTML] Not found:", storagePath);
+          return new Response(`<html><body><h1>File not found</h1><p>${storagePath}</p></body></html>`, {
+            status: 404, headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
+          });
+        }
+
+        let html = new TextDecoder("utf-8").decode(await fileData.arrayBuffer());
+
+        // Inject <base> tag so relative URLs resolve through /_r_/ path
+        const entryDir = subPath.includes("/") ? subPath.substring(0, subPath.lastIndexOf("/") + 1) : "";
+        const encodedToken = encodeURIComponent(rawInfo.token);
+        const basePath = entryDir
+          ? `${supabaseUrl}/functions/v1/scorm-proxy/_r_/${encodedToken}/${entryDir}`
+          : `${supabaseUrl}/functions/v1/scorm-proxy/_r_/${encodedToken}/`;
+        const baseHref = basePath.endsWith("/") ? basePath : `${basePath}/`;
+        const baseTag = `<base href="${baseHref}">`;
+
+        if (html.match(/<head[^>]*>/i)) {
+          html = html.replace(/<head[^>]*>/i, `$&\n<meta charset="UTF-8">\n${baseTag}`);
+        } else if (html.match(/<html[^>]*>/i)) {
+          html = html.replace(/<html[^>]*>/i, `$&\n<head><meta charset="UTF-8">\n${baseTag}</head>`);
+        } else {
+          html = `<!DOCTYPE html><html><head><meta charset="UTF-8">\n${baseTag}</head><body>${html}</body></html>`;
+        }
+
+        return new Response(html, {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, no-cache" },
+        });
+      }
+
+      // For non-HTML files: redirect to signed storage URL
       const { data: signedUrlData, error: signedUrlError } = await adminClient.storage
         .from("scorm-packages")
-        .createSignedUrl(storagePath, 300);
+        .createSignedUrl(storagePath, 600);
 
       if (signedUrlError || !signedUrlData?.signedUrl) {
+        console.error("[RAW] Not found:", storagePath);
         return new Response("File not found", { status: 404, headers: corsHeaders });
       }
 
       return new Response(null, {
         status: 302,
-        headers: {
-          ...corsHeaders,
-          Location: signedUrlData.signedUrl,
-          "Cache-Control": "private, max-age=240",
-        },
+        headers: { ...corsHeaders, Location: signedUrlData.signedUrl, "Cache-Control": "private, max-age=300" },
+      });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LEGACY: /_serve_/ and /_t_/ paths — redirect to new /_wrapper_/ and /_r_/
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (req.method === "GET") {
+    const serveInfo = extractPathToken(reqUrl.pathname, "/_serve_/");
+    if (serveInfo && serveInfo.subPath) {
+      const qs = reqUrl.search || "";
+      return new Response(null, {
+        status: 302,
+        headers: { ...corsHeaders, Location: `${supabaseUrl}/functions/v1/scorm-proxy/_wrapper_/${encodeURIComponent(serveInfo.token)}/${serveInfo.subPath}${qs}` },
+      });
+    }
+
+    const tInfo = extractPathToken(reqUrl.pathname, "/_t_/");
+    if (tInfo) {
+      const qs = reqUrl.search || "";
+      return new Response(null, {
+        status: 302,
+        headers: { ...corsHeaders, Location: `${supabaseUrl}/functions/v1/scorm-proxy/_r_/${encodeURIComponent(tInfo.token)}/${tInfo.subPath}${qs}` },
       });
     }
   }
@@ -741,132 +659,77 @@ Deno.serve(async (req) => {
     const userId = await authenticateRequest(req);
     if (!userId) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    let body: {
-      action: string;
-      folderPath: string;
-      filePath?: string;
-      courseId: string;
-      packageId?: string;
-    };
-    try {
-      body = await req.json();
-    } catch {
+    let body: { action: string; folderPath: string; filePath?: string; courseId: string; packageId?: string };
+    try { body = await req.json(); } catch {
       return new Response(JSON.stringify({ error: "Invalid request body" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
-
     const hasAccess = await verifyAccess(adminClient, userId, body.courseId);
     if (!hasAccess) {
       return new Response(JSON.stringify({ error: "Not enrolled in this course" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // ── ACTION: sign ──
     if (body.action === "sign") {
-      const storagePath = body.filePath
-        ? `${body.folderPath}/${body.filePath}`
-        : body.folderPath;
-
-      const { data, error } = await adminClient.storage
-        .from("scorm-packages")
-        .createSignedUrl(storagePath, 300);
-
+      const storagePath = body.filePath ? `${body.folderPath}/${body.filePath}` : body.folderPath;
+      const { data, error } = await adminClient.storage.from("scorm-packages").createSignedUrl(storagePath, 300);
       if (error || !data?.signedUrl) {
         return new Response(JSON.stringify({ error: "File not found" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       const token = await createSessionToken(
-        {
-          userId,
-          courseId: body.courseId,
-          folderPath: body.folderPath,
-          exp: Date.now() + 5 * 60 * 1000,
-        },
+        { userId, courseId: body.courseId, folderPath: body.folderPath, exp: Date.now() + 10 * 60 * 1000 },
         serviceRoleKey,
       );
 
-      const proxyBase = `${supabaseUrl}/functions/v1/scorm-proxy`;
-
-      return new Response(
-        JSON.stringify({
-          signedUrl: data.signedUrl,
-          sessionToken: token,
-          baseRedirectUrl: proxyBase,
-        }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
+      return new Response(JSON.stringify({ signedUrl: data.signedUrl, sessionToken: token }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // ── ACTION: list ──
     if (body.action === "list") {
       const listPath = body.folderPath.replace(/\/+$/, "");
       const subPath = body.filePath ? `${listPath}/${body.filePath}` : listPath;
-      const { data, error } = await adminClient.storage
-        .from("scorm-packages")
-        .list(subPath, { limit: 500 });
-
+      const { data, error } = await adminClient.storage.from("scorm-packages").list(subPath, { limit: 500 });
       if (error) {
         return new Response(JSON.stringify({ error: error.message }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-
       return new Response(JSON.stringify(data || []), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // ── ACTION: parse-manifest ──
     if (body.action === "parse-manifest") {
       const manifestPath = `${body.folderPath}/imsmanifest.xml`;
-
       let fileData: Blob | null = null;
       let actualManifestDir = "";
 
-      // Try root first
-      const { data: rootData, error: rootError } = await adminClient.storage
-        .from("scorm-packages")
-        .download(manifestPath);
-
+      const { data: rootData, error: rootError } = await adminClient.storage.from("scorm-packages").download(manifestPath);
       if (!rootError && rootData) {
         fileData = rootData;
       } else {
-        // Search one level of subdirectories for imsmanifest.xml
-        const { data: entries } = await adminClient.storage
-          .from("scorm-packages")
-          .list(body.folderPath, { limit: 100 });
-
+        const { data: entries } = await adminClient.storage.from("scorm-packages").list(body.folderPath, { limit: 100 });
         if (entries) {
           for (const entry of entries) {
             if (!entry.metadata) {
               const subManifestPath = `${body.folderPath}/${entry.name}/imsmanifest.xml`;
-              const { data: subData, error: subError } = await adminClient.storage
-                .from("scorm-packages")
-                .download(subManifestPath);
-              if (!subError && subData) {
-                fileData = subData;
-                actualManifestDir = entry.name;
-                break;
-              }
+              const { data: subData, error: subError } = await adminClient.storage.from("scorm-packages").download(subManifestPath);
+              if (!subError && subData) { fileData = subData; actualManifestDir = entry.name; break; }
             }
           }
         }
@@ -874,72 +737,51 @@ Deno.serve(async (req) => {
 
       if (!fileData) {
         return new Response(JSON.stringify({ error: "imsmanifest.xml not found" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       const xmlContent = await fileData.text();
       const manifest = parseManifestXml(xmlContent);
-
       if (!manifest) {
         return new Response(JSON.stringify({ error: "Failed to parse manifest" }), {
-          status: 422,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // Prepend subdirectory to SCO paths if manifest was in a subfolder
       if (actualManifestDir) {
-        for (const sco of manifest.scos) {
-          sco.launchPath = `${actualManifestDir}/${sco.launchPath}`;
-        }
+        for (const sco of manifest.scos) { sco.launchPath = `${actualManifestDir}/${sco.launchPath}`; }
       }
 
       if (body.packageId) {
-        await adminClient
-          .from("scorm_packages")
-          .update({
-            manifest_data: manifest as unknown as Record<string, unknown>,
-            scorm_version: manifest.version,
-            entry_point: manifest.scos.length > 0 ? manifest.scos[0].launchPath : null,
-          })
-          .eq("id", body.packageId);
+        await adminClient.from("scorm_packages").update({
+          manifest_data: manifest as unknown as Record<string, unknown>,
+          scorm_version: manifest.version,
+          entry_point: manifest.scos.length > 0 ? manifest.scos[0].launchPath : null,
+        }).eq("id", body.packageId);
 
-        await adminClient
-          .from("scorm_scos")
-          .delete()
-          .eq("package_id", body.packageId);
-
+        await adminClient.from("scorm_scos").delete().eq("package_id", body.packageId);
         if (manifest.scos.length > 0) {
           const scoRows = manifest.scos.map((sco) => ({
-            package_id: body.packageId!,
-            identifier: sco.identifier,
-            title: sco.title,
-            launch_path: sco.launchPath,
-            parameters: sco.parameters || null,
-            order_index: sco.orderIndex,
-            scorm_type: sco.scormType,
+            package_id: body.packageId!, identifier: sco.identifier, title: sco.title,
+            launch_path: sco.launchPath, parameters: sco.parameters || null,
+            order_index: sco.orderIndex, scorm_type: sco.scormType,
           }));
-
           await adminClient.from("scorm_scos").insert(scoRows);
         }
       }
 
       return new Response(JSON.stringify(manifest), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     return new Response(JSON.stringify({ error: "Unknown action" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
   return new Response(JSON.stringify({ error: "Method not allowed" }), {
-    status: 405,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
