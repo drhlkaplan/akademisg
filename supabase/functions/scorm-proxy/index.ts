@@ -6,6 +6,18 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function htmlResponse(html: string, status = 200, extraHeaders: HeadersInit = {}) {
+  return new Response(new TextEncoder().encode(html), {
+    status,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "private, no-cache",
+      ...extraHeaders,
+    },
+  });
+}
+
 // ─── Stateless session token (HMAC-SHA256) ───────────────────────────────────
 
 interface SessionTokenPayload {
@@ -550,9 +562,7 @@ Deno.serve(async (req) => {
 
       const tokenPayload = await verifySessionToken(wrapperInfo.token, serviceRoleKey);
       if (!tokenPayload) {
-        return new Response("<html><body><h1>Session expired</h1></body></html>", {
-          status: 403, headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
-        });
+        return htmlResponse("<html><body><h1>Session expired</h1></body></html>", 403);
       }
 
       const adminClient = createClient(supabaseUrl, serviceRoleKey);
@@ -585,10 +595,7 @@ Deno.serve(async (req) => {
       const contentUrl = `${supabaseUrl}/functions/v1/scorm-proxy/_r_/${encodedToken}/${wrapperInfo.subPath}`;
 
       const html = buildWrapperHtml(contentUrl, initData, version);
-      return new Response(html, {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, no-cache" },
-      });
+      return htmlResponse(html);
     }
   }
 
@@ -624,9 +631,7 @@ Deno.serve(async (req) => {
 
         if (dlError || !fileData) {
           console.error("[RAW-HTML] Not found:", storagePath);
-          return new Response(`<html><body><h1>File not found</h1><p>${storagePath}</p></body></html>`, {
-            status: 404, headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8" },
-          });
+          return htmlResponse(`<html><body><h1>File not found</h1><p>${storagePath}</p></body></html>`, 404);
         }
 
         let html = new TextDecoder("utf-8").decode(await fileData.arrayBuffer());
@@ -648,10 +653,7 @@ Deno.serve(async (req) => {
           html = `<!DOCTYPE html><html><head><meta charset="UTF-8">\n${baseTag}</head><body>${html}</body></html>`;
         }
 
-        return new Response(html, {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, no-cache" },
-        });
+        return htmlResponse(html);
       }
 
       // For non-HTML files: redirect to signed storage URL
