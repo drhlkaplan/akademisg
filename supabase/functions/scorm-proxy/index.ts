@@ -444,11 +444,12 @@ function buildScorm2004Api(d: ScormInitData): string {
 }
 
 // ─── Wrapper HTML builder ────────────────────────────────────────────────────
-// This is the KEY change: instead of injecting SCORM API into every HTML page,
-// we serve a wrapper page that CONTAINS the SCORM API and loads content in a
-// child iframe. The SCORM content finds the API by walking up window.parent
-// (standard SCORM API discovery). Internal redirects within the content iframe
-// never lose the API because it lives in the parent wrapper frame.
+// Uses Rustici Software SCORM Driver (v5.1.1) as the intermediary layer.
+// Architecture:
+//   1. Wrapper page defines window.API / window.API_1484_11 (our LMS)
+//   2. Rustici SCORM Driver discovers our API via parent scanning
+//   3. SCORM Driver calls Start() → Initialize → LoadContent()
+//   4. Content loads in child iframe, finds API via standard frame walking
 
 function buildWrapperHtml(
   contentUrl: string,
@@ -459,6 +460,10 @@ function buildWrapperHtml(
     ? buildScorm2004Api(initData)
     : buildScorm12Api(initData);
 
+  // Public URLs for Rustici SCORM Driver files in firm-assets bucket
+  const supabaseUrlVal = Deno.env.get("SUPABASE_URL") || "";
+  const driverBaseUrl = `${supabaseUrlVal}/storage/v1/object/public/firm-assets/_system`;
+
   return `<!DOCTYPE html>
 <html><head>
 <meta charset="UTF-8">
@@ -466,16 +471,53 @@ function buildWrapperHtml(
 <title>SCORM Player</title>
 <style>
 html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#fff}
-iframe{width:100%;height:100%;border:0;display:block}
+#scorm-content{width:100%;height:100%;border:0;display:block}
 </style>
+
+<!-- 1. Define our LMS SCORM API (postMessage-based persistence) -->
 <script>
 (function(){
 ${apiCode}
 })();
 </script>
+
+<!-- 2. Load Rustici SCORM Driver -->
+<script src="${driverBaseUrl}/browsersniff.js"></script>
+<script src="${driverBaseUrl}/scormdriver.js"></script>
+
+<!-- 3. Configure SCORM Driver and define LoadContent -->
+<script>
+// Override SCORM Driver config
+blnDebug = false;
+SHOW_DEBUG_ON_LAUNCH = false;
+EXIT_BEHAVIOR = "SCORM_RECOMMENDED";
+EXIT_TARGET = "";
+ALLOW_NONE_STANDARD = true;
+DEFAULT_EXIT_TYPE = EXIT_TYPE_SUSPEND;
+FORCED_COMMIT_TIME = "30";
+SCORE_CAN_ONLY_IMPROVE = true;
+
+// LoadContent is called by SCORM Driver after successful Initialize
+function LoadContent() {
+  var iframe = document.getElementById('scorm-content');
+  if (iframe) {
+    iframe.src = ${JSON.stringify(contentUrl)};
+  }
+}
+
+// Handle unload - tell SCORM Driver to finish
+window.addEventListener('beforeunload', function() {
+  try { if (typeof Unload === 'function') Unload(); } catch(e) {}
+});
+
+// Start SCORM Driver on load
+window.addEventListener('load', function() {
+  try { if (typeof Start === 'function') Start(); } catch(e) { console.error('SCORM Driver Start error:', e); }
+});
+</script>
 </head>
 <body>
-<iframe id="scorm-content" src="${contentUrl}" allow="fullscreen autoplay" allowfullscreen></iframe>
+<iframe id="scorm-content" allow="fullscreen autoplay" allowfullscreen></iframe>
 </body>
 </html>`;
 }
