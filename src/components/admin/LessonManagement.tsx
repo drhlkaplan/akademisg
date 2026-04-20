@@ -536,6 +536,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
               folderPath: folderName,
               courseId,
               packageId: pkg.id,
+              bucket: "scorm-public",
             }),
           });
 
