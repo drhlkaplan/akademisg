@@ -591,9 +591,10 @@ Deno.serve(async (req) => {
 
       const version = reqUrl.searchParams.get("v") || "1.2";
 
-      // Build content URL — points to /_r_/ which serves raw content (no API injection)
+      // Build content URL — use direct public URL when provided, otherwise proxy raw content
       const encodedToken = encodeURIComponent(wrapperInfo.token);
-      const contentUrl = `${supabaseUrl}/functions/v1/scorm-proxy/_r_/${encodedToken}/${wrapperInfo.subPath}`;
+      const directContentUrl = reqUrl.searchParams.get("u");
+      const contentUrl = directContentUrl || `${supabaseUrl}/functions/v1/scorm-proxy/_r_/${encodedToken}/${wrapperInfo.subPath}`;
 
       const html = buildWrapperHtml(contentUrl, initData, version);
       return htmlResponse(html);
@@ -718,7 +719,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    let body: { action: string; folderPath: string; filePath?: string; courseId: string; packageId?: string };
+    let body: { action: string; folderPath: string; filePath?: string; courseId: string; packageId?: string; bucket?: string };
     try { body = await req.json(); } catch {
       return new Response(JSON.stringify({ error: "Invalid request body" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -735,8 +736,9 @@ Deno.serve(async (req) => {
 
     // ── ACTION: sign ──
     if (body.action === "sign") {
+      const bucket = body.bucket || "scorm-packages";
       const storagePath = body.filePath ? `${body.folderPath}/${body.filePath}` : body.folderPath;
-      const { data, error } = await adminClient.storage.from("scorm-packages").createSignedUrl(storagePath, 300);
+      const { data, error } = await adminClient.storage.from(bucket).createSignedUrl(storagePath, 300);
       if (error || !data?.signedUrl) {
         return new Response(JSON.stringify({ error: "File not found" }), {
           status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -744,7 +746,7 @@ Deno.serve(async (req) => {
       }
 
       const token = await createSessionToken(
-        { userId, courseId: body.courseId, folderPath: body.folderPath, exp: Date.now() + 10 * 60 * 1000 },
+        { userId, courseId: body.courseId, folderPath: body.folderPath, bucket, exp: Date.now() + 10 * 60 * 1000 },
         serviceRoleKey,
       );
 
@@ -755,9 +757,10 @@ Deno.serve(async (req) => {
 
     // ── ACTION: list ──
     if (body.action === "list") {
+      const bucket = body.bucket || "scorm-packages";
       const listPath = body.folderPath.replace(/\/+$/, "");
       const subPath = body.filePath ? `${listPath}/${body.filePath}` : listPath;
-      const { data, error } = await adminClient.storage.from("scorm-packages").list(subPath, { limit: 500 });
+      const { data, error } = await adminClient.storage.from(bucket).list(subPath, { limit: 500 });
       if (error) {
         return new Response(JSON.stringify({ error: error.message }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -770,20 +773,21 @@ Deno.serve(async (req) => {
 
     // ── ACTION: parse-manifest ──
     if (body.action === "parse-manifest") {
+      const bucket = body.bucket || "scorm-packages";
       const manifestPath = `${body.folderPath}/imsmanifest.xml`;
       let fileData: Blob | null = null;
       let actualManifestDir = "";
 
-      const { data: rootData, error: rootError } = await adminClient.storage.from("scorm-packages").download(manifestPath);
+      const { data: rootData, error: rootError } = await adminClient.storage.from(bucket).download(manifestPath);
       if (!rootError && rootData) {
         fileData = rootData;
       } else {
-        const { data: entries } = await adminClient.storage.from("scorm-packages").list(body.folderPath, { limit: 100 });
+        const { data: entries } = await adminClient.storage.from(bucket).list(body.folderPath, { limit: 100 });
         if (entries) {
           for (const entry of entries) {
             if (!entry.metadata) {
               const subManifestPath = `${body.folderPath}/${entry.name}/imsmanifest.xml`;
-              const { data: subData, error: subError } = await adminClient.storage.from("scorm-packages").download(subManifestPath);
+              const { data: subData, error: subError } = await adminClient.storage.from(bucket).download(subManifestPath);
               if (!subError && subData) { fileData = subData; actualManifestDir = entry.name; break; }
             }
           }
