@@ -54,18 +54,40 @@ const PRIORITY_ENTRY_FILES = [
   "story.html",
 ];
 
+const PUBLIC_STORAGE_MARKER = "/storage/v1/object/public/";
+
 // ─── Utility functions ───────────────────────────────────────────────────────
 
-function extractFolderPath(packageUrl: string): string | null {
-  const marker = "scorm-packages/";
-  const idx = packageUrl.indexOf(marker);
-  if (idx === -1) return null;
-  const raw = packageUrl.slice(idx + marker.length).split("?")[0].split("#")[0];
-  return raw.replace(/^\/+|\/+$/g, "") || null;
+function extractPackageLocation(packageUrl: string): { bucket: string; folderPath: string; isPublic: boolean } | null {
+  const normalizedUrl = packageUrl.split("?")[0].split("#")[0];
+  const publicIdx = normalizedUrl.indexOf(PUBLIC_STORAGE_MARKER);
+
+  if (publicIdx !== -1) {
+    const raw = normalizedUrl.slice(publicIdx + PUBLIC_STORAGE_MARKER.length).replace(/^\/+|\/+$/g, "");
+    const slashIndex = raw.indexOf("/");
+    if (slashIndex === -1) return null;
+
+    return {
+      bucket: raw.slice(0, slashIndex),
+      folderPath: raw.slice(slashIndex + 1),
+      isPublic: true,
+    };
+  }
+
+  const legacyMarker = "scorm-packages/";
+  const legacyIdx = normalizedUrl.indexOf(legacyMarker);
+  if (legacyIdx === -1) return null;
+
+  return {
+    bucket: "scorm-packages",
+    folderPath: normalizedUrl.slice(legacyIdx + legacyMarker.length).replace(/^\/+|\/+$/g, ""),
+    isPublic: false,
+  };
 }
 
 function extractCourseId(folderPath: string): string {
-  return folderPath.split("/")[0];
+  const [first, second] = folderPath.split("/");
+  return first === "scorm-public" ? (second || first) : first;
 }
 
 async function getAuthToken(): Promise<string | null> {
@@ -75,7 +97,7 @@ async function getAuthToken(): Promise<string | null> {
 
 async function proxyPost<T>(
   token: string,
-  body: { action: string; folderPath: string; filePath?: string; courseId: string },
+  body: { action: string; folderPath: string; filePath?: string; courseId: string; bucket?: string },
 ): Promise<T> {
   const res = await fetch(proxyUrl, {
     method: "POST",
@@ -93,9 +115,9 @@ async function proxyPost<T>(
 
 interface StorageItem { name: string; id: string | null }
 
-async function listFiles(token: string, folderPath: string, subPath: string, courseId: string): Promise<StorageItem[]> {
+async function listFiles(token: string, bucket: string, folderPath: string, subPath: string, courseId: string): Promise<StorageItem[]> {
   try {
-    return (await proxyPost<StorageItem[]>(token, { action: "list", folderPath, filePath: subPath || undefined, courseId })) || [];
+    return (await proxyPost<StorageItem[]>(token, { action: "list", bucket, folderPath, filePath: subPath || undefined, courseId })) || [];
   } catch { return []; }
 }
 
@@ -146,9 +168,9 @@ interface ResolvedEntry {
 }
 
 async function resolveEntryFile(
-  token: string, folderPath: string, entryPoint: string, courseId: string,
+  token: string, bucket: string, folderPath: string, entryPoint: string, courseId: string,
 ): Promise<ResolvedEntry> {
-  const rootFiles = await listFiles(token, folderPath, "", courseId);
+  const rootFiles = await listFiles(token, bucket, folderPath, "", courseId);
   const rootFileNames = new Set(rootFiles.map((f) => f.name));
 
   const resolvePreferredEntry = async (candidateEntry: string): Promise<string> => {
@@ -159,7 +181,7 @@ async function resolveEntryFile(
       return forceDirectLaunchEntry(normalizedEntry, rootFileNames);
     }
 
-    const siblingFiles = await listFiles(token, folderPath, entryDirectory, courseId);
+      const siblingFiles = await listFiles(token, bucket, folderPath, entryDirectory, courseId);
     return forceDirectLaunchEntry(normalizedEntry, siblingFiles.map((file) => file.name));
   };
 
@@ -167,7 +189,7 @@ async function resolveEntryFile(
   if (rootFileNames.has("imsmanifest.xml")) {
     try {
       const { signedUrl } = await proxyPost<{ signedUrl: string }>(token, {
-        action: "sign", folderPath, filePath: "imsmanifest.xml", courseId,
+        action: "sign", bucket, folderPath, filePath: "imsmanifest.xml", courseId,
       });
       const res = await fetch(signedUrl);
       if (res.ok) {
@@ -201,7 +223,7 @@ async function resolveEntryFile(
   // Check subfolders
   const subfolders = rootFiles.filter((f) => f.id === null);
   for (const folder of subfolders) {
-    const subFiles = await listFiles(token, folderPath, folder.name, courseId);
+    const subFiles = await listFiles(token, bucket, folderPath, folder.name, courseId);
     for (const file of PRIORITY_ENTRY_FILES) {
       if (subFiles.some((f) => f.name === file)) return { entryFile: `${folder.name}/${file}` };
     }
@@ -335,13 +357,14 @@ export function ScormPlayer({
     const token = await getAuthToken();
     if (!token) { setError("Oturum bulunamadı. Lütfen tekrar giriş yapın."); setIsLoading(false); return; }
 
-    const folderPath = extractFolderPath(packageUrl);
-    if (!folderPath) { setError("Paket yolu çözümlenemedi."); setIsLoading(false); return; }
+    const packageLocation = extractPackageLocation(packageUrl);
+    if (!packageLocation) { setError("Paket yolu çözümlenemedi."); setIsLoading(false); return; }
 
+    const { bucket, folderPath, isPublic } = packageLocation;
     const courseId = extractCourseId(folderPath);
 
     // 1. Resolve entry file
-    const { entryFile, detectedVersion, scoMeta } = await resolveEntryFile(token, folderPath, entryPoint, courseId);
+    const { entryFile, detectedVersion, scoMeta } = await resolveEntryFile(token, bucket, folderPath, entryPoint, courseId);
     if (!entryFile) { setError("SCORM başlangıç dosyası bulunamadı."); setIsLoading(false); return; }
 
     const activeVersion = detectedVersion || scormVersion || "1.2";
@@ -350,7 +373,7 @@ export function ScormPlayer({
     try {
       // 2. Get session token
       const { sessionToken } = await proxyPost<{ sessionToken: string }>(token, {
-        action: "sign", folderPath, filePath: entryFile, courseId,
+        action: "sign", bucket, folderPath, filePath: entryFile, courseId,
       });
 
       // 3. Load previous progress for resume
@@ -362,7 +385,11 @@ export function ScormPlayer({
       const initDataB64 = btoa(JSON.stringify(initialData));
       const encodedToken = encodeURIComponent(sessionToken);
       const metaParam = scoMeta ? `&m=${encodeURIComponent(btoa(JSON.stringify(scoMeta)))}` : "";
-      const wrapperUrl = `${proxyUrl}/_wrapper_/${encodedToken}/${entryFile}?v=${encodeURIComponent(activeVersion)}&d=${encodeURIComponent(initDataB64)}${metaParam}`;
+      const directContentUrl = isPublic
+        ? `${packageUrl.replace(/\/+$/, "")}/${entryFile.split("/").map(encodeURIComponent).join("/")}`
+        : null;
+      const directParam = directContentUrl ? `&u=${encodeURIComponent(directContentUrl)}` : "";
+      const wrapperUrl = `${proxyUrl}/_wrapper_/${encodedToken}/${entryFile}?v=${encodeURIComponent(activeVersion)}&d=${encodeURIComponent(initDataB64)}${metaParam}${directParam}`;
 
       // 5. Set iframe src — outer iframe loads wrapper, wrapper loads content
       setIframeSrc(wrapperUrl);
