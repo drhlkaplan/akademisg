@@ -24,6 +24,7 @@ interface SessionTokenPayload {
   userId: string;
   courseId: string;
   folderPath: string;
+  bucket?: string;
   exp: number;
 }
 
@@ -618,6 +619,7 @@ Deno.serve(async (req) => {
         return new Response("No file path", { status: 400, headers: corsHeaders });
       }
 
+      const bucket = tokenPayload.bucket || "scorm-packages";
       const storagePath = `${tokenPayload.folderPath}/${subPath}`;
       const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
@@ -626,7 +628,7 @@ Deno.serve(async (req) => {
         console.log("[RAW-HTML] Serving:", subPath);
 
         const { data: fileData, error: dlError } = await adminClient.storage
-          .from("scorm-packages")
+          .from(bucket)
           .download(storagePath);
 
         if (dlError || !fileData) {
@@ -658,7 +660,7 @@ Deno.serve(async (req) => {
 
       // For non-HTML files: download as bytes and serve directly with correct MIME type
       const { data: fileData, error: dlError } = await adminClient.storage
-        .from("scorm-packages")
+        .from(bucket)
         .download(storagePath);
 
       if (dlError || !fileData) {
