@@ -656,19 +656,28 @@ Deno.serve(async (req) => {
         return htmlResponse(html);
       }
 
-      // For non-HTML files: redirect to signed storage URL
-      const { data: signedUrlData, error: signedUrlError } = await adminClient.storage
+      // For non-HTML files: download as bytes and serve directly with correct MIME type
+      const { data: fileData, error: dlError } = await adminClient.storage
         .from("scorm-packages")
-        .createSignedUrl(storagePath, 600);
+        .download(storagePath);
 
-      if (signedUrlError || !signedUrlData?.signedUrl) {
+      if (dlError || !fileData) {
         console.error("[RAW] Not found:", storagePath);
-        return new Response("File not found", { status: 404, headers: corsHeaders });
+        return new Response("File not found", {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "text/plain; charset=utf-8" },
+        });
       }
 
-      return new Response(null, {
-        status: 302,
-        headers: { ...corsHeaders, Location: signedUrlData.signedUrl, "Cache-Control": "private, max-age=300" },
+      const arrayBuffer = await fileData.arrayBuffer();
+      return new Response(arrayBuffer, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": getMimeType(subPath),
+          "Cache-Control": "public, max-age=3600",
+          "X-Content-Type-Options": "nosniff",
+        },
       });
     }
   }
