@@ -379,13 +379,31 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       if (pkg?.package_url) {
         try {
           const url = new URL(pkg.package_url);
-          const pathParts = url.pathname.split("/storage/v1/object/public/scorm-packages/");
-          if (pathParts[1]) {
-            const folderPath = pathParts[1];
-            const { data: files } = await supabase.storage.from("scorm-packages").list(folderPath);
-            if (files && files.length > 0) {
-              await supabase.storage.from("scorm-packages").remove(files.map((f) => `${folderPath}/${f.name}`));
-            }
+          // Try public bucket markers for both new (scorm-public) and legacy (scorm-packages)
+          const buckets = ["scorm-public", "scorm-packages"];
+          for (const bucket of buckets) {
+            const marker = `/storage/v1/object/public/${bucket}/`;
+            const idx = url.pathname.indexOf(marker);
+            if (idx === -1) continue;
+            const folderPath = url.pathname.slice(idx + marker.length).replace(/\/+$/, "");
+            const recursiveRemove = async (folder: string) => {
+              const { data: files } = await supabase.storage.from(bucket).list(folder);
+              if (!files || files.length === 0) return;
+              const filesToRemove: string[] = [];
+              for (const f of files) {
+                const fullPath = `${folder}/${f.name}`;
+                if (f.id === null) {
+                  await recursiveRemove(fullPath);
+                } else {
+                  filesToRemove.push(fullPath);
+                }
+              }
+              if (filesToRemove.length > 0) {
+                await supabase.storage.from(bucket).remove(filesToRemove);
+              }
+            };
+            await recursiveRemove(folderPath);
+            break;
           }
         } catch (e) {
           console.warn("Storage cleanup failed:", e);
@@ -452,7 +470,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
 
         uploadPromises.push(
           supabase.storage
-            .from("scorm-packages")
+            .from("scorm-public")
             .upload(storagePath, blob, {
               upsert: true,
               contentType: mimeType,
@@ -479,10 +497,10 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
         throw new Error("Zip dosyasında yüklenecek dosya bulunamadı.");
       }
 
-      // Get the base URL for the package
+      // Get the base URL for the package (using new public bucket)
       const {
         data: { publicUrl },
-      } = supabase.storage.from("scorm-packages").getPublicUrl(folderName + "/placeholder");
+      } = supabase.storage.from("scorm-public").getPublicUrl(folderName + "/placeholder");
       const packageUrl = publicUrl.substring(0, publicUrl.lastIndexOf("/"));
 
       // Create package record first
@@ -518,6 +536,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
               folderPath: folderName,
               courseId,
               packageId: pkg.id,
+              bucket: "scorm-public",
             }),
           });
 
