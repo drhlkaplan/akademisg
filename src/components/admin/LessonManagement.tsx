@@ -100,6 +100,54 @@ function detectScormEntryPoint(paths: string[]): string {
   return htmlFallback || "index.html";
 }
 
+/** Minimal client-side SCORM manifest parser. Detects version + entry point + SCO list. */
+function parseManifestXml(xml: string): {
+  version: string;
+  title?: string;
+  entryPoint?: string;
+  scos: Array<{ identifier: string; title: string; launchPath: string }>;
+} {
+  const result = {
+    version: "1.2",
+    title: undefined as string | undefined,
+    entryPoint: undefined as string | undefined,
+    scos: [] as Array<{ identifier: string; title: string; launchPath: string }>,
+  };
+  try {
+    const doc = new DOMParser().parseFromString(xml, "text/xml");
+    const schemaVersion = doc.querySelector("metadata schemaversion")?.textContent?.trim() || "";
+    const lower = xml.toLowerCase();
+    if (schemaVersion.includes("2004") || lower.includes("adlcp_v1p3") || lower.includes("imscp_v1p1")) {
+      result.version = "2004";
+    }
+    result.title =
+      doc.querySelector("organization > title")?.textContent?.trim() ||
+      doc.querySelector("title")?.textContent?.trim();
+
+    const resources: Record<string, string> = {};
+    doc.querySelectorAll("resource").forEach((r) => {
+      const id = r.getAttribute("identifier");
+      const href = r.getAttribute("href");
+      if (id && href) resources[id] = href;
+    });
+
+    doc.querySelectorAll("item").forEach((item) => {
+      const idRef = item.getAttribute("identifierref");
+      if (!idRef || !resources[idRef]) return;
+      result.scos.push({
+        identifier: item.getAttribute("identifier") || idRef,
+        title: item.querySelector("title")?.textContent?.trim() || "SCO",
+        launchPath: resources[idRef],
+      });
+    });
+
+    if (result.scos.length > 0) result.entryPoint = result.scos[0].launchPath;
+  } catch (e) {
+    console.warn("[manifest] parse error:", e);
+  }
+  return result;
+}
+
 function getContentTypeByPath(path: string): string {
   const extension = path.split(".").pop()?.toLowerCase() ?? "";
 
@@ -215,54 +263,36 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     },
   });
 
-  // Re-parse all SCORM manifests
+  // Re-parse all SCORM manifests (client-side, fetches imsmanifest.xml from public CDN)
   const handleReparseAll = async () => {
     if (!scormPackages || scormPackages.length === 0) return;
     setReparsingAll(true);
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     let successCount = 0;
     let failCount = 0;
 
     for (const pkg of scormPackages) {
       try {
-        // Extract folder path from package_url
-        const bucketMarker = "/scorm-packages/";
-        const idx = pkg.package_url.indexOf(bucketMarker);
-        if (idx === -1) { failCount++; continue; }
-        const folderPath = pkg.package_url.slice(idx + bucketMarker.length);
-
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
-        if (!token) { failCount++; continue; }
-
-        const res = await fetch(`${supabaseUrl}/functions/v1/scorm-proxy`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            action: "parse-manifest",
-            folderPath,
-            courseId,
-            packageId: pkg.id,
-          }),
-        });
-
-        if (res.ok) {
-          successCount++;
-        } else {
-          failCount++;
-        }
+        const manifestUrl = `${pkg.package_url.replace(/\/+$/, "")}/imsmanifest.xml`;
+        const res = await fetch(manifestUrl);
+        if (!res.ok) { failCount++; continue; }
+        const xml = await res.text();
+        const parsed = parseManifestXml(xml);
+        const update: Record<string, unknown> = { manifest_data: parsed };
+        if (parsed.version) update.scorm_version = parsed.version;
+        if (parsed.entryPoint) update.entry_point = parsed.entryPoint;
+        const { error } = await supabase
+          .from("scorm_packages")
+          .update(update)
+          .eq("id", pkg.id);
+        if (error) { failCount++; continue; }
+        successCount++;
       } catch {
         failCount++;
       }
     }
 
     setReparsingAll(false);
-    queryClient.invalidateQueries({ queryKey: ["scorm-packages", courseId] });
-    queryClient.invalidateQueries({ queryKey: ["scorm-scos"] });
-    queryClient.invalidateQueries({ queryKey: ["course-scos-report", courseId] });
+    queryClient.invalidateQueries({ queryKey: ["course-scorm-packages", courseId] });
     toast({
       title: "Manifest Parse Tamamlandı",
       description: `${successCount} başarılı, ${failCount} başarısız.`,
@@ -519,43 +549,42 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
 
       setUploadProgress(95);
 
-      // Auto-parse manifest via scorm-proxy edge function
+      // Auto-parse manifest CLIENT-SIDE (read imsmanifest.xml from the zip)
       try {
-        const { data: session } = await supabase.auth.getSession();
-        const authToken = session.session?.access_token;
-        if (authToken) {
-          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-          const proxyRes = await fetch(`${supabaseUrl}/functions/v1/scorm-proxy`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              action: "parse-manifest",
-              folderPath: folderName,
-              courseId,
-              packageId: pkg.id,
-              bucket: "scorm-public",
-            }),
-          });
+        const manifestEntry =
+          zip.file(`${rootPrefix}imsmanifest.xml`) || zip.file("imsmanifest.xml");
+        if (manifestEntry) {
+          const manifestXml = await manifestEntry.async("string");
+          const parsed = parseManifestXml(manifestXml);
+          const update: Record<string, unknown> = { manifest_data: parsed };
+          if (parsed.version) update.scorm_version = parsed.version;
+          if (parsed.entryPoint) update.entry_point = parsed.entryPoint;
+          await supabase.from("scorm_packages").update(update).eq("id", pkg.id);
 
-          if (proxyRes.ok) {
-            const manifest = await proxyRes.json();
-            const scoCount = manifest.scos?.length || 0;
-            const detectedVersion = manifest.version || "1.2";
-            toast({
-              title: "SCORM Manifest Analizi Tamamlandı",
-              description: `Versiyon: ${detectedVersion} | ${scoCount} SCO tespit edildi | Başlık: ${manifest.title || "—"}`,
-            });
-          } else {
-            // Manifest parse failed but upload succeeded
-            toast({
-              title: "Uyarı",
-              description: "SCORM paketi yüklendi fakat imsmanifest.xml ayrıştırılamadı. Giriş noktası heuristik olarak belirlendi.",
-              variant: "destructive",
-            });
+          // Insert SCO records for reporting
+          if (parsed.scos.length > 0) {
+            await supabase.from("scorm_scos").insert(
+              parsed.scos.map((sco, idx) => ({
+                package_id: pkg.id,
+                identifier: sco.identifier,
+                title: sco.title,
+                launch_path: sco.launchPath,
+                order_index: idx,
+                scorm_type: "sco",
+              })),
+            );
           }
+
+          toast({
+            title: "SCORM Manifest Analizi Tamamlandı",
+            description: `Versiyon: ${parsed.version} | ${parsed.scos.length} SCO | Başlık: ${parsed.title || "—"}`,
+          });
+        } else {
+          toast({
+            title: "Uyarı",
+            description: "imsmanifest.xml bulunamadı. Giriş noktası heuristik olarak belirlendi.",
+            variant: "destructive",
+          });
         }
       } catch (manifestErr) {
         console.warn("Manifest parse warning:", manifestErr);

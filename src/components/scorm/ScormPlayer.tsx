@@ -1,9 +1,14 @@
 /**
- * ScormPlayer — Production-grade SCORM 1.2 & 2004 player.
- * Uses WRAPPER FRAME model: edge function serves a wrapper HTML page
- * containing the SCORM API. Content loads in a child iframe within the wrapper.
- * SCORM content discovers the API by walking window.parent (standard behavior).
- * Internal redirects never lose the API because it lives in the parent frame.
+ * ScormPlayer — V2. Direct-CDN approach.
+ *
+ * Architecture:
+ *   1. SCORM files live in `scorm-public` bucket (Supabase Storage public CDN).
+ *   2. iframe.src = direct public URL. Browser receives correct MIME from CDN.
+ *   3. Parent window installs `window.API` (1.2) and `window.API_1484_11` (2004).
+ *   4. SCORM content walks `window.parent` and finds the API (standard SCORM behavior).
+ *   5. CMI data persisted to Supabase via RPC on Commit/Terminate.
+ *
+ * No proxy, no wrapper iframe, no MIME issues.
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -11,16 +16,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  installScorm12,
+  installScorm2004,
+  type ScormCmiSnapshot,
+  type ScormInitialData,
+} from "./scormApiShim";
+import {
   persistScormProgress,
   loadScormProgress,
-  trackLessonLaunch,
-  type ScormEventData,
-} from "./ScormProgressService";
-import { parseManifest } from "./ScormManifestParser";
-import { ScormTopBar, ScormBottomBar } from "./ScormControls";
-import { ScormDebugPanel } from "./ScormDebugPanel";
-
-// ─── Types ───────────────────────────────────────────────────────────────────
+} from "./ScormProgressServiceV2";
+import { ScormTopBar, ScormBottomBar } from "./ScormControlsV2";
 
 interface ScormPlayerProps {
   packageUrl: string;
@@ -39,384 +44,192 @@ interface ScormPlayerProps {
   hasNext?: boolean;
 }
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const proxyUrl = `${supabaseUrl}/functions/v1/scorm-proxy`;
-
-const PRIORITY_ENTRY_FILES = [
-  "index_lms_html5.html",
-  "story_html5.html",
-  "index.html",
-  "player.html",
-  "launch.html",
-  "index_lms.html",
-  "story.html",
-];
-
-const PUBLIC_STORAGE_MARKER = "/storage/v1/object/public/";
-
-// ─── Utility functions ───────────────────────────────────────────────────────
-
-function extractPackageLocation(packageUrl: string): { bucket: string; folderPath: string; isPublic: boolean } | null {
-  const normalizedUrl = packageUrl.split("?")[0].split("#")[0];
-  const publicIdx = normalizedUrl.indexOf(PUBLIC_STORAGE_MARKER);
-
-  if (publicIdx !== -1) {
-    const raw = normalizedUrl.slice(publicIdx + PUBLIC_STORAGE_MARKER.length).replace(/^\/+|\/+$/g, "");
-    const slashIndex = raw.indexOf("/");
-    if (slashIndex === -1) return null;
-
-    return {
-      bucket: raw.slice(0, slashIndex),
-      folderPath: raw.slice(slashIndex + 1),
-      isPublic: true,
-    };
-  }
-
-  const legacyMarker = "scorm-packages/";
-  const legacyIdx = normalizedUrl.indexOf(legacyMarker);
-  if (legacyIdx === -1) return null;
-
-  return {
-    bucket: "scorm-packages",
-    folderPath: normalizedUrl.slice(legacyIdx + legacyMarker.length).replace(/^\/+|\/+$/g, ""),
-    isPublic: false,
-  };
+function buildContentUrl(packageUrl: string, entryPoint: string): string {
+  const base = packageUrl.replace(/\/+$/, "");
+  const entry = entryPoint.replace(/^\/+/, "").split("/").map(encodeURIComponent).join("/");
+  return `${base}/${entry}`;
 }
-
-function extractCourseId(folderPath: string): string {
-  const [first, second] = folderPath.split("/");
-  return first === "scorm-public" ? (second || first) : first;
-}
-
-async function getAuthToken(): Promise<string | null> {
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
-}
-
-async function proxyPost<T>(
-  token: string,
-  body: { action: string; folderPath: string; filePath?: string; courseId: string; bucket?: string },
-): Promise<T> {
-  const res = await fetch(proxyUrl, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-    throw new Error(err.error || `HTTP ${res.status}`);
-  }
-  return res.json() as Promise<T>;
-}
-
-// ─── Entry file resolution ───────────────────────────────────────────────────
-
-interface StorageItem { name: string; id: string | null }
-
-async function listFiles(token: string, bucket: string, folderPath: string, subPath: string, courseId: string): Promise<StorageItem[]> {
-  try {
-    return (await proxyPost<StorageItem[]>(token, { action: "list", bucket, folderPath, filePath: subPath || undefined, courseId })) || [];
-  } catch { return []; }
-}
-
-function normalizeEntryPath(entryPath: string): string {
-  return entryPath.replace(/\\/g, "/").replace(/^\/+/, "").replace(/\/+$/, "");
-}
-
-function getEntryDirectory(entryPath: string): string {
-  const normalizedPath = normalizeEntryPath(entryPath);
-  const lastSlashIndex = normalizedPath.lastIndexOf("/");
-  return lastSlashIndex === -1 ? "" : normalizedPath.slice(0, lastSlashIndex);
-}
-
-function getEntryFileName(entryPath: string): string {
-  const normalizedPath = normalizeEntryPath(entryPath);
-  const lastSlashIndex = normalizedPath.lastIndexOf("/");
-  return lastSlashIndex === -1 ? normalizedPath : normalizedPath.slice(lastSlashIndex + 1);
-}
-
-const WRAPPER_ENTRY_REPLACEMENTS: Record<string, string[]> = {
-  "index_lms.html": ["index_lms_html5.html", "story_html5.html"],
-  "story.html": ["story_html5.html", "index_lms_html5.html"],
-};
-
-function forceDirectLaunchEntry(entryPath: string, availableFiles: Iterable<string>): string {
-  const normalizedPath = normalizeEntryPath(entryPath);
-  const entryFileName = getEntryFileName(normalizedPath);
-  const preferredReplacements = WRAPPER_ENTRY_REPLACEMENTS[entryFileName];
-
-  if (!preferredReplacements) return normalizedPath;
-
-  const siblingFileNames = new Set(availableFiles);
-  const entryDirectory = getEntryDirectory(normalizedPath);
-
-  for (const replacement of preferredReplacements) {
-    if (siblingFileNames.has(replacement)) {
-      return entryDirectory ? `${entryDirectory}/${replacement}` : replacement;
-    }
-  }
-
-  return normalizedPath;
-}
-
-interface ResolvedEntry {
-  entryFile: string | null;
-  detectedVersion?: string;
-  scoMeta?: Record<string, unknown>;
-}
-
-async function resolveEntryFile(
-  token: string, bucket: string, folderPath: string, entryPoint: string, courseId: string,
-): Promise<ResolvedEntry> {
-  const rootFiles = await listFiles(token, bucket, folderPath, "", courseId);
-  const rootFileNames = new Set(rootFiles.map((f) => f.name));
-
-  const resolvePreferredEntry = async (candidateEntry: string): Promise<string> => {
-    const normalizedEntry = normalizeEntryPath(candidateEntry);
-    const entryDirectory = getEntryDirectory(normalizedEntry);
-
-    if (!entryDirectory) {
-      return forceDirectLaunchEntry(normalizedEntry, rootFileNames);
-    }
-
-      const siblingFiles = await listFiles(token, bucket, folderPath, entryDirectory, courseId);
-    return forceDirectLaunchEntry(normalizedEntry, siblingFiles.map((file) => file.name));
-  };
-
-  // Try manifest first
-  if (rootFileNames.has("imsmanifest.xml")) {
-    try {
-      const { signedUrl } = await proxyPost<{ signedUrl: string }>(token, {
-        action: "sign", bucket, folderPath, filePath: "imsmanifest.xml", courseId,
-      });
-      const res = await fetch(signedUrl);
-      if (res.ok) {
-        const xml = await res.text();
-        const manifest = parseManifest(xml);
-        if (manifest && manifest.scos.length > 0) {
-          const sco = manifest.scos[0];
-          const entry = await resolvePreferredEntry(sco.launchPath);
-          const scoMeta: Record<string, unknown> = {};
-          if (sco.masteryScore != null) scoMeta.mastery_score = sco.masteryScore;
-          if (sco.maxTimeAllowed) scoMeta.max_time_allowed = sco.maxTimeAllowed;
-          if (sco.timeLimitAction) scoMeta.time_limit_action = sco.timeLimitAction;
-          if (sco.dataFromLms) scoMeta.launch_data = sco.dataFromLms;
-          if (sco.completionThreshold != null) scoMeta.completion_threshold = sco.completionThreshold;
-          if (sco.scaledPassingScore != null) scoMeta.scaled_passing_score = sco.scaledPassingScore;
-          return {
-            entryFile: entry,
-            detectedVersion: manifest.version,
-            scoMeta: Object.keys(scoMeta).length > 0 ? scoMeta : undefined,
-          };
-        }
-      }
-    } catch { /* continue with heuristics */ }
-  }
-
-  // Heuristic: check root for common entry files
-  for (const file of PRIORITY_ENTRY_FILES) {
-    if (rootFileNames.has(file)) return { entryFile: file };
-  }
-
-  // Check subfolders
-  const subfolders = rootFiles.filter((f) => f.id === null);
-  for (const folder of subfolders) {
-    const subFiles = await listFiles(token, bucket, folderPath, folder.name, courseId);
-    for (const file of PRIORITY_ENTRY_FILES) {
-      if (subFiles.some((f) => f.name === file)) return { entryFile: `${folder.name}/${file}` };
-    }
-  }
-
-  // Use provided entryPoint as last resort
-  if (entryPoint) return { entryFile: await resolvePreferredEntry(entryPoint) };
-
-  return { entryFile: null };
-}
-
-// ─── Component ───────────────────────────────────────────────────────────────
 
 export function ScormPlayer({
-  packageUrl, entryPoint, enrollmentId, scormPackageId, lessonId, userId,
-  scormVersion, onComplete, onPrevious, onNext, lessonTitle, courseTitle,
-  hasPrevious = false, hasNext = false,
+  packageUrl,
+  entryPoint,
+  enrollmentId,
+  scormPackageId,
+  lessonId,
+  userId,
+  scormVersion,
+  onComplete,
+  onPrevious,
+  onNext,
+  lessonTitle,
+  courseTitle,
+  hasPrevious = false,
+  hasNext = false,
 }: ScormPlayerProps) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const sessionStartRef = useRef<number>(Date.now());
-  const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const lastSnapshotRef = useRef<ScormCmiSnapshot | null>(null);
+  const commitTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   const [isLoading, setIsLoading] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
-  const [lessonStatus, setLessonStatus] = useState<string>("not attempted");
-  const [scoreRaw, setScoreRaw] = useState<string>("");
+  const [status, setStatus] = useState("not attempted");
+  const [scoreRaw, setScoreRaw] = useState("");
   const [sessionSeconds, setSessionSeconds] = useState(0);
-  const [showControls, setShowControls] = useState(true);
-  const [effectiveVersion, setEffectiveVersion] = useState<string | undefined>(scormVersion);
   const [progressPercent, setProgressPercent] = useState(0);
-  const [showDebug, setShowDebug] = useState(false);
-  const lastCmiDataRef = useRef<ScormEventData | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // ─── Session timer ─────────────────────────────────────────────────────
-
+  // ─── Session timer ───────────────────────────────────────────
   useEffect(() => {
     sessionStartRef.current = Date.now();
-    const interval = setInterval(() => {
+    const i = setInterval(() => {
       setSessionSeconds(Math.floor((Date.now() - sessionStartRef.current) / 1000));
     }, 1000);
-    return () => clearInterval(interval);
+    return () => clearInterval(i);
   }, [lessonId]);
 
-  // ─── Auto-hide controls ────────────────────────────────────────────────
-
-  const resetControlsTimer = useCallback(() => {
-    setShowControls(true);
-    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-    controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 4000);
-  }, []);
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === "D") { e.preventDefault(); setShowDebug((prev) => !prev); }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
-
-  useEffect(() => {
-    resetControlsTimer();
-    return () => { if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current); };
-  }, [resetControlsTimer]);
-
-  // ─── Persist progress ──────────────────────────────────────────────────
-
-  const handlePersist = useCallback(
-    async (data: ScormEventData, method: string) => {
+  // ─── Persist callback ────────────────────────────────────────
+  const persist = useCallback(
+    async (snapshot: ScormCmiSnapshot, method: string) => {
       try {
-        setLessonStatus(data.lesson_status || "not attempted");
-        if (data.score_raw) setScoreRaw(data.score_raw);
-        const { completed } = await persistScormProgress(data, method, {
-          enrollmentId, lessonId, scormPackageId, userId, courseTitle, lessonTitle, sessionSeconds,
+        setStatus(snapshot.lesson_status || "not attempted");
+        if (snapshot.score_raw) setScoreRaw(snapshot.score_raw);
+        if (snapshot.progress_measure) {
+          const pm = parseFloat(snapshot.progress_measure);
+          if (!isNaN(pm)) setProgressPercent(Math.round(pm * 100));
+        }
+        const { completed } = await persistScormProgress(snapshot, method, {
+          enrollmentId,
+          lessonId,
+          scormPackageId,
+          userId,
+          sessionSeconds,
         });
         if (completed) onComplete?.();
-      } catch (err) { console.error("SCORM save error:", err); }
+      } catch (e) {
+        console.error("[scorm] persist error:", e);
+      }
     },
-    [enrollmentId, lessonId, scormPackageId, onComplete, userId, sessionSeconds, courseTitle, lessonTitle],
+    [enrollmentId, lessonId, scormPackageId, userId, sessionSeconds, onComplete],
   );
 
-  // ─── Auto-save every 30 seconds ───────────────────────────────────────
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (lastCmiDataRef.current) handlePersist(lastCmiDataRef.current, "AutoSave");
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [handlePersist]);
-
-  // ─── Listen for postMessage events ─────────────────────────────────────
-
-  useEffect(() => {
-    const handler = (event: MessageEvent) => {
-      if (!event.data || event.data.type !== "scorm_api_event") return;
-      const { method, data } = event.data;
-      lastCmiDataRef.current = data;
-
-      if (data.progress_measure) {
-        const pm = parseFloat(data.progress_measure);
+  // ─── API event handler (called by shim) ──────────────────────
+  const handleApiEvent = useCallback(
+    (method: string, snapshot: ScormCmiSnapshot) => {
+      lastSnapshotRef.current = snapshot;
+      setStatus(snapshot.lesson_status || "not attempted");
+      if (snapshot.score_raw) setScoreRaw(snapshot.score_raw);
+      if (snapshot.progress_measure) {
+        const pm = parseFloat(snapshot.progress_measure);
         if (!isNaN(pm)) setProgressPercent(Math.round(pm * 100));
       }
 
       if (["LMSCommit", "Commit"].includes(method)) {
-        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-        saveTimeoutRef.current = setTimeout(() => handlePersist(data, method), 2000);
+        if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current);
+        commitTimeoutRef.current = setTimeout(() => persist(snapshot, method), 1500);
       } else if (["LMSFinish", "Terminate"].includes(method)) {
-        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-        handlePersist(data, method);
-      } else if (["LMSInitialize", "Initialize"].includes(method)) {
-        setLessonStatus(data.lesson_status || "not attempted");
+        if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current);
+        persist(snapshot, method);
       }
-    };
-    window.addEventListener("message", handler);
-    return () => {
-      window.removeEventListener("message", handler);
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    };
-  }, [handlePersist]);
+    },
+    [persist],
+  );
 
-  // ─── Load SCORM content (WRAPPER FRAME approach) ───────────────────────
+  // ─── Auto-save every 30s ─────────────────────────────────────
+  useEffect(() => {
+    const i = setInterval(() => {
+      if (lastSnapshotRef.current) persist(lastSnapshotRef.current, "AutoSave");
+    }, 30000);
+    return () => clearInterval(i);
+  }, [persist]);
 
+  // ─── Install SCORM API on mount, load content ────────────────
   const loadContent = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     setIframeSrc(null);
 
-    const token = await getAuthToken();
-    if (!token) { setError("Oturum bulunamadı. Lütfen tekrar giriş yapın."); setIsLoading(false); return; }
-
-    const packageLocation = extractPackageLocation(packageUrl);
-    if (!packageLocation) { setError("Paket yolu çözümlenemedi."); setIsLoading(false); return; }
-
-    const { bucket, folderPath, isPublic } = packageLocation;
-    const courseId = extractCourseId(folderPath);
-
-    // 1. Resolve entry file
-    const { entryFile, detectedVersion, scoMeta } = await resolveEntryFile(token, bucket, folderPath, entryPoint, courseId);
-    if (!entryFile) { setError("SCORM başlangıç dosyası bulunamadı."); setIsLoading(false); return; }
-
-    const activeVersion = detectedVersion || scormVersion || "1.2";
-    setEffectiveVersion(activeVersion);
+    if (!packageUrl) {
+      setError("SCORM paketi URL'si eksik.");
+      setIsLoading(false);
+      return;
+    }
 
     try {
-      // 2. Get session token
-      const { sessionToken } = await proxyPost<{ sessionToken: string }>(token, {
-        action: "sign", bucket, folderPath, filePath: entryFile, courseId,
-      });
+      // 1. Load previous progress
+      const prior = await loadScormProgress(enrollmentId, lessonId);
+      if (prior.lesson_status) setStatus(prior.lesson_status);
+      if (prior.score_raw) setScoreRaw(prior.score_raw);
 
-      // 3. Load previous progress for resume
-      const initialData = await loadScormProgress(enrollmentId, lessonId);
-      if (initialData.lesson_status) setLessonStatus(initialData.lesson_status);
-      if (initialData.score_raw) setScoreRaw(initialData.score_raw);
+      // 2. Get learner info
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("first_name, last_name")
+        .eq("user_id", userId)
+        .maybeSingle();
 
-      // 4. Build WRAPPER URL — this serves a page with SCORM API + inner content iframe
-      const initDataB64 = btoa(JSON.stringify(initialData));
-      const encodedToken = encodeURIComponent(sessionToken);
-      const metaParam = scoMeta ? `&m=${encodeURIComponent(btoa(JSON.stringify(scoMeta)))}` : "";
-      const directContentUrl = isPublic
-        ? `${packageUrl.replace(/\/+$/, "")}/${entryFile.split("/").map(encodeURIComponent).join("/")}`
-        : null;
-      const directParam = directContentUrl ? `&u=${encodeURIComponent(directContentUrl)}` : "";
-      const wrapperUrl = `${proxyUrl}/_wrapper_/${encodedToken}/${entryFile}?v=${encodeURIComponent(activeVersion)}&d=${encodeURIComponent(initDataB64)}${metaParam}${directParam}`;
+      const initialData: ScormInitialData = {
+        lesson_status: prior.lesson_status,
+        lesson_location: prior.lesson_location,
+        suspend_data: prior.suspend_data,
+        score_raw: prior.score_raw,
+        total_time: prior.total_time,
+        student_id: userId,
+        student_name: profile ? `${profile.last_name}, ${profile.first_name}` : "",
+      };
 
-      // 5. Set iframe src — outer iframe loads wrapper, wrapper loads content
-      setIframeSrc(wrapperUrl);
+      // 3. Install SCORM API on parent window (BEFORE iframe loads)
+      const version = scormVersion && scormVersion.startsWith("2004") ? "2004" : "1.2";
+      const uninstall =
+        version === "2004"
+          ? installScorm2004(initialData, handleApiEvent)
+          : installScorm12(initialData, handleApiEvent);
 
-      // Track launch
-      await trackLessonLaunch(userId, lessonId, enrollmentId, courseTitle, lessonTitle);
-    } catch (err: unknown) {
-      console.error("SCORM load error:", err);
-      const message = err instanceof Error ? err.message : "";
-      if (message.includes("Unauthorized")) setError("Oturumunuz sona ermiş. Lütfen sayfayı yenileyip tekrar giriş yapın.");
-      else if (message.includes("Not enrolled")) setError("Bu eğitim içeriğine erişim yetkiniz yok.");
-      else setError("Eğitim içeriği yüklenirken bir hata oluştu.");
+      // 4. Build direct CDN URL and set iframe src
+      const url = buildContentUrl(packageUrl, entryPoint || "index.html");
+      setIframeSrc(url);
+
+      return uninstall;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Bilinmeyen hata";
+      setError(`Eğitim içeriği yüklenemedi: ${msg}`);
       setIsLoading(false);
     }
-  }, [packageUrl, entryPoint, enrollmentId, lessonId, userId, courseTitle, lessonTitle, scormVersion]);
+  }, [packageUrl, entryPoint, enrollmentId, lessonId, userId, scormVersion, handleApiEvent]);
 
-  const handleIframeLoad = useCallback(() => { setIsLoading(false); }, []);
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    loadContent().then((u) => {
+      if (typeof u === "function") cleanup = u;
+    });
+    return () => {
+      if (cleanup) cleanup();
+      if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current);
+    };
+  }, [loadContent]);
 
-  useEffect(() => { loadContent(); }, [loadContent]);
+  // ─── Final flush on unmount ──────────────────────────────────
+  useEffect(() => {
+    return () => {
+      if (lastSnapshotRef.current) {
+        persist(lastSnapshotRef.current, "Unload");
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // ─── Fullscreen ────────────────────────────────────────────────────────
-
+  // ─── Fullscreen ──────────────────────────────────────────────
   const toggleFullscreen = useCallback(() => {
-    if (!containerRef.current) return;
-    if (!isFullscreen) containerRef.current.requestFullscreen?.();
-    else document.exitFullscreen?.();
-  }, [isFullscreen]);
+    const el = containerRef.current;
+    if (!el) return;
+    if (!document.fullscreenElement) {
+      el.requestFullscreen?.().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen?.().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
@@ -424,73 +237,53 @@ export function ScormPlayer({
     return () => document.removeEventListener("fullscreenchange", handler);
   }, []);
 
-  // ─── Render ────────────────────────────────────────────────────────────
-
+  // ─── Render ──────────────────────────────────────────────────
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-[hsl(var(--primary)/0.03)] rounded-xl p-8">
-        <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center mb-4">
-          <AlertTriangle className="h-8 w-8 text-destructive" />
-        </div>
-        <h3 className="text-lg font-semibold text-foreground mb-2">İçerik Yüklenemedi</h3>
-        <p className="text-muted-foreground text-center mb-6 max-w-md">{error}</p>
-        <Button onClick={loadContent} className="gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Tekrar Dene
+      <div className="flex flex-col items-center justify-center h-full gap-4 p-8">
+        <AlertTriangle className="h-12 w-12 text-destructive" />
+        <p className="text-foreground font-medium text-center">{error}</p>
+        <Button onClick={() => loadContent()} variant="outline">
+          <RefreshCw className="h-4 w-4 mr-2" /> Tekrar Dene
         </Button>
       </div>
     );
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="relative flex flex-col h-full bg-[hsl(222,47%,6%)] rounded-xl overflow-hidden"
-      onMouseMove={resetControlsTimer}
-      onMouseEnter={() => setShowControls(true)}
-    >
+    <div ref={containerRef} className="flex flex-col h-full w-full bg-background">
       <ScormTopBar
-        scormVersion={effectiveVersion} lessonTitle={lessonTitle} lessonStatus={lessonStatus}
-        scoreRaw={scoreRaw} sessionSeconds={sessionSeconds} visible={showControls}
+        lessonTitle={lessonTitle}
+        courseTitle={courseTitle}
+        status={status}
+        scoreRaw={scoreRaw}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
       />
-
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-[hsl(222,47%,6%)] z-30">
-          <div className="flex flex-col items-center gap-4">
-            <div className="relative">
-              <div className="h-16 w-16 rounded-2xl bg-[hsl(var(--accent)/0.15)] flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-[hsl(var(--accent))]" />
-              </div>
-              <div className="absolute -inset-2 rounded-2xl bg-[hsl(var(--accent)/0.1)] animate-pulse" />
-            </div>
-            <div className="text-center">
-              <p className="text-sm font-medium text-white/90">Eğitim içeriği yükleniyor</p>
-              <p className="text-xs text-white/50 mt-1">Lütfen bekleyin...</p>
-            </div>
+      <div className="relative flex-1 min-h-0 bg-black">
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        </div>
-      )}
-
-      {iframeSrc && (
-        <iframe
-          ref={iframeRef}
-          src={iframeSrc}
-          className="flex-1 w-full border-0 bg-white"
-          style={{ minHeight: "500px" }}
-          allow="fullscreen; autoplay"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation allow-modals allow-downloads allow-presentation"
-          title="SCORM Eğitim İçeriği"
-          onLoad={handleIframeLoad}
-        />
-      )}
-
-      <ScormDebugPanel visible={showDebug} onClose={() => setShowDebug(false)} />
-
+        )}
+        {iframeSrc && (
+          <iframe
+            ref={iframeRef}
+            src={iframeSrc}
+            className="w-full h-full border-0"
+            title={lessonTitle || "SCORM"}
+            allow="autoplay; fullscreen; microphone; camera"
+            onLoad={() => setIsLoading(false)}
+          />
+        )}
+      </div>
       <ScormBottomBar
-        lessonStatus={lessonStatus} progressPercent={progressPercent} visible={showControls}
-        isFullscreen={isFullscreen} hasPrevious={hasPrevious} hasNext={hasNext}
-        onPrevious={onPrevious} onNext={onNext} onReload={loadContent}
-        onToggleFullscreen={toggleFullscreen} onToggleDebug={() => setShowDebug((prev) => !prev)}
+        sessionSeconds={sessionSeconds}
+        progressPercent={progressPercent}
+        onPrevious={onPrevious}
+        onNext={onNext}
+        hasPrevious={hasPrevious}
+        hasNext={hasNext}
       />
     </div>
   );
