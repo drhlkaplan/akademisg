@@ -549,43 +549,42 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
 
       setUploadProgress(95);
 
-      // Auto-parse manifest via scorm-proxy edge function
+      // Auto-parse manifest CLIENT-SIDE (read imsmanifest.xml from the zip)
       try {
-        const { data: session } = await supabase.auth.getSession();
-        const authToken = session.session?.access_token;
-        if (authToken) {
-          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-          const proxyRes = await fetch(`${supabaseUrl}/functions/v1/scorm-proxy`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              action: "parse-manifest",
-              folderPath: folderName,
-              courseId,
-              packageId: pkg.id,
-              bucket: "scorm-public",
-            }),
-          });
+        const manifestEntry =
+          zip.file(`${rootPrefix}imsmanifest.xml`) || zip.file("imsmanifest.xml");
+        if (manifestEntry) {
+          const manifestXml = await manifestEntry.async("string");
+          const parsed = parseManifestXml(manifestXml);
+          const update: Record<string, unknown> = { manifest_data: parsed };
+          if (parsed.version) update.scorm_version = parsed.version;
+          if (parsed.entryPoint) update.entry_point = parsed.entryPoint;
+          await supabase.from("scorm_packages").update(update).eq("id", pkg.id);
 
-          if (proxyRes.ok) {
-            const manifest = await proxyRes.json();
-            const scoCount = manifest.scos?.length || 0;
-            const detectedVersion = manifest.version || "1.2";
-            toast({
-              title: "SCORM Manifest Analizi Tamamlandı",
-              description: `Versiyon: ${detectedVersion} | ${scoCount} SCO tespit edildi | Başlık: ${manifest.title || "—"}`,
-            });
-          } else {
-            // Manifest parse failed but upload succeeded
-            toast({
-              title: "Uyarı",
-              description: "SCORM paketi yüklendi fakat imsmanifest.xml ayrıştırılamadı. Giriş noktası heuristik olarak belirlendi.",
-              variant: "destructive",
-            });
+          // Insert SCO records for reporting
+          if (parsed.scos.length > 0) {
+            await supabase.from("scorm_scos").insert(
+              parsed.scos.map((sco, idx) => ({
+                package_id: pkg.id,
+                identifier: sco.identifier,
+                title: sco.title,
+                launch_path: sco.launchPath,
+                order_index: idx,
+                scorm_type: "sco",
+              })),
+            );
           }
+
+          toast({
+            title: "SCORM Manifest Analizi Tamamlandı",
+            description: `Versiyon: ${parsed.version} | ${parsed.scos.length} SCO | Başlık: ${parsed.title || "—"}`,
+          });
+        } else {
+          toast({
+            title: "Uyarı",
+            description: "imsmanifest.xml bulunamadı. Giriş noktası heuristik olarak belirlendi.",
+            variant: "destructive",
+          });
         }
       } catch (manifestErr) {
         console.warn("Manifest parse warning:", manifestErr);
