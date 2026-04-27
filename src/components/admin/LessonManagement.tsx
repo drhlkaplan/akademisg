@@ -100,6 +100,54 @@ function detectScormEntryPoint(paths: string[]): string {
   return htmlFallback || "index.html";
 }
 
+/** Minimal client-side SCORM manifest parser. Detects version + entry point + SCO list. */
+function parseManifestXml(xml: string): {
+  version: string;
+  title?: string;
+  entryPoint?: string;
+  scos: Array<{ identifier: string; title: string; launchPath: string }>;
+} {
+  const result = {
+    version: "1.2",
+    title: undefined as string | undefined,
+    entryPoint: undefined as string | undefined,
+    scos: [] as Array<{ identifier: string; title: string; launchPath: string }>,
+  };
+  try {
+    const doc = new DOMParser().parseFromString(xml, "text/xml");
+    const schemaVersion = doc.querySelector("metadata schemaversion")?.textContent?.trim() || "";
+    const lower = xml.toLowerCase();
+    if (schemaVersion.includes("2004") || lower.includes("adlcp_v1p3") || lower.includes("imscp_v1p1")) {
+      result.version = "2004";
+    }
+    result.title =
+      doc.querySelector("organization > title")?.textContent?.trim() ||
+      doc.querySelector("title")?.textContent?.trim();
+
+    const resources: Record<string, string> = {};
+    doc.querySelectorAll("resource").forEach((r) => {
+      const id = r.getAttribute("identifier");
+      const href = r.getAttribute("href");
+      if (id && href) resources[id] = href;
+    });
+
+    doc.querySelectorAll("item").forEach((item) => {
+      const idRef = item.getAttribute("identifierref");
+      if (!idRef || !resources[idRef]) return;
+      result.scos.push({
+        identifier: item.getAttribute("identifier") || idRef,
+        title: item.querySelector("title")?.textContent?.trim() || "SCO",
+        launchPath: resources[idRef],
+      });
+    });
+
+    if (result.scos.length > 0) result.entryPoint = result.scos[0].launchPath;
+  } catch (e) {
+    console.warn("[manifest] parse error:", e);
+  }
+  return result;
+}
+
 function getContentTypeByPath(path: string): string {
   const extension = path.split(".").pop()?.toLowerCase() ?? "";
 
