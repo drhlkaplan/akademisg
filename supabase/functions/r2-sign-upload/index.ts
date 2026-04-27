@@ -113,9 +113,13 @@ Deno.serve(async (req) => {
       return { path: f.path, key, url, contentType: f.contentType };
     }));
 
-    return new Response(JSON.stringify({ signed, bucket: BUCKET, prefix: safePrefix }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    const publicBase = (Deno.env.get("R2_PUBLIC_URL") || "").replace(/\/+$/, "");
+    const packageUrl = publicBase ? `${publicBase}/${safePrefix}` : null;
+
+    return new Response(
+      JSON.stringify({ signed, bucket: BUCKET, prefix: safePrefix, packageUrl, publicBase }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
     console.error("[r2-sign-upload]", msg);
