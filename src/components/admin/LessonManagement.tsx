@@ -539,12 +539,11 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       }
       if (queue.length > 0) await Promise.all(queue);
 
-      // 3) Build public URL from R2_PUBLIC_URL (provided to client via VITE? No — derive in function response prefix)
-      const publicBase = (import.meta.env.VITE_R2_PUBLIC_URL as string | undefined)?.replace(/\/+$/, "");
-      if (!publicBase) {
-        throw new Error("VITE_R2_PUBLIC_URL tanımlı değil. R2 public domain'i ayarlanmalı.");
+      // 3) Build public URL from edge function response (R2_PUBLIC_URL set server-side)
+      const packageUrl: string | undefined = signResp.packageUrl;
+      if (!packageUrl) {
+        throw new Error("R2_PUBLIC_URL secret tanımlı değil. Cloudflare R2 public domain'i ayarlanmalı.");
       }
-      const packageUrl = `${publicBase}/${signResp.prefix}`;
 
       // 4) Create package row
       const { data: pkg, error: pkgError } = await supabase
