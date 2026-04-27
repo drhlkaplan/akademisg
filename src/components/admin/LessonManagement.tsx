@@ -464,7 +464,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       const allEntries = Object.keys(zip.files);
       const fileNames = allEntries.filter((name) => !zip.files[name].dir);
 
-      // Detect if all files are wrapped inside a single root folder
+      // Detect single root folder wrapper
       let rootPrefix = "";
       const topLevelEntries = new Set(fileNames.map((f) => f.split("/")[0]));
       if (topLevelEntries.size === 1) {
@@ -475,65 +475,77 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       }
 
       const normalizedPaths = fileNames
-        .map((filePath) => (rootPrefix && filePath.startsWith(rootPrefix) ? filePath.slice(rootPrefix.length) : filePath))
+        .map((f) => (rootPrefix && f.startsWith(rootPrefix) ? f.slice(rootPrefix.length) : f))
         .filter(Boolean);
 
-      const sanitizedNormalizedPaths = normalizedPaths.map((p) => sanitizeRelativePath(p));
-      const entryPoint = detectScormEntryPoint(sanitizedNormalizedPaths);
+      const sanitizedPaths = normalizedPaths.map((p) => sanitizeRelativePath(p));
+      const entryPoint = detectScormEntryPoint(sanitizedPaths);
       const totalFiles = normalizedPaths.length;
+      if (totalFiles === 0) throw new Error("Zip dosyasında yüklenecek dosya bulunamadı.");
+
+      // 1) Request signed PUT URLs for every file from R2 edge function
+      const filesPayload = normalizedPaths.map((p) => ({
+        path: sanitizeRelativePath(p),
+        contentType: getContentTypeByPath(p),
+      }));
+
+      const { data: signResp, error: signErr } = await supabase.functions.invoke(
+        "r2-sign-upload",
+        { body: { files: filesPayload, packagePrefix: folderName } },
+      );
+      if (signErr) throw new Error(`Signed URL alınamadı: ${signErr.message}`);
+      if (!signResp?.signed) throw new Error("Geçersiz signed URL yanıtı.");
+
+      const signedMap = new Map<string, { url: string; key: string; contentType: string }>(
+        signResp.signed.map((s: { path: string; url: string; key: string; contentType: string }) => [s.path, s]),
+      );
+
+      // 2) Upload each file directly to R2 with PUT
       let uploadedCount = 0;
+      const queue: Promise<void>[] = [];
+      const CONCURRENCY = 6;
 
-      // Upload each file from the zip
-      const uploadPromises: Promise<void>[] = [];
-
-      for (const relativePath of fileNames) {
+      const uploadOne = async (relativePath: string) => {
         const zipEntry = zip.files[relativePath];
-        if (!zipEntry || zipEntry.dir) continue;
-
-        const rawBlob = await zipEntry.async("blob");
+        if (!zipEntry || zipEntry.dir) return;
         const cleanPath = rootPrefix && relativePath.startsWith(rootPrefix)
           ? relativePath.slice(rootPrefix.length)
           : relativePath;
-        const mimeType = getContentTypeByPath(cleanPath);
-        const blob = new Blob([rawBlob], { type: mimeType });
-        const storagePath = `${folderName}/${sanitizeRelativePath(cleanPath)}`;
+        const sanitizedKey = sanitizeRelativePath(cleanPath);
+        const meta = signedMap.get(sanitizedKey);
+        if (!meta) throw new Error(`Signed URL eksik: ${sanitizedKey}`);
 
-        uploadPromises.push(
-          supabase.storage
-            .from("scorm-public")
-            .upload(storagePath, blob, {
-              upsert: true,
-              contentType: mimeType,
-            })
-            .then(({ error }) => {
-              if (error) throw new Error(`Failed to upload ${relativePath}: ${error.message}`);
-              uploadedCount++;
-              setUploadProgress(Math.round((uploadedCount / totalFiles) * 90));
-            })
-        );
+        const blob = await zipEntry.async("blob");
+        const res = await fetch(meta.url, {
+          method: "PUT",
+          headers: { "Content-Type": meta.contentType },
+          body: blob,
+        });
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          throw new Error(`R2 upload başarısız (${res.status}): ${cleanPath} ${text.slice(0, 200)}`);
+        }
+        uploadedCount++;
+        setUploadProgress(Math.round((uploadedCount / totalFiles) * 90));
+      };
 
-        // Upload in batches of 5
-        if (uploadPromises.length >= 5) {
-          await Promise.all(uploadPromises);
-          uploadPromises.length = 0;
+      for (const relPath of fileNames) {
+        const p = uploadOne(relPath);
+        queue.push(p);
+        if (queue.length >= CONCURRENCY) {
+          await Promise.all(queue);
+          queue.length = 0;
         }
       }
+      if (queue.length > 0) await Promise.all(queue);
 
-      if (uploadPromises.length > 0) {
-        await Promise.all(uploadPromises);
+      // 3) Build public URL from edge function response (R2_PUBLIC_URL set server-side)
+      const packageUrl: string | undefined = signResp.packageUrl;
+      if (!packageUrl) {
+        throw new Error("R2_PUBLIC_URL secret tanımlı değil. Cloudflare R2 public domain'i ayarlanmalı.");
       }
 
-      if (uploadedCount === 0) {
-        throw new Error("Zip dosyasında yüklenecek dosya bulunamadı.");
-      }
-
-      // Get the base URL for the package (using new public bucket)
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("scorm-public").getPublicUrl(folderName + "/placeholder");
-      const packageUrl = publicUrl.substring(0, publicUrl.lastIndexOf("/"));
-
-      // Create package record first
+      // 4) Create package row
       const { data: pkg, error: pkgError } = await supabase
         .from("scorm_packages")
         .insert({
@@ -544,12 +556,11 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
         })
         .select()
         .single();
-
       if (pkgError) throw pkgError;
 
       setUploadProgress(95);
 
-      // Auto-parse manifest CLIENT-SIDE (read imsmanifest.xml from the zip)
+      // 5) Parse manifest from zip directly
       try {
         const manifestEntry =
           zip.file(`${rootPrefix}imsmanifest.xml`) || zip.file("imsmanifest.xml");
@@ -558,17 +569,16 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
           const parsed = parseManifestXml(manifestXml);
           const update: Record<string, unknown> = { manifest_data: parsed };
           if (parsed.version) update.scorm_version = parsed.version;
-          if (parsed.entryPoint) update.entry_point = parsed.entryPoint;
+          if (parsed.entryPoint) update.entry_point = sanitizeRelativePath(parsed.entryPoint);
           await supabase.from("scorm_packages").update(update).eq("id", pkg.id);
 
-          // Insert SCO records for reporting
           if (parsed.scos.length > 0) {
             await supabase.from("scorm_scos").insert(
               parsed.scos.map((sco, idx) => ({
                 package_id: pkg.id,
                 identifier: sco.identifier,
                 title: sco.title,
-                launch_path: sco.launchPath,
+                launch_path: sanitizeRelativePath(sco.launchPath),
                 order_index: idx,
                 scorm_type: "sco",
               })),
@@ -582,7 +592,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
         } else {
           toast({
             title: "Uyarı",
-            description: "imsmanifest.xml bulunamadı. Giriş noktası heuristik olarak belirlendi.",
+            description: "imsmanifest.xml bulunamadı. Giriş noktası otomatik belirlendi.",
             variant: "destructive",
           });
         }
@@ -592,13 +602,12 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
 
       setUploadProgress(100);
       queryClient.invalidateQueries({ queryKey: ["course-scorm-packages", courseId] });
-      toast({ title: "Başarılı", description: `SCORM paketi yüklendi (${totalFiles} dosya).` });
-
-      // Auto-select this package
+      toast({ title: "Başarılı", description: `SCORM paketi R2'ye yüklendi (${totalFiles} dosya).` });
       setFormData((prev) => ({ ...prev, scorm_package_id: pkg.id }));
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "SCORM yüklenirken hata oluştu.";
       console.error("SCORM upload error:", err);
-      toast({ title: "Hata", description: err.message || "SCORM paketi yüklenirken hata oluştu.", variant: "destructive" });
+      toast({ title: "Hata", description: msg, variant: "destructive" });
     } finally {
       setUploading(false);
       setUploadProgress(0);
