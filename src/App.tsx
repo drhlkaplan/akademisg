@@ -80,6 +80,7 @@ const RecurrenceReport = lazyRetry(() => import("./pages/admin/RecurrenceReport"
 const F2FAttendanceReport = lazyRetry(() => import("./pages/admin/F2FAttendanceReport"));
 const DocumentGeneration = lazyRetry(() => import("./pages/admin/DocumentGeneration"));
 const MigrationDashboard = lazyRetry(() => import("./pages/admin/MigrationDashboard"));
+const R2CorsTest = lazyRetry(() => import("./pages/admin/R2CorsTest"));
 const RegulationInfo = lazyRetry(() => import("./pages/RegulationInfo"));
 const FirmDashboard = lazyRetry(() => import("./pages/firm/FirmDashboard"));
 const FirmEmployees = lazyRetry(() => import("./pages/firm/FirmEmployees"));
@@ -323,6 +324,7 @@ const App = () => (
             <Route path="/admin/f2f-attendance-report" element={<ProtectedRoute requireAdmin><F2FAttendanceReport /></ProtectedRoute>} />
             <Route path="/admin/documents" element={<ProtectedRoute requireAdmin><DocumentGeneration /></ProtectedRoute>} />
             <Route path="/admin/migration" element={<ProtectedRoute requireAdmin><MigrationDashboard /></ProtectedRoute>} />
+            <Route path="/admin/r2-cors-test" element={<ProtectedRoute requireAdmin><R2CorsTest /></ProtectedRoute>} />
             
             <Route
               path="/firm"
