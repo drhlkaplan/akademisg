@@ -67,7 +67,7 @@ interface ScormPlayerProps {
 }
 
 // ─── SCORM CDN base (Cloudflare R2 custom domain) ───────────
-const SCORM_BASE_URL = "https://gratisakademi.com";
+const SCORM_BASE_URL = "https://scorm.gratisakademi.com";
 
 /**
  * Rewrite any stored packageUrl (r2.dev, direct R2 host, signed URL, etc.)
