@@ -228,6 +228,9 @@ export function ScormPlayer({
   useEffect(() => {
     let cancelled = false;
     let uninstall: (() => void) | undefined;
+    debugRef.current.loadEffectRuns += 1;
+    dbg("loadEffect RUN", { total: debugRef.current.loadEffectRuns, lessonId, packageUrl, entryPoint });
+    bumpDebug({ lastEvent: `loadEffect#${debugRef.current.loadEffectRuns}` });
 
     const run = async () => {
       setIsLoading(true);
