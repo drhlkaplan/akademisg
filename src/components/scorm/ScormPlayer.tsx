@@ -364,15 +364,32 @@ export function ScormPlayer({
           </div>
         )}
         {iframeSrc && (
-          <iframe
-            ref={iframeRef}
-            key={lessonId}
+          <IframeWithMountTracking
+            iframeRef={iframeRef}
+            lessonKey={lessonId}
             src={iframeSrc}
-            className="w-full h-full border-0"
             title={lessonTitle || "SCORM"}
-            allow="autoplay; fullscreen; microphone; camera"
-            onLoad={() => setIsLoading(false)}
+            onLoaded={() => {
+              setIsLoading(false);
+              if (debugEnabled) {
+                debugRef.current.iframeOnLoads += 1;
+                debugRef.current.lastEvent = "iframe:onLoad";
+                dbg("iframe onLoad", { total: debugRef.current.iframeOnLoads });
+                setDebugTick((t) => (t + 1) % 1_000_000);
+              }
+            }}
+            onMount={() => {
+              if (debugEnabled) {
+                debugRef.current.iframeMounts += 1;
+                debugRef.current.lastEvent = "iframe:mount";
+                dbg("iframe MOUNT", { total: debugRef.current.iframeMounts });
+                setDebugTick((t) => (t + 1) % 1_000_000);
+              }
+            }}
           />
+        )}
+        {debugEnabled && (
+          <ScormDebugOverlay counters={debugRef.current} tick={debugTick} isLoading={isLoading} />
         )}
       </div>
       <ScormBottomBar
