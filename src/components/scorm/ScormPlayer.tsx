@@ -403,3 +403,56 @@ export function ScormPlayer({
     </div>
   );
 }
+
+// ─── Debug helpers ───────────────────────────────────────────
+interface IframeTrackingProps {
+  iframeRef: React.RefObject<HTMLIFrameElement>;
+  lessonKey: string;
+  src: string;
+  title: string;
+  onLoaded: () => void;
+  onMount: () => void;
+}
+function IframeWithMountTracking({ iframeRef, lessonKey, src, title, onLoaded, onMount }: IframeTrackingProps) {
+  // Fires once per real mount (re-mount happens only when key changes)
+  useEffect(() => {
+    onMount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <iframe
+      ref={iframeRef}
+      key={lessonKey}
+      src={src}
+      className="w-full h-full border-0"
+      title={title}
+      allow="autoplay; fullscreen; microphone; camera"
+      onLoad={onLoaded}
+    />
+  );
+}
+
+interface DebugOverlayProps {
+  counters: DebugCounters;
+  tick: number;
+  isLoading: boolean;
+}
+function ScormDebugOverlay({ counters, isLoading }: DebugOverlayProps) {
+  return (
+    <div className="absolute top-2 right-2 z-20 pointer-events-auto select-text rounded-md bg-black/80 text-white text-[11px] leading-tight font-mono p-2 shadow-lg border border-white/10 min-w-[210px]">
+      <div className="flex items-center gap-1 mb-1 opacity-80">
+        <Bug className="h-3 w-3" />
+        <span className="font-semibold">SCORM debug</span>
+      </div>
+      <div>renders: <b>{counters.renders}</b></div>
+      <div>loadEffect runs: <b>{counters.loadEffectRuns}</b></div>
+      <div>iframe mounts: <b>{counters.iframeMounts}</b></div>
+      <div>iframe onLoad: <b>{counters.iframeOnLoads}</b></div>
+      <div>spinner show/hide: <b>{counters.spinnerShows}</b> / <b>{counters.spinnerHides}</b></div>
+      <div>API events: <b>{counters.apiEvents}</b></div>
+      <div>persist calls: <b>{counters.persistCalls}</b></div>
+      <div className="mt-1 opacity-70 truncate">last: {counters.lastEvent}</div>
+      <div className="opacity-70">spinner: {isLoading ? "ON" : "off"}</div>
+    </div>
+  );
+}
