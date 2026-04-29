@@ -71,6 +71,7 @@ export function ScormPlayer({
   const sessionStartRef = useRef<number>(Date.now());
   const lastSnapshotRef = useRef<ScormCmiSnapshot | null>(null);
   const commitTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const sessionSecondsRef = useRef<number>(0);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +86,9 @@ export function ScormPlayer({
   useEffect(() => {
     sessionStartRef.current = Date.now();
     const i = setInterval(() => {
-      setSessionSeconds(Math.floor((Date.now() - sessionStartRef.current) / 1000));
+      const s = Math.floor((Date.now() - sessionStartRef.current) / 1000);
+      sessionSecondsRef.current = s;
+      setSessionSeconds(s);
     }, 1000);
     return () => clearInterval(i);
   }, [lessonId]);
@@ -105,14 +108,14 @@ export function ScormPlayer({
           lessonId,
           scormPackageId,
           userId,
-          sessionSeconds,
+          sessionSeconds: sessionSecondsRef.current,
         });
         if (completed) onComplete?.();
       } catch (e) {
         console.error("[scorm] persist error:", e);
       }
     },
-    [enrollmentId, lessonId, scormPackageId, userId, sessionSeconds, onComplete],
+    [enrollmentId, lessonId, scormPackageId, userId, onComplete],
   );
 
   // ─── API event handler (called by shim) ──────────────────────
