@@ -263,7 +263,7 @@ export function ScormPlayer({
       <div className="flex flex-col items-center justify-center h-full gap-4 p-8">
         <AlertTriangle className="h-12 w-12 text-destructive" />
         <p className="text-foreground font-medium text-center">{error}</p>
-        <Button onClick={() => loadContent()} variant="outline">
+        <Button onClick={handleRetry} variant="outline">
           <RefreshCw className="h-4 w-4 mr-2" /> Tekrar Dene
         </Button>
       </div>
