@@ -289,6 +289,7 @@ export function ScormPlayer({
         {iframeSrc && (
           <iframe
             ref={iframeRef}
+            key={lessonId}
             src={iframeSrc}
             className="w-full h-full border-0"
             title={lessonTitle || "SCORM"}
