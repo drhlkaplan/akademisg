@@ -73,6 +73,10 @@ export function ScormPlayer({
   const commitTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const sessionSecondsRef = useRef<number>(0);
 
+  // Stable refs for props/handlers used inside loadContent — avoid re-running effect
+  const propsRef = useRef({ packageUrl, entryPoint, enrollmentId, scormPackageId, userId, scormVersion, onComplete });
+  propsRef.current = { packageUrl, entryPoint, enrollmentId, scormPackageId, userId, scormVersion, onComplete };
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
@@ -82,9 +86,10 @@ export function ScormPlayer({
   const [progressPercent, setProgressPercent] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // ─── Session timer ───────────────────────────────────────────
+  // ─── Session timer (display only — never feeds back into load chain) ──
   useEffect(() => {
     sessionStartRef.current = Date.now();
+    sessionSecondsRef.current = 0;
     const i = setInterval(() => {
       const s = Math.floor((Date.now() - sessionStartRef.current) / 1000);
       sessionSecondsRef.current = s;
@@ -93,52 +98,49 @@ export function ScormPlayer({
     return () => clearInterval(i);
   }, [lessonId]);
 
-  // ─── Persist callback ────────────────────────────────────────
-  const persist = useCallback(
-    async (snapshot: ScormCmiSnapshot, method: string) => {
-      try {
-        setStatus(snapshot.lesson_status || "not attempted");
-        if (snapshot.score_raw) setScoreRaw(snapshot.score_raw);
-        if (snapshot.progress_measure) {
-          const pm = parseFloat(snapshot.progress_measure);
-          if (!isNaN(pm)) setProgressPercent(Math.round(pm * 100));
-        }
-        const { completed } = await persistScormProgress(snapshot, method, {
-          enrollmentId,
-          lessonId,
-          scormPackageId,
-          userId,
-          sessionSeconds: sessionSecondsRef.current,
-        });
-        if (completed) onComplete?.();
-      } catch (e) {
-        console.error("[scorm] persist error:", e);
-      }
-    },
-    [enrollmentId, lessonId, scormPackageId, userId, onComplete],
-  );
-
-  // ─── API event handler (called by shim) ──────────────────────
-  const handleApiEvent = useCallback(
-    (method: string, snapshot: ScormCmiSnapshot) => {
-      lastSnapshotRef.current = snapshot;
+  // ─── Persist (stable, reads from refs) ───────────────────────
+  const persist = useCallback(async (snapshot: ScormCmiSnapshot, method: string) => {
+    try {
       setStatus(snapshot.lesson_status || "not attempted");
       if (snapshot.score_raw) setScoreRaw(snapshot.score_raw);
       if (snapshot.progress_measure) {
         const pm = parseFloat(snapshot.progress_measure);
         if (!isNaN(pm)) setProgressPercent(Math.round(pm * 100));
       }
+      const p = propsRef.current;
+      const { completed } = await persistScormProgress(snapshot, method, {
+        enrollmentId: p.enrollmentId,
+        lessonId,
+        scormPackageId: p.scormPackageId,
+        userId: p.userId,
+        sessionSeconds: sessionSecondsRef.current,
+      });
+      if (completed) p.onComplete?.();
+    } catch (e) {
+      console.error("[scorm] persist error:", e);
+    }
+  }, [lessonId]);
 
-      if (["LMSCommit", "Commit"].includes(method)) {
-        if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current);
-        commitTimeoutRef.current = setTimeout(() => persist(snapshot, method), 1500);
-      } else if (["LMSFinish", "Terminate"].includes(method)) {
-        if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current);
-        persist(snapshot, method);
-      }
-    },
-    [persist],
-  );
+  // ─── API event handler (stable) ──────────────────────────────
+  const handleApiEvent = useCallback((method: string, snapshot: ScormCmiSnapshot) => {
+    lastSnapshotRef.current = snapshot;
+    setStatus(snapshot.lesson_status || "not attempted");
+    if (snapshot.score_raw) setScoreRaw(snapshot.score_raw);
+    if (snapshot.progress_measure) {
+      const pm = parseFloat(snapshot.progress_measure);
+      if (!isNaN(pm)) setProgressPercent(Math.round(pm * 100));
+    }
+    if (["LMSCommit", "Commit"].includes(method)) {
+      if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current);
+      commitTimeoutRef.current = setTimeout(() => persist(snapshot, method), 1500);
+    } else if (["LMSFinish", "Terminate"].includes(method)) {
+      if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current);
+      persist(snapshot, method);
+    }
+  }, [persist]);
+
+  const handleApiEventRef = useRef(handleApiEvent);
+  handleApiEventRef.current = handleApiEvent;
 
   // ─── Auto-save every 30s ─────────────────────────────────────
   useEffect(() => {
@@ -148,70 +150,85 @@ export function ScormPlayer({
     return () => clearInterval(i);
   }, [persist]);
 
-  // ─── Install SCORM API on mount, load content ────────────────
-  const loadContent = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    setIframeSrc(null);
-
-    if (!packageUrl) {
-      setError("SCORM paketi URL'si eksik.");
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      // 1. Load previous progress
-      const prior = await loadScormProgress(enrollmentId, lessonId);
-      if (prior.lesson_status) setStatus(prior.lesson_status);
-      if (prior.score_raw) setScoreRaw(prior.score_raw);
-
-      // 2. Get learner info
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("first_name, last_name")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      const initialData: ScormInitialData = {
-        lesson_status: prior.lesson_status,
-        lesson_location: prior.lesson_location,
-        suspend_data: prior.suspend_data,
-        score_raw: prior.score_raw,
-        total_time: prior.total_time,
-        student_id: userId,
-        student_name: profile ? `${profile.last_name}, ${profile.first_name}` : "",
-      };
-
-      // 3. Install SCORM API on parent window (BEFORE iframe loads)
-      const version = scormVersion && scormVersion.startsWith("2004") ? "2004" : "1.2";
-      const uninstall =
-        version === "2004"
-          ? installScorm2004(initialData, handleApiEvent)
-          : installScorm12(initialData, handleApiEvent);
-
-      // 4. Build direct CDN URL and set iframe src
-      const url = buildContentUrl(packageUrl, entryPoint || "index.html");
-      setIframeSrc(url);
-
-      return uninstall;
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Bilinmeyen hata";
-      setError(`Eğitim içeriği yüklenemedi: ${msg}`);
-      setIsLoading(false);
-    }
-  }, [packageUrl, entryPoint, enrollmentId, lessonId, userId, scormVersion, handleApiEvent]);
-
+  // ─── Load content — STABLE, only re-runs when lesson identity changes ──
   useEffect(() => {
-    let cleanup: (() => void) | undefined;
-    loadContent().then((u) => {
-      if (typeof u === "function") cleanup = u;
-    });
+    let cancelled = false;
+    let uninstall: (() => void) | undefined;
+
+    const run = async () => {
+      setIsLoading(true);
+      setError(null);
+      setIframeSrc(null);
+
+      const p = propsRef.current;
+      if (!p.packageUrl) {
+        setError("SCORM paketi URL'si eksik.");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const prior = await loadScormProgress(p.enrollmentId, lessonId);
+        if (cancelled) return;
+        if (prior.lesson_status) setStatus(prior.lesson_status);
+        if (prior.score_raw) setScoreRaw(prior.score_raw);
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("first_name, last_name")
+          .eq("user_id", p.userId)
+          .maybeSingle();
+        if (cancelled) return;
+
+        const initialData: ScormInitialData = {
+          lesson_status: prior.lesson_status,
+          lesson_location: prior.lesson_location,
+          suspend_data: prior.suspend_data,
+          score_raw: prior.score_raw,
+          total_time: prior.total_time,
+          student_id: p.userId,
+          student_name: profile ? `${profile.last_name}, ${profile.first_name}` : "",
+        };
+
+        const version = p.scormVersion && p.scormVersion.startsWith("2004") ? "2004" : "1.2";
+        const apiHandler = (m: string, s: ScormCmiSnapshot) => handleApiEventRef.current(m, s);
+        uninstall =
+          version === "2004"
+            ? installScorm2004(initialData, apiHandler)
+            : installScorm12(initialData, apiHandler);
+
+        const url = buildContentUrl(p.packageUrl, p.entryPoint || "index.html");
+        setIframeSrc(url);
+      } catch (e: unknown) {
+        if (cancelled) return;
+        const msg = e instanceof Error ? e.message : "Bilinmeyen hata";
+        setError(`Eğitim içeriği yüklenemedi: ${msg}`);
+        setIsLoading(false);
+      }
+    };
+
+    run();
+
     return () => {
-      if (cleanup) cleanup();
+      cancelled = true;
+      if (uninstall) uninstall();
       if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current);
     };
-  }, [loadContent]);
+    // Only re-run when lesson identity changes — NOT when timers/handlers update
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lessonId, packageUrl, entryPoint]);
+
+  const handleRetry = useCallback(() => {
+    // Force reload by toggling iframeSrc
+    setIframeSrc(null);
+    setError(null);
+    setIsLoading(true);
+    const p = propsRef.current;
+    if (p.packageUrl) {
+      const url = buildContentUrl(p.packageUrl, p.entryPoint || "index.html");
+      setTimeout(() => setIframeSrc(url), 50);
+    }
+  }, []);
 
   // ─── Final flush on unmount ──────────────────────────────────
   useEffect(() => {
@@ -246,7 +263,7 @@ export function ScormPlayer({
       <div className="flex flex-col items-center justify-center h-full gap-4 p-8">
         <AlertTriangle className="h-12 w-12 text-destructive" />
         <p className="text-foreground font-medium text-center">{error}</p>
-        <Button onClick={() => loadContent()} variant="outline">
+        <Button onClick={handleRetry} variant="outline">
           <RefreshCw className="h-4 w-4 mr-2" /> Tekrar Dene
         </Button>
       </div>
@@ -272,6 +289,7 @@ export function ScormPlayer({
         {iframeSrc && (
           <iframe
             ref={iframeRef}
+            key={lessonId}
             src={iframeSrc}
             className="w-full h-full border-0"
             title={lessonTitle || "SCORM"}
