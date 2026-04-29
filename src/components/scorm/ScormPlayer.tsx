@@ -11,9 +11,37 @@
  * No proxy, no wrapper iframe, no MIME issues.
  */
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Loader2, AlertTriangle, RefreshCw, Bug } from "lucide-react";
+
+// ─── Debug mode ──────────────────────────────────────────────
+// Activate via: ?scormDebug=1  OR  localStorage.setItem('scormDebug','1')
+function isScormDebugEnabled(): boolean {
+  try {
+    if (typeof window === "undefined") return false;
+    if (new URLSearchParams(window.location.search).get("scormDebug") === "1") return true;
+    if (window.localStorage?.getItem("scormDebug") === "1") return true;
+  } catch { /* noop */ }
+  return false;
+}
+
+interface DebugCounters {
+  renders: number;
+  loadEffectRuns: number;
+  iframeMounts: number;
+  iframeOnLoads: number;
+  spinnerShows: number;
+  spinnerHides: number;
+  apiEvents: number;
+  persistCalls: number;
+  lastEvent: string;
+  lastEventAt: number;
+}
+
+function dbg(...args: unknown[]) {
+  if (isScormDebugEnabled()) console.log("[scorm:debug]", ...args);
+}
 import { Button } from "@/components/ui/button";
 import {
   installScorm12,
