@@ -11,9 +11,37 @@
  * No proxy, no wrapper iframe, no MIME issues.
  */
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Loader2, AlertTriangle, RefreshCw, Bug } from "lucide-react";
+
+// ─── Debug mode ──────────────────────────────────────────────
+// Activate via: ?scormDebug=1  OR  localStorage.setItem('scormDebug','1')
+function isScormDebugEnabled(): boolean {
+  try {
+    if (typeof window === "undefined") return false;
+    if (new URLSearchParams(window.location.search).get("scormDebug") === "1") return true;
+    if (window.localStorage?.getItem("scormDebug") === "1") return true;
+  } catch { /* noop */ }
+  return false;
+}
+
+interface DebugCounters {
+  renders: number;
+  loadEffectRuns: number;
+  iframeMounts: number;
+  iframeOnLoads: number;
+  spinnerShows: number;
+  spinnerHides: number;
+  apiEvents: number;
+  persistCalls: number;
+  lastEvent: string;
+  lastEventAt: number;
+}
+
+function dbg(...args: unknown[]) {
+  if (isScormDebugEnabled()) console.log("[scorm:debug]", ...args);
+}
 import { Button } from "@/components/ui/button";
 import {
   installScorm12,
@@ -73,6 +101,27 @@ export function ScormPlayer({
   const commitTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const sessionSecondsRef = useRef<number>(0);
 
+  // ─── Debug counters ────────────────────────────────────────
+  const debugEnabled = useMemo(() => isScormDebugEnabled(), []);
+  const debugRef = useRef<DebugCounters>({
+    renders: 0,
+    loadEffectRuns: 0,
+    iframeMounts: 0,
+    iframeOnLoads: 0,
+    spinnerShows: 0,
+    spinnerHides: 0,
+    apiEvents: 0,
+    persistCalls: 0,
+    lastEvent: "-",
+    lastEventAt: Date.now(),
+  });
+  const [debugTick, setDebugTick] = useState(0);
+  const bumpDebug = useCallback((patch: Partial<DebugCounters>) => {
+    if (!debugEnabled) return;
+    Object.assign(debugRef.current, patch, { lastEventAt: Date.now() });
+    setDebugTick((t) => (t + 1) % 1_000_000);
+  }, [debugEnabled]);
+
   // Stable refs for props/handlers used inside loadContent — avoid re-running effect
   const propsRef = useRef({ packageUrl, entryPoint, enrollmentId, scormPackageId, userId, scormVersion, onComplete });
   propsRef.current = { packageUrl, entryPoint, enrollmentId, scormPackageId, userId, scormVersion, onComplete };
@@ -85,6 +134,27 @@ export function ScormPlayer({
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [progressPercent, setProgressPercent] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Track every render
+  debugRef.current.renders += 1;
+
+  // Track spinner show/hide transitions
+  const prevLoadingRef = useRef<boolean>(isLoading);
+  useEffect(() => {
+    if (!debugEnabled) return;
+    if (prevLoadingRef.current !== isLoading) {
+      if (isLoading) {
+        debugRef.current.spinnerShows += 1;
+        dbg("spinner SHOW", { total: debugRef.current.spinnerShows });
+      } else {
+        debugRef.current.spinnerHides += 1;
+        dbg("spinner HIDE", { total: debugRef.current.spinnerHides });
+      }
+      prevLoadingRef.current = isLoading;
+      setDebugTick((t) => (t + 1) % 1_000_000);
+    }
+  }, [isLoading, debugEnabled]);
+
 
   // ─── Session timer (display only — never feeds back into load chain) ──
   useEffect(() => {
@@ -116,14 +186,18 @@ export function ScormPlayer({
         sessionSeconds: sessionSecondsRef.current,
       });
       if (completed) p.onComplete?.();
+      bumpDebug({ persistCalls: debugRef.current.persistCalls + 1, lastEvent: `persist:${method}` });
+      dbg("persist OK", { method, total: debugRef.current.persistCalls + 1 });
     } catch (e) {
       console.error("[scorm] persist error:", e);
     }
-  }, [lessonId]);
+  }, [lessonId, bumpDebug]);
 
   // ─── API event handler (stable) ──────────────────────────────
   const handleApiEvent = useCallback((method: string, snapshot: ScormCmiSnapshot) => {
     lastSnapshotRef.current = snapshot;
+    bumpDebug({ apiEvents: debugRef.current.apiEvents + 1, lastEvent: `api:${method}` });
+    dbg("api event", method);
     setStatus(snapshot.lesson_status || "not attempted");
     if (snapshot.score_raw) setScoreRaw(snapshot.score_raw);
     if (snapshot.progress_measure) {
@@ -137,7 +211,7 @@ export function ScormPlayer({
       if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current);
       persist(snapshot, method);
     }
-  }, [persist]);
+  }, [persist, bumpDebug]);
 
   const handleApiEventRef = useRef(handleApiEvent);
   handleApiEventRef.current = handleApiEvent;
@@ -154,6 +228,9 @@ export function ScormPlayer({
   useEffect(() => {
     let cancelled = false;
     let uninstall: (() => void) | undefined;
+    debugRef.current.loadEffectRuns += 1;
+    dbg("loadEffect RUN", { total: debugRef.current.loadEffectRuns, lessonId, packageUrl, entryPoint });
+    bumpDebug({ lastEvent: `loadEffect#${debugRef.current.loadEffectRuns}` });
 
     const run = async () => {
       setIsLoading(true);
@@ -287,15 +364,32 @@ export function ScormPlayer({
           </div>
         )}
         {iframeSrc && (
-          <iframe
-            ref={iframeRef}
-            key={lessonId}
+          <IframeWithMountTracking
+            iframeRef={iframeRef}
+            lessonKey={lessonId}
             src={iframeSrc}
-            className="w-full h-full border-0"
             title={lessonTitle || "SCORM"}
-            allow="autoplay; fullscreen; microphone; camera"
-            onLoad={() => setIsLoading(false)}
+            onLoaded={() => {
+              setIsLoading(false);
+              if (debugEnabled) {
+                debugRef.current.iframeOnLoads += 1;
+                debugRef.current.lastEvent = "iframe:onLoad";
+                dbg("iframe onLoad", { total: debugRef.current.iframeOnLoads });
+                setDebugTick((t) => (t + 1) % 1_000_000);
+              }
+            }}
+            onMount={() => {
+              if (debugEnabled) {
+                debugRef.current.iframeMounts += 1;
+                debugRef.current.lastEvent = "iframe:mount";
+                dbg("iframe MOUNT", { total: debugRef.current.iframeMounts });
+                setDebugTick((t) => (t + 1) % 1_000_000);
+              }
+            }}
           />
+        )}
+        {debugEnabled && (
+          <ScormDebugOverlay counters={debugRef.current} tick={debugTick} isLoading={isLoading} />
         )}
       </div>
       <ScormBottomBar
@@ -306,6 +400,59 @@ export function ScormPlayer({
         hasPrevious={hasPrevious}
         hasNext={hasNext}
       />
+    </div>
+  );
+}
+
+// ─── Debug helpers ───────────────────────────────────────────
+interface IframeTrackingProps {
+  iframeRef: React.RefObject<HTMLIFrameElement>;
+  lessonKey: string;
+  src: string;
+  title: string;
+  onLoaded: () => void;
+  onMount: () => void;
+}
+function IframeWithMountTracking({ iframeRef, lessonKey, src, title, onLoaded, onMount }: IframeTrackingProps) {
+  // Fires once per real mount (re-mount happens only when key changes)
+  useEffect(() => {
+    onMount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <iframe
+      ref={iframeRef}
+      key={lessonKey}
+      src={src}
+      className="w-full h-full border-0"
+      title={title}
+      allow="autoplay; fullscreen; microphone; camera"
+      onLoad={onLoaded}
+    />
+  );
+}
+
+interface DebugOverlayProps {
+  counters: DebugCounters;
+  tick: number;
+  isLoading: boolean;
+}
+function ScormDebugOverlay({ counters, isLoading }: DebugOverlayProps) {
+  return (
+    <div className="absolute top-2 right-2 z-20 pointer-events-auto select-text rounded-md bg-black/80 text-white text-[11px] leading-tight font-mono p-2 shadow-lg border border-white/10 min-w-[210px]">
+      <div className="flex items-center gap-1 mb-1 opacity-80">
+        <Bug className="h-3 w-3" />
+        <span className="font-semibold">SCORM debug</span>
+      </div>
+      <div>renders: <b>{counters.renders}</b></div>
+      <div>loadEffect runs: <b>{counters.loadEffectRuns}</b></div>
+      <div>iframe mounts: <b>{counters.iframeMounts}</b></div>
+      <div>iframe onLoad: <b>{counters.iframeOnLoads}</b></div>
+      <div>spinner show/hide: <b>{counters.spinnerShows}</b> / <b>{counters.spinnerHides}</b></div>
+      <div>API events: <b>{counters.apiEvents}</b></div>
+      <div>persist calls: <b>{counters.persistCalls}</b></div>
+      <div className="mt-1 opacity-70 truncate">last: {counters.lastEvent}</div>
+      <div className="opacity-70">spinner: {isLoading ? "ON" : "off"}</div>
     </div>
   );
 }
