@@ -101,6 +101,27 @@ export function ScormPlayer({
   const commitTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const sessionSecondsRef = useRef<number>(0);
 
+  // ─── Debug counters ────────────────────────────────────────
+  const debugEnabled = useMemo(() => isScormDebugEnabled(), []);
+  const debugRef = useRef<DebugCounters>({
+    renders: 0,
+    loadEffectRuns: 0,
+    iframeMounts: 0,
+    iframeOnLoads: 0,
+    spinnerShows: 0,
+    spinnerHides: 0,
+    apiEvents: 0,
+    persistCalls: 0,
+    lastEvent: "-",
+    lastEventAt: Date.now(),
+  });
+  const [debugTick, setDebugTick] = useState(0);
+  const bumpDebug = useCallback((patch: Partial<DebugCounters>) => {
+    if (!debugEnabled) return;
+    Object.assign(debugRef.current, patch, { lastEventAt: Date.now() });
+    setDebugTick((t) => (t + 1) % 1_000_000);
+  }, [debugEnabled]);
+
   // Stable refs for props/handlers used inside loadContent — avoid re-running effect
   const propsRef = useRef({ packageUrl, entryPoint, enrollmentId, scormPackageId, userId, scormVersion, onComplete });
   propsRef.current = { packageUrl, entryPoint, enrollmentId, scormPackageId, userId, scormVersion, onComplete };
@@ -113,6 +134,27 @@ export function ScormPlayer({
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [progressPercent, setProgressPercent] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Track every render
+  debugRef.current.renders += 1;
+
+  // Track spinner show/hide transitions
+  const prevLoadingRef = useRef<boolean>(isLoading);
+  useEffect(() => {
+    if (!debugEnabled) return;
+    if (prevLoadingRef.current !== isLoading) {
+      if (isLoading) {
+        debugRef.current.spinnerShows += 1;
+        dbg("spinner SHOW", { total: debugRef.current.spinnerShows });
+      } else {
+        debugRef.current.spinnerHides += 1;
+        dbg("spinner HIDE", { total: debugRef.current.spinnerHides });
+      }
+      prevLoadingRef.current = isLoading;
+      setDebugTick((t) => (t + 1) % 1_000_000);
+    }
+  }, [isLoading, debugEnabled]);
+
 
   // ─── Session timer (display only — never feeds back into load chain) ──
   useEffect(() => {
