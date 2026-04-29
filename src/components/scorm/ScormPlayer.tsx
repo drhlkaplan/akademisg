@@ -196,6 +196,8 @@ export function ScormPlayer({
   // ─── API event handler (stable) ──────────────────────────────
   const handleApiEvent = useCallback((method: string, snapshot: ScormCmiSnapshot) => {
     lastSnapshotRef.current = snapshot;
+    bumpDebug({ apiEvents: debugRef.current.apiEvents + 1, lastEvent: `api:${method}` });
+    dbg("api event", method);
     setStatus(snapshot.lesson_status || "not attempted");
     if (snapshot.score_raw) setScoreRaw(snapshot.score_raw);
     if (snapshot.progress_measure) {
@@ -209,7 +211,7 @@ export function ScormPlayer({
       if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current);
       persist(snapshot, method);
     }
-  }, [persist]);
+  }, [persist, bumpDebug]);
 
   const handleApiEventRef = useRef(handleApiEvent);
   handleApiEventRef.current = handleApiEvent;
