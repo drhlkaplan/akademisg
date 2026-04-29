@@ -342,7 +342,14 @@ export function ScormPlayer({
             ? installScorm2004(initialData, apiHandler)
             : installScorm12(initialData, apiHandler);
 
-        const url = buildContentUrl(p.packageUrl, p.entryPoint || "index.html");
+        const url = await resolveLaunchUrl(p.packageUrl, p.entryPoint || "index.html");
+        if (cancelled) return;
+        if (!url) {
+          setError("SCORM başlangıç dosyası bulunamadı (story.html / index.html). Paket içeriğini kontrol edin.");
+          setIsLoading(false);
+          return;
+        }
+        console.log("[scorm] iframe SRC:", url);
         setIframeSrc(url);
       } catch (e: unknown) {
         if (cancelled) return;
