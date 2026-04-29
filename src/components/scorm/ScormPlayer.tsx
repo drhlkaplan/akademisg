@@ -507,6 +507,7 @@ function IframeWithMountTracking({ iframeRef, lessonKey, src, title, onLoaded, o
       src={src}
       className="w-full h-full border-0"
       title={title}
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals"
       allow="autoplay; fullscreen; microphone; camera"
       onLoad={onLoaded}
     />
