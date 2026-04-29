@@ -22,7 +22,9 @@ function isScormDebugEnabled(): boolean {
     if (typeof window === "undefined") return false;
     if (new URLSearchParams(window.location.search).get("scormDebug") === "1") return true;
     if (window.localStorage?.getItem("scormDebug") === "1") return true;
-  } catch { /* noop */ }
+  } catch {
+    /* noop */
+  }
   return false;
 }
 
@@ -43,16 +45,8 @@ function dbg(...args: unknown[]) {
   if (isScormDebugEnabled()) console.log("[scorm:debug]", ...args);
 }
 import { Button } from "@/components/ui/button";
-import {
-  installScorm12,
-  installScorm2004,
-  type ScormCmiSnapshot,
-  type ScormInitialData,
-} from "./scormApiShim";
-import {
-  persistScormProgress,
-  loadScormProgress,
-} from "./ScormProgressServiceV2";
+import { installScorm12, installScorm2004, type ScormCmiSnapshot, type ScormInitialData } from "./scormApiShim";
+import { persistScormProgress, loadScormProgress } from "./ScormProgressServiceV2";
 import { ScormTopBar, ScormBottomBar } from "./ScormControlsV2";
 
 interface ScormPlayerProps {
@@ -73,7 +67,7 @@ interface ScormPlayerProps {
 }
 
 // ─── SCORM CDN base (Cloudflare R2 custom domain) ───────────
-const SCORM_BASE_URL = "https://scorm.gratisakademi.com";
+const SCORM_BASE_URL = "https://gratisakademi.com";
 
 /**
  * Rewrite any stored packageUrl (r2.dev, direct R2 host, signed URL, etc.)
@@ -184,11 +178,14 @@ export function ScormPlayer({
     lastEventAt: Date.now(),
   });
   const [debugTick, setDebugTick] = useState(0);
-  const bumpDebug = useCallback((patch: Partial<DebugCounters>) => {
-    if (!debugEnabled) return;
-    Object.assign(debugRef.current, patch, { lastEventAt: Date.now() });
-    setDebugTick((t) => (t + 1) % 1_000_000);
-  }, [debugEnabled]);
+  const bumpDebug = useCallback(
+    (patch: Partial<DebugCounters>) => {
+      if (!debugEnabled) return;
+      Object.assign(debugRef.current, patch, { lastEventAt: Date.now() });
+      setDebugTick((t) => (t + 1) % 1_000_000);
+    },
+    [debugEnabled],
+  );
 
   // Stable refs for props/handlers used inside loadContent — avoid re-running effect
   const propsRef = useRef({ packageUrl, entryPoint, enrollmentId, scormPackageId, userId, scormVersion, onComplete });
@@ -223,7 +220,6 @@ export function ScormPlayer({
     }
   }, [isLoading, debugEnabled]);
 
-
   // ─── Session timer (display only — never feeds back into load chain) ──
   useEffect(() => {
     sessionStartRef.current = Date.now();
@@ -237,49 +233,55 @@ export function ScormPlayer({
   }, [lessonId]);
 
   // ─── Persist (stable, reads from refs) ───────────────────────
-  const persist = useCallback(async (snapshot: ScormCmiSnapshot, method: string) => {
-    try {
+  const persist = useCallback(
+    async (snapshot: ScormCmiSnapshot, method: string) => {
+      try {
+        setStatus(snapshot.lesson_status || "not attempted");
+        if (snapshot.score_raw) setScoreRaw(snapshot.score_raw);
+        if (snapshot.progress_measure) {
+          const pm = parseFloat(snapshot.progress_measure);
+          if (!isNaN(pm)) setProgressPercent(Math.round(pm * 100));
+        }
+        const p = propsRef.current;
+        const { completed } = await persistScormProgress(snapshot, method, {
+          enrollmentId: p.enrollmentId,
+          lessonId,
+          scormPackageId: p.scormPackageId,
+          userId: p.userId,
+          sessionSeconds: sessionSecondsRef.current,
+        });
+        if (completed) p.onComplete?.();
+        bumpDebug({ persistCalls: debugRef.current.persistCalls + 1, lastEvent: `persist:${method}` });
+        dbg("persist OK", { method, total: debugRef.current.persistCalls + 1 });
+      } catch (e) {
+        console.error("[scorm] persist error:", e);
+      }
+    },
+    [lessonId, bumpDebug],
+  );
+
+  // ─── API event handler (stable) ──────────────────────────────
+  const handleApiEvent = useCallback(
+    (method: string, snapshot: ScormCmiSnapshot) => {
+      lastSnapshotRef.current = snapshot;
+      bumpDebug({ apiEvents: debugRef.current.apiEvents + 1, lastEvent: `api:${method}` });
+      dbg("api event", method);
       setStatus(snapshot.lesson_status || "not attempted");
       if (snapshot.score_raw) setScoreRaw(snapshot.score_raw);
       if (snapshot.progress_measure) {
         const pm = parseFloat(snapshot.progress_measure);
         if (!isNaN(pm)) setProgressPercent(Math.round(pm * 100));
       }
-      const p = propsRef.current;
-      const { completed } = await persistScormProgress(snapshot, method, {
-        enrollmentId: p.enrollmentId,
-        lessonId,
-        scormPackageId: p.scormPackageId,
-        userId: p.userId,
-        sessionSeconds: sessionSecondsRef.current,
-      });
-      if (completed) p.onComplete?.();
-      bumpDebug({ persistCalls: debugRef.current.persistCalls + 1, lastEvent: `persist:${method}` });
-      dbg("persist OK", { method, total: debugRef.current.persistCalls + 1 });
-    } catch (e) {
-      console.error("[scorm] persist error:", e);
-    }
-  }, [lessonId, bumpDebug]);
-
-  // ─── API event handler (stable) ──────────────────────────────
-  const handleApiEvent = useCallback((method: string, snapshot: ScormCmiSnapshot) => {
-    lastSnapshotRef.current = snapshot;
-    bumpDebug({ apiEvents: debugRef.current.apiEvents + 1, lastEvent: `api:${method}` });
-    dbg("api event", method);
-    setStatus(snapshot.lesson_status || "not attempted");
-    if (snapshot.score_raw) setScoreRaw(snapshot.score_raw);
-    if (snapshot.progress_measure) {
-      const pm = parseFloat(snapshot.progress_measure);
-      if (!isNaN(pm)) setProgressPercent(Math.round(pm * 100));
-    }
-    if (["LMSCommit", "Commit"].includes(method)) {
-      if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current);
-      commitTimeoutRef.current = setTimeout(() => persist(snapshot, method), 1500);
-    } else if (["LMSFinish", "Terminate"].includes(method)) {
-      if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current);
-      persist(snapshot, method);
-    }
-  }, [persist, bumpDebug]);
+      if (["LMSCommit", "Commit"].includes(method)) {
+        if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current);
+        commitTimeoutRef.current = setTimeout(() => persist(snapshot, method), 1500);
+      } else if (["LMSFinish", "Terminate"].includes(method)) {
+        if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current);
+        persist(snapshot, method);
+      }
+    },
+    [persist, bumpDebug],
+  );
 
   const handleApiEventRef = useRef(handleApiEvent);
   handleApiEventRef.current = handleApiEvent;
@@ -338,9 +340,7 @@ export function ScormPlayer({
         const version = p.scormVersion && p.scormVersion.startsWith("2004") ? "2004" : "1.2";
         const apiHandler = (m: string, s: ScormCmiSnapshot) => handleApiEventRef.current(m, s);
         uninstall =
-          version === "2004"
-            ? installScorm2004(initialData, apiHandler)
-            : installScorm12(initialData, apiHandler);
+          version === "2004" ? installScorm2004(initialData, apiHandler) : installScorm12(initialData, apiHandler);
 
         const url = await resolveLaunchUrl(p.packageUrl, p.entryPoint || "index.html");
         if (cancelled) return;
@@ -403,9 +403,14 @@ export function ScormPlayer({
     const el = containerRef.current;
     if (!el) return;
     if (!document.fullscreenElement) {
-      el.requestFullscreen?.().then(() => setIsFullscreen(true)).catch(() => {});
+      el.requestFullscreen?.()
+        .then(() => setIsFullscreen(true))
+        .catch(() => {});
     } else {
-      document.exitFullscreen?.().then(() => setIsFullscreen(false)).catch(() => {});
+      document
+        .exitFullscreen?.()
+        .then(() => setIsFullscreen(false))
+        .catch(() => {});
     }
   }, []);
 
@@ -469,9 +474,7 @@ export function ScormPlayer({
             }}
           />
         )}
-        {debugEnabled && (
-          <ScormDebugOverlay counters={debugRef.current} tick={debugTick} isLoading={isLoading} />
-        )}
+        {debugEnabled && <ScormDebugOverlay counters={debugRef.current} tick={debugTick} isLoading={isLoading} />}
       </div>
       <ScormBottomBar
         sessionSeconds={sessionSeconds}
@@ -526,13 +529,27 @@ function ScormDebugOverlay({ counters, isLoading }: DebugOverlayProps) {
         <Bug className="h-3 w-3" />
         <span className="font-semibold">SCORM debug</span>
       </div>
-      <div>renders: <b>{counters.renders}</b></div>
-      <div>loadEffect runs: <b>{counters.loadEffectRuns}</b></div>
-      <div>iframe mounts: <b>{counters.iframeMounts}</b></div>
-      <div>iframe onLoad: <b>{counters.iframeOnLoads}</b></div>
-      <div>spinner show/hide: <b>{counters.spinnerShows}</b> / <b>{counters.spinnerHides}</b></div>
-      <div>API events: <b>{counters.apiEvents}</b></div>
-      <div>persist calls: <b>{counters.persistCalls}</b></div>
+      <div>
+        renders: <b>{counters.renders}</b>
+      </div>
+      <div>
+        loadEffect runs: <b>{counters.loadEffectRuns}</b>
+      </div>
+      <div>
+        iframe mounts: <b>{counters.iframeMounts}</b>
+      </div>
+      <div>
+        iframe onLoad: <b>{counters.iframeOnLoads}</b>
+      </div>
+      <div>
+        spinner show/hide: <b>{counters.spinnerShows}</b> / <b>{counters.spinnerHides}</b>
+      </div>
+      <div>
+        API events: <b>{counters.apiEvents}</b>
+      </div>
+      <div>
+        persist calls: <b>{counters.persistCalls}</b>
+      </div>
       <div className="mt-1 opacity-70 truncate">last: {counters.lastEvent}</div>
       <div className="opacity-70">spinner: {isLoading ? "ON" : "off"}</div>
     </div>
