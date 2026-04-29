@@ -72,10 +72,78 @@ interface ScormPlayerProps {
   hasNext?: boolean;
 }
 
+// ─── SCORM CDN base (Cloudflare R2 custom domain) ───────────
+const SCORM_BASE_URL = "https://scorm.akademisg.com";
+
+/**
+ * Rewrite any stored packageUrl (r2.dev, direct R2 host, signed URL, etc.)
+ * to the custom domain. We keep only the path portion of the original URL.
+ */
+function rewriteToCustomDomain(packageUrl: string): string {
+  if (!packageUrl) return packageUrl;
+  // Already on custom domain
+  if (packageUrl.startsWith(SCORM_BASE_URL)) return packageUrl.replace(/\/+$/, "");
+  try {
+    const u = new URL(packageUrl);
+    const path = u.pathname.replace(/\/+$/, "");
+    return `${SCORM_BASE_URL}${path}`;
+  } catch {
+    // Not an absolute URL — treat as a path
+    const path = "/" + packageUrl.replace(/^\/+/, "").replace(/\/+$/, "");
+    return `${SCORM_BASE_URL}${path}`;
+  }
+}
+
 function buildContentUrl(packageUrl: string, entryPoint: string): string {
-  const base = packageUrl.replace(/\/+$/, "");
+  const base = rewriteToCustomDomain(packageUrl).replace(/\/+$/, "");
   const entry = entryPoint.replace(/^\/+/, "").split("/").map(encodeURIComponent).join("/");
   return `${base}/${entry}`;
+}
+
+/**
+ * HEAD-check a URL. Returns true on 2xx. Falls back to GET on opaque/CORS errors.
+ */
+async function checkUrl(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, { method: "HEAD" });
+    return res.ok;
+  } catch {
+    try {
+      const res = await fetch(url, { method: "GET" });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
+/**
+ * Resolve the actual launch file. Tries the configured entryPoint first,
+ * then common SCORM launch paths.
+ */
+async function resolveLaunchUrl(packageUrl: string, entryPoint: string): Promise<string | null> {
+  const base = rewriteToCustomDomain(packageUrl).replace(/\/+$/, "");
+  const candidates = [
+    entryPoint && buildContentUrl(packageUrl, entryPoint),
+    `${base}/story.html`,
+    `${base}/html5/story.html`,
+    `${base}/index.html`,
+    `${base}/index_lms.html`,
+    `${base}/scormdriver/indexAPI.html`,
+  ].filter(Boolean) as string[];
+
+  // Deduplicate while preserving order
+  const seen = new Set<string>();
+  for (const url of candidates) {
+    if (seen.has(url)) continue;
+    seen.add(url);
+    // eslint-disable-next-line no-await-in-loop
+    if (await checkUrl(url)) {
+      console.log("[scorm] Resolved launch URL:", url);
+      return url;
+    }
+  }
+  return null;
 }
 
 export function ScormPlayer({
