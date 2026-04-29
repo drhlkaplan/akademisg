@@ -186,10 +186,12 @@ export function ScormPlayer({
         sessionSeconds: sessionSecondsRef.current,
       });
       if (completed) p.onComplete?.();
+      bumpDebug({ persistCalls: debugRef.current.persistCalls + 1, lastEvent: `persist:${method}` });
+      dbg("persist OK", { method, total: debugRef.current.persistCalls + 1 });
     } catch (e) {
       console.error("[scorm] persist error:", e);
     }
-  }, [lessonId]);
+  }, [lessonId, bumpDebug]);
 
   // ─── API event handler (stable) ──────────────────────────────
   const handleApiEvent = useCallback((method: string, snapshot: ScormCmiSnapshot) => {
