@@ -494,6 +494,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       const apikey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
       let uploadedCount = 0;
+      let publicBaseFromServer = "";
       const queue: Promise<void>[] = [];
       const CONCURRENCY = 3;
 
@@ -522,6 +523,14 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
           const text = await res.text().catch(() => "");
           throw new Error(`Proxy upload başarısız (${res.status}): ${cleanPath} ${text.slice(0, 200)}`);
         }
+        try {
+          const json = await res.json();
+          if (!publicBaseFromServer && typeof json?.publicUrl === "string" && json.key) {
+            // strip the key suffix to get public base
+            const idx = json.publicUrl.lastIndexOf("/" + json.key);
+            if (idx > 0) publicBaseFromServer = json.publicUrl.slice(0, idx);
+          }
+        } catch { /* ignore parse */ }
         uploadedCount++;
         setUploadProgress(Math.round((uploadedCount / totalFiles) * 90));
       };
@@ -536,18 +545,11 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       }
       if (queue.length > 0) await Promise.all(queue);
 
-      // Build package public URL from R2_PUBLIC_URL
-      const publicBase = (import.meta.env.VITE_R2_PUBLIC_URL as string | undefined)?.replace(/\/+$/, "");
-      // Server already validates R2_PUBLIC_URL; we reconstruct via first response if missing.
-      // Fall back: ask one HEAD-style call by re-fetching prefix (but easier: rely on server publicUrl in last response).
-      // We only need {publicBase}/{safePrefix}. If env var missing, derive from first uploaded file response.
-      const packageUrl = publicBase
-        ? `${publicBase}/${safePrefix}`
-        : `${(signedFallbackBase())}/${safePrefix}`;
-
-      function signedFallbackBase() {
-        // Last-resort: assume same hostname pattern; surface clear error if not configured client-side.
-        throw new Error("R2_PUBLIC_URL client-side ayarlı değil. VITE_R2_PUBLIC_URL ekleyin veya server tarafı publicUrl döndürmeli.");
+      const packageUrl = publicBaseFromServer
+        ? `${publicBaseFromServer}/${safePrefix}`
+        : "";
+      if (!packageUrl) {
+        throw new Error("R2_PUBLIC_URL secret tanımlı değil. Cloudflare R2 public domain'i ayarlanmalı.");
       }
 
       // 4) Create package row
