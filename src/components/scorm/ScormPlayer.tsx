@@ -115,16 +115,15 @@ async function checkUrl(url: string): Promise<boolean> {
  * Resolve the actual launch file. Tries the configured entryPoint first,
  * then common SCORM launch paths.
  */
-async function resolveLaunchUrl(packageUrl: string, entryPoint: string): Promise<string | null> {
+async function resolveLaunchUrl(packageUrl: string, _entryPoint: string): Promise<string | null> {
   const base = rewriteToCustomDomain(packageUrl).replace(/\/+$/, "");
+  // Priority: story.html → html5/story.html → index.html
+  // index_lms.html is intentionally excluded (incorrect launch file for our packages)
   const candidates = [
-    entryPoint && buildContentUrl(packageUrl, entryPoint),
     `${base}/story.html`,
     `${base}/html5/story.html`,
     `${base}/index.html`,
-    `${base}/index_lms.html`,
-    `${base}/scormdriver/indexAPI.html`,
-  ].filter(Boolean) as string[];
+  ];
 
   // Deduplicate while preserving order
   const seen = new Set<string>();
