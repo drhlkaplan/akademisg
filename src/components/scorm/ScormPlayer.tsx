@@ -122,7 +122,7 @@ async function resolveLaunchUrl(packageUrl: string, entryPoint: string): Promise
     `${base}/story.html`,
     `${base}/html5/story.html`,
     `${base}/index.html`,
-    //`${base}/index_lms.html`,
+    `${base}/index_lms.html`,
     `${base}/scormdriver/indexAPI.html`,
   ].filter(Boolean) as string[];
 
