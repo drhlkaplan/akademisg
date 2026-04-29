@@ -371,14 +371,20 @@ export function ScormPlayer({
   }, [lessonId, packageUrl, entryPoint]);
 
   const handleRetry = useCallback(() => {
-    // Force reload by toggling iframeSrc
     setIframeSrc(null);
     setError(null);
     setIsLoading(true);
     const p = propsRef.current;
     if (p.packageUrl) {
-      const url = buildContentUrl(p.packageUrl, p.entryPoint || "index.html");
-      setTimeout(() => setIframeSrc(url), 50);
+      resolveLaunchUrl(p.packageUrl, p.entryPoint || "index.html").then((url) => {
+        if (url) {
+          console.log("[scorm] iframe SRC (retry):", url);
+          setIframeSrc(url);
+        } else {
+          setError("SCORM başlangıç dosyası bulunamadı.");
+          setIsLoading(false);
+        }
+      });
     }
   }, []);
 
