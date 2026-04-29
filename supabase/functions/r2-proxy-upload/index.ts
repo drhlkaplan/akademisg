@@ -46,7 +46,8 @@ async function putToR2(key: string, body: Uint8Array, contentType: string): Prom
   const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, "");
   const date = amzDate.slice(0, 8);
   const credential = `${ACCESS_KEY}/${date}/${REGION}/${SERVICE}/aws4_request`;
-  const canonicalUri = uriEncodeKey(key);
+  // R2 path-style: /<bucket>/<key>
+  const canonicalUri = uriEncodeKey(`${BUCKET}/${key}`);
   const payloadHash = await sha256Hex(body);
 
   const headers: Record<string, string> = {
