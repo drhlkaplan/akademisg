@@ -66,25 +66,44 @@ interface ScormPlayerProps {
   hasNext?: boolean;
 }
 
-// ─── SCORM CDN base (Cloudflare R2 custom domain) ───────────
-const SCORM_BASE_URL = "https://scorm.gratisakademi.com";
+// ─── SCORM CDN base ─────────────────────────────────────────
+// IMPORTANT: SCORM içeriği parent window'daki window.API'ye erişebilmesi için
+// SCORM player ile AYNI origin'den servis edilmelidir. Cross-origin (örn.
+// scorm.gratisakademi.com vs gratisakademi.com) durumda tarayıcı SecurityError
+// verir → SCORM API hiç çağrılamaz → progress kaydedilemez.
+//
+// Kullanıcının Cloudflare Worker'ı kurması gerekiyor:
+//   www.gratisakademi.com/scorm-content/* → R2 bucket
+// Worker hazır olduğunda bu sabit `/scorm-content` olur ve same-origin çalışır.
+//
+// Geçiş süreci için aşağıdaki sabit ortam-aware: localhost dev'de R2 direkt
+// kullanılır (iframe API zaten orada cross-origin çalışmaz → debug amaçlı).
+// Production'da same-origin path tercih edilir.
+const SCORM_SAME_ORIGIN_PATH = "/scorm-content"; // Cloudflare Worker proxy path
+const SCORM_FALLBACK_DOMAIN = "https://scorm.gratisakademi.com"; // Worker yokken fallback
+const SCORM_BASE_URL = SCORM_FALLBACK_DOMAIN; // backward-compat (debug overlay için)
+
+function getScormBaseUrl(): string {
+  if (typeof window === "undefined") return SCORM_FALLBACK_DOMAIN;
+  // Aynı origin proxy'sini tercih et — production'da SCORM API çalışsın diye
+  return `${window.location.origin}${SCORM_SAME_ORIGIN_PATH}`;
+}
 
 /**
  * Rewrite any stored packageUrl (r2.dev, direct R2 host, signed URL, etc.)
- * to the custom domain. We keep only the path portion of the original URL.
+ * to the same-origin proxy path. Path-only is kept.
  */
 function rewriteToCustomDomain(packageUrl: string): string {
   if (!packageUrl) return packageUrl;
-  // Already on custom domain
-  if (packageUrl.startsWith(SCORM_BASE_URL)) return packageUrl.replace(/\/+$/, "");
+  const base = getScormBaseUrl();
+  if (packageUrl.startsWith(base)) return packageUrl.replace(/\/+$/, "");
   try {
     const u = new URL(packageUrl);
     const path = u.pathname.replace(/\/+$/, "");
-    return `${SCORM_BASE_URL}${path}`;
+    return `${base}${path}`;
   } catch {
-    // Not an absolute URL — treat as a path
     const path = "/" + packageUrl.replace(/^\/+/, "").replace(/\/+$/, "");
-    return `${SCORM_BASE_URL}${path}`;
+    return `${base}${path}`;
   }
 }
 
