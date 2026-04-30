@@ -151,8 +151,9 @@ Deno.serve(async (req) => {
     // Only count questions that were actually presented
     const effectiveTotal = Math.min(totalQuestions, questions.length);
     const score = Math.round((correctAnswers / effectiveTotal) * 100);
-    // Ön sınav (pre_test) türündeki sınavlarda geçme notu aranmaz, her zaman geçer
-    const isPreTest = exam.exam_type === "pre_test";
+    // Ön sınav (pre / pre_test) türündeki sınavlarda geçme notu aranmaz, her zaman geçer
+    const examType = String(exam.exam_type || "").toLowerCase();
+    const isPreTest = examType === "pre" || examType === "pre_test";
     const passed = isPreTest ? true : score >= (exam.passing_score || 70);
     const status = passed ? "passed" : "failed";
 
@@ -194,16 +195,42 @@ Deno.serve(async (req) => {
 
     if (examLesson) {
       const lessonStatus = passed ? "passed" : "failed";
-      // Use upsert to record lesson progress
-      await adminClient.from("lesson_progress").upsert(
-        {
-          enrollment_id,
-          lesson_id: examLesson.id,
-          lesson_status: lessonStatus,
-          score_raw: score,
-        },
-        { onConflict: "enrollment_id,lesson_id" }
-      );
+      const progressPayload = {
+        enrollment_id,
+        lesson_id: examLesson.id,
+        lesson_status: lessonStatus,
+        score_raw: score,
+      };
+
+      const { data: existingProgress, error: findProgressErr } = await adminClient
+        .from("lesson_progress")
+        .select("id")
+        .eq("enrollment_id", enrollment_id)
+        .eq("lesson_id", examLesson.id)
+        .maybeSingle();
+
+      if (findProgressErr) {
+        console.error("Find lesson_progress error:", findProgressErr);
+        return new Response(JSON.stringify({ error: "Failed to check lesson progress" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { error: progressErr } = existingProgress
+        ? await adminClient
+            .from("lesson_progress")
+            .update(progressPayload)
+            .eq("id", existingProgress.id)
+        : await adminClient.from("lesson_progress").insert(progressPayload);
+
+      if (progressErr) {
+        console.error("Lesson progress save error:", progressErr);
+        return new Response(JSON.stringify({ error: "Failed to save lesson progress" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     return new Response(
