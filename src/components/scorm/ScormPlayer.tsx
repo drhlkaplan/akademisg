@@ -475,6 +475,17 @@ export function ScormPlayer({
             title={lessonTitle || "SCORM"}
             onLoaded={() => {
               setIsLoading(false);
+              // Cross-origin teşhis: iframe yüklendikten 5s sonra hâlâ
+              // LMSInitialize çağrılmadıysa SCORM API parent'a ulaşamıyor demektir.
+              const apiEventsBefore = debugRef.current.apiEvents;
+              setTimeout(() => {
+                if (debugRef.current.apiEvents === apiEventsBefore) {
+                  console.error(
+                    "[scorm] ⚠ SCORM API hiç çağrılmadı! Muhtemel sebep: iframe içeriği farklı bir origin'de (cross-origin) ve window.parent.API'ye erişemiyor. SCORM içerikleri panelle aynı origin'den (örn. /scorm-content/...) servis edilmeli.",
+                    { iframeSrc, parentOrigin: window.location.origin },
+                  );
+                }
+              }, 5000);
               if (debugEnabled) {
                 debugRef.current.iframeOnLoads += 1;
                 debugRef.current.lastEvent = "iframe:onLoad";
