@@ -369,6 +369,10 @@ export function ScormPlayer({
         }
         console.log("[scorm] iframe SRC:", url);
         setIframeSrc(url);
+        // Activity log: SCORM launch
+        import("@/lib/activityLog").then(({ logActivity }) =>
+          logActivity("scorm_launch", "lesson", lessonId, { packageUrl: p.packageUrl, resolved: url }),
+        );
       } catch (e: unknown) {
         if (cancelled) return;
         const msg = e instanceof Error ? e.message : "Bilinmeyen hata";
