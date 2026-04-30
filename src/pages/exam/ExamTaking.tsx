@@ -182,6 +182,14 @@ export default function ExamTaking() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
+      // Activity log: exam submit
+      import("@/lib/activityLog").then(({ logActivity }) =>
+        logActivity("exam_submit", "exam", examId, {
+          score: data.score,
+          passed: data.passed,
+        }),
+      );
+
       setExamResult({
         score: data.score,
         passed: data.passed,

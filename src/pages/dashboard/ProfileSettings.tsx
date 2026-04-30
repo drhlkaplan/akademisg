@@ -79,8 +79,9 @@ export default function ProfileSettings() {
       if (error) throw error;
       await refreshProfile();
       toast.success("Profil bilgileri güncellendi");
-    } catch {
-      toast.error("Profil güncellenirken hata oluştu");
+    } catch (err: any) {
+      console.error("[profile] update error:", err);
+      toast.error(`Profil güncellenirken hata: ${err?.message || "bilinmeyen hata"}`);
     } finally {
       setSaving(false);
     }
