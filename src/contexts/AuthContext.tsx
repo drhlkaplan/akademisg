@@ -142,10 +142,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
     });
+    if (!error) {
+      // Fire-and-forget activity log
+      import("@/lib/activityLog").then(({ logActivity }) => logActivity("login", "auth"));
+    }
     return { error };
   };
 
   const signOut = async () => {
+    // Log BEFORE signOut so RLS / auth.uid() still works
+    try {
+      const { logActivity } = await import("@/lib/activityLog");
+      await logActivity("logout", "auth");
+    } catch { /* noop */ }
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
