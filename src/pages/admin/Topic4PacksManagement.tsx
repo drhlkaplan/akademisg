@@ -156,8 +156,14 @@ export default function Topic4PacksManagement() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Süre (dakika)</Label>
-                  <Input type="number" value={form.duration_minutes} onChange={e => setForm({ ...form, duration_minutes: parseInt(e.target.value) || 0 })} />
+                  <Label>Ders Sayısı (her ders {MINUTES_PER_LESSON} dk)</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={form.lesson_count}
+                    onChange={e => setForm({ ...form, lesson_count: Math.max(1, parseInt(e.target.value) || 1) })}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Toplam: {form.lesson_count * MINUTES_PER_LESSON} dakika</p>
                 </div>
                 <div>
                   <Label>Açıklama</Label>
