@@ -77,6 +77,7 @@ const FaqManagement = lazyRetry(() => import("./pages/admin/FaqManagement"));
 const MyFaceToFaceSessions = lazyRetry(() => import("./pages/dashboard/MyFaceToFaceSessions"));
 const CourseTemplateRules = lazyRetry(() => import("./pages/admin/CourseTemplateRules"));
 const CompanyTopic4Assignment = lazyRetry(() => import("./pages/admin/CompanyTopic4Assignment"));
+const GroupTopic4Rules = lazyRetry(() => import("./pages/admin/GroupTopic4Rules"));
 const ComplianceReport = lazyRetry(() => import("./pages/admin/ComplianceReport"));
 const RecurrenceReport = lazyRetry(() => import("./pages/admin/RecurrenceReport"));
 const F2FAttendanceReport = lazyRetry(() => import("./pages/admin/F2FAttendanceReport"));
