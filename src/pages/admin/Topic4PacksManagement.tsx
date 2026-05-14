@@ -13,7 +13,9 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, AlertTriangle, Search, Clock } from "lucide-react";
+import { Plus, Pencil, AlertTriangle, Search, Clock, ListChecks } from "lucide-react";
+import { Link } from "react-router-dom";
+import { MINUTES_PER_LESSON, formatLessonDuration } from "@/lib/lessonDuration";
 
 const hazardLabels: Record<string, { label: string; variant: "default" | "secondary" | "destructive" }> = {
   az_tehlikeli: { label: "Az Tehlikeli", variant: "secondary" },
