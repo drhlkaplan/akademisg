@@ -269,7 +269,7 @@ const Index = () => {
                     {list.map((c) => (
                       <Link
                         key={c.id}
-                        to={`/courses/${c.id}`}
+                        to={`/courses?hazard=${category.key}`}
                         className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-secondary/40 hover:bg-accent/10 hover:border-accent/40 transition-colors group/item"
                       >
                         <div className="flex items-center gap-2 min-w-0">
