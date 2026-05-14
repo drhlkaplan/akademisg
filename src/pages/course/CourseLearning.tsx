@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LessonSidebar, type LessonItem, type LessonProgressItem } from "@/components/course/LessonSidebar";
