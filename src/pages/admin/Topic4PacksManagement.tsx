@@ -224,7 +224,7 @@ export default function Topic4PacksManagement() {
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {Math.round(p.duration_minutes / 60)} saat
+                          {formatLessonDuration(p.duration_minutes)}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -237,7 +237,12 @@ export default function Topic4PacksManagement() {
                       </TableCell>
                       <TableCell><Switch checked={p.is_active} onCheckedChange={v => toggleActive.mutate({ id: p.id, is_active: v })} /></TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="sm" asChild title="Ders İçerikleri">
+                            <Link to={`/admin/topic4-packs/${p.id}/lessons`}><ListChecks className="h-4 w-4" /></Link>
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => openEdit(p)} title="Düzenle"><Pencil className="h-4 w-4" /></Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
