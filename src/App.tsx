@@ -204,6 +204,14 @@ const App = () => (
               }
             />
             <Route
+              path="/admin/course-covers"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminCourseCovers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/exams"
               element={
                 <ProtectedRoute requireAdmin>
