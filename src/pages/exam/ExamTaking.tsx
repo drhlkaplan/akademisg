@@ -229,8 +229,9 @@ export default function ExamTaking() {
   const answeredCount = Object.keys(answers).length;
   const progress = questions ? (answeredCount / questions.length) * 100 : 0;
 
+  const isPreTest = (exam as any)?.exam_type === "pre_test" || (exam as any)?.exam_type === "pre";
   const maxAttemptsReached =
-    exam?.max_attempts && previousAttempts && previousAttempts.length >= exam.max_attempts;
+    !isPreTest && exam?.max_attempts && previousAttempts && previousAttempts.length >= exam.max_attempts;
 
   const isLoading = examLoading || questionsLoading;
 
@@ -313,7 +314,7 @@ export default function ExamTaking() {
                   <p className="text-muted-foreground mb-2">
                     Maalesef geçme notunu alamadınız.
                   </p>
-                  {exam.max_attempts ? (
+                  {!isPreTest && exam.max_attempts ? (
                     <p className="text-sm text-muted-foreground mb-6">
                       Kalan deneme hakkı: {Math.max(0, exam.max_attempts - (previousAttempts?.length || 0) - 1)} / {exam.max_attempts}
                     </p>
@@ -401,7 +402,7 @@ export default function ExamTaking() {
               <div>
                 <h1 className="text-xl font-bold text-foreground">{exam.title}</h1>
                 <p className="text-sm text-muted-foreground">{exam.courses?.title}</p>
-                {exam.max_attempts ? (
+                {!isPreTest && exam.max_attempts ? (
                   <p className="text-xs text-muted-foreground mt-1">
                     Deneme {Math.min((previousAttempts?.length || 0) + 1, exam.max_attempts)} / {exam.max_attempts}
                     {" · "}Geçme notu: %{exam.passing_score ?? 60}

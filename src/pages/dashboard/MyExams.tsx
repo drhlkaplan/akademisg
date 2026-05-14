@@ -23,7 +23,8 @@ interface ExamItem {
   duration_minutes: number;
   passing_score: number;
   attempts_used: number;
-  max_attempts: number;
+  max_attempts: number | null;
+  is_pre_test: boolean;
   best_score: number | null;
   passed: boolean;
 }
@@ -56,7 +57,7 @@ export default function MyExams() {
 
       const { data: examsData } = await supabase
         .from("exams")
-        .select("id, title, course_id, duration_minutes, passing_score, max_attempts")
+        .select("id, title, course_id, duration_minutes, passing_score, max_attempts, exam_type")
         .eq("is_active", true)
         .in("course_id", courseIds);
 
@@ -80,6 +81,7 @@ export default function MyExams() {
       examsData?.forEach((exam) => {
         const enrollment = enrollments.find((e) => e.course_id === exam.course_id);
         if (!enrollment) return;
+        const isPre = (exam as any).exam_type === "pre_test" || (exam as any).exam_type === "pre";
         items.push({
           exam_id: exam.id,
           exam_title: exam.title,
@@ -88,7 +90,8 @@ export default function MyExams() {
           duration_minutes: exam.duration_minutes || 60,
           passing_score: exam.passing_score || 70,
           attempts_used: attemptsByExam[exam.id] || 0,
-          max_attempts: exam.max_attempts || 3,
+          max_attempts: isPre ? null : (exam.max_attempts || 3),
+          is_pre_test: isPre,
           best_score: bestScoreByExam[exam.id] ?? null,
           passed: passedExams.has(exam.id),
         });
@@ -131,7 +134,8 @@ export default function MyExams() {
         ) : (
           <div className="grid md:grid-cols-2 gap-4">
             {exams.map((exam) => {
-              const canRetake = !exam.passed && exam.attempts_used < exam.max_attempts;
+              const unlimited = exam.is_pre_test || !exam.max_attempts;
+              const canRetake = !exam.passed && (unlimited || exam.attempts_used < (exam.max_attempts as number));
               return (
                 <Card key={exam.exam_id} className={exam.passed ? "border-success/30" : ""}>
                   <CardContent className="p-5">
@@ -150,7 +154,7 @@ export default function MyExams() {
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Başarılı
                         </Badge>
-                      ) : exam.attempts_used >= exam.max_attempts ? (
+                      ) : !unlimited && exam.attempts_used >= (exam.max_attempts as number) ? (
                         <Badge variant="destructive">
                           <XCircle className="h-3 w-3 mr-1" />
                           Hak Bitti
@@ -167,7 +171,7 @@ export default function MyExams() {
                       </div>
                       <div>Geçme: %{exam.passing_score}</div>
                       <div>
-                        Deneme: {exam.attempts_used}/{exam.max_attempts}
+                        Deneme: {exam.attempts_used}{unlimited ? "" : `/${exam.max_attempts}`}
                       </div>
                     </div>
 

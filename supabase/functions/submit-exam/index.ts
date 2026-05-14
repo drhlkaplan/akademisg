@@ -94,7 +94,8 @@ Deno.serve(async (req) => {
       .eq("user_id", user.id);
 
     const attemptCount = previousAttempts?.length || 0;
-    if (exam.max_attempts && attemptCount >= exam.max_attempts) {
+    const isPreTestExam = exam.exam_type === "pre_test" || exam.exam_type === "pre";
+    if (!isPreTestExam && exam.max_attempts && attemptCount >= exam.max_attempts) {
       return new Response(JSON.stringify({ error: "Maximum attempts reached" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

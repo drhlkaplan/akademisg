@@ -59,7 +59,8 @@ interface AvailableExam {
   duration_minutes: number;
   passing_score: number;
   attempts_used: number;
-  max_attempts: number;
+  max_attempts: number | null;
+  is_pre_test?: boolean;
 }
 
 const dangerClassBadge: Record<DangerClass, "dangerLow" | "dangerMedium" | "dangerHigh"> = {
@@ -143,7 +144,7 @@ export default function StudentDashboard() {
         
         const { data: examsData } = await supabase
           .from("exams")
-          .select("id, title, course_id, duration_minutes, passing_score, max_attempts")
+          .select("id, title, course_id, duration_minutes, passing_score, max_attempts, exam_type")
           .eq("is_active", true)
           .in("course_id", courseIds);
 
@@ -167,6 +168,7 @@ export default function StudentDashboard() {
           if (passedExams.has(exam.id)) return; // Skip passed exams
           const enrollment = activeEnrollmentsList.find((e) => e.course?.id === exam.course_id);
           if (enrollment) {
+            const isPre = (exam as any).exam_type === "pre_test" || (exam as any).exam_type === "pre";
             examsWithEnrollment.push({
               exam_id: exam.id,
               exam_title: exam.title,
@@ -175,7 +177,8 @@ export default function StudentDashboard() {
               duration_minutes: exam.duration_minutes || 60,
               passing_score: exam.passing_score || 70,
               attempts_used: attemptsByExam[exam.id] || 0,
-              max_attempts: exam.max_attempts || 3,
+              max_attempts: isPre ? null : (exam.max_attempts || 3),
+              is_pre_test: isPre,
             });
           }
         });
@@ -458,7 +461,7 @@ export default function StudentDashboard() {
                             <span>•</span>
                             <span>%{exam.passing_score} geçme</span>
                             <span>•</span>
-                            <span>{exam.attempts_used}/{exam.max_attempts}</span>
+                            <span>{exam.attempts_used}{exam.is_pre_test || !exam.max_attempts ? "" : `/${exam.max_attempts}`}</span>
                           </div>
                         </div>
                         <Button variant="accent" size="sm" asChild>
