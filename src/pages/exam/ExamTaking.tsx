@@ -229,8 +229,9 @@ export default function ExamTaking() {
   const answeredCount = Object.keys(answers).length;
   const progress = questions ? (answeredCount / questions.length) * 100 : 0;
 
+  const isPreTest = (exam as any)?.exam_type === "pre_test" || (exam as any)?.exam_type === "pre";
   const maxAttemptsReached =
-    exam?.max_attempts && previousAttempts && previousAttempts.length >= exam.max_attempts;
+    !isPreTest && exam?.max_attempts && previousAttempts && previousAttempts.length >= exam.max_attempts;
 
   const isLoading = examLoading || questionsLoading;
 
