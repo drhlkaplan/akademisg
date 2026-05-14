@@ -42,6 +42,7 @@ import {
   Archive,
   Database,
   PieChart,
+  UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFirmBranding } from "@/contexts/FirmBrandingContext";
