@@ -869,7 +869,9 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
               </TableHeader>
               <TableBody>
                 {lessons.map((lesson) => {
-                  const LessonIcon = lessonTypeIcons[lesson.type];
+                  const isTopic4 = (lesson as any).topic_group === 4;
+                  const uiType: UILessonType = isTopic4 ? "topic4" : lesson.type;
+                  const LessonIcon = lessonTypeIcons[uiType];
                   return (
                     <TableRow key={lesson.id}>
                       <TableCell>
@@ -884,7 +886,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <LessonIcon className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{lessonTypeLabels[lesson.type]}</span>
+                          <span className="text-sm">{lessonTypeLabels[uiType]}</span>
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-muted-foreground">
