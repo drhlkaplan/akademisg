@@ -94,15 +94,15 @@ export function Footer() {
             <ul className="space-y-3">
               <li className="flex items-center gap-2 text-sm text-primary-foreground/70">
                 <Mail className="h-4 w-4 text-accent" />
-                <span>info@isgakademi.com</span>
+                <span>{general.contactEmail}</span>
               </li>
               <li className="flex items-center gap-2 text-sm text-primary-foreground/70">
                 <Phone className="h-4 w-4 text-accent" />
-                <span>+90 (212) 555 00 00</span>
+                <span>{general.contactPhone}</span>
               </li>
               <li className="flex items-start gap-2 text-sm text-primary-foreground/70">
                 <MapPin className="h-4 w-4 text-accent mt-0.5" />
-                <span>İstanbul, Türkiye</span>
+                <span>{general.contactAddress}</span>
               </li>
             </ul>
           </div>
@@ -112,7 +112,7 @@ export function Footer() {
         <div className="mt-12 pt-8 border-t border-primary-foreground/10">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-primary-foreground/50">
-              © {new Date().getFullYear()} İSG Akademi. Tüm hakları saklıdır.
+              © {new Date().getFullYear()} {footer.copyrightText.replace(/^©\s*/, "")}
             </p>
             <div className="flex gap-4">
               {footerLinks.legal.map((link) => (
