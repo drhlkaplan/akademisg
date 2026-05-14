@@ -28,11 +28,11 @@ interface PackForm {
   hazard_class: string;
   name: string;
   description: string;
-  duration_minutes: number;
+  lesson_count: number;
   key_hazards: string;
 }
 
-const emptyPack: PackForm = { sector_id: "", hazard_class: "az_tehlikeli", name: "", description: "", duration_minutes: 120, key_hazards: "" };
+const emptyPack: PackForm = { sector_id: "", hazard_class: "az_tehlikeli", name: "", description: "", lesson_count: 3, key_hazards: "" };
 
 export default function Topic4PacksManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
