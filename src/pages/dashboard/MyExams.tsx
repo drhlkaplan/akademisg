@@ -23,7 +23,8 @@ interface ExamItem {
   duration_minutes: number;
   passing_score: number;
   attempts_used: number;
-  max_attempts: number;
+  max_attempts: number | null;
+  is_pre_test: boolean;
   best_score: number | null;
   passed: boolean;
 }
