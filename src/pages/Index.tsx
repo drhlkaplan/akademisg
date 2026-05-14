@@ -108,33 +108,6 @@ const features = [
   },
 ];
 
-const dangerCategories = [
-  {
-    level: "Az Tehlikeli",
-    badge: "dangerLow" as const,
-    hours: "8 Saat",
-    description: "Ofis, perakende, eğitim sektörleri",
-    courses: 15,
-    color: "border-success/30",
-  },
-  {
-    level: "Tehlikeli",
-    badge: "dangerMedium" as const,
-    hours: "12 Saat",
-    description: "İmalat, lojistik, gıda sektörleri",
-    courses: 20,
-    color: "border-warning/30",
-  },
-  {
-    level: "Çok Tehlikeli",
-    badge: "dangerHigh" as const,
-    hours: "16 Saat",
-    description: "Maden, inşaat, kimya sektörleri",
-    courses: 18,
-    color: "border-destructive/30",
-  },
-];
-
 const dangerCategories = dangerCategoryConfig;
 
 const trustPoints = [
