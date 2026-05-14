@@ -149,7 +149,7 @@ export default function CourseLearning() {
         const enriched = await Promise.all(
           rawLessons.map(async (l) => {
             if (l.topic_group !== 4) return l;
-            const effectivePackId = firmPackId || l.topic4_pack_id;
+            const effectivePackId = overridePackId || l.topic4_pack_id;
             if (!effectivePackId) return l;
             const { data: packLessons } = await supabase
               .from("topic4_pack_lessons")
