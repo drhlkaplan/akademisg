@@ -175,6 +175,14 @@ const App = () => (
               }
             />
             <Route
+              path="/admin/join-requests"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <JoinRequests />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/exams"
               element={
                 <ProtectedRoute requireAdmin>
