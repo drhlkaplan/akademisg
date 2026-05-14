@@ -310,9 +310,16 @@ export default function ExamTaking() {
                     <XCircle className="h-10 w-10 text-destructive" />
                   </div>
                   <h2 className="text-2xl font-bold text-foreground mb-2">Sınav Tamamlandı</h2>
-                  <p className="text-muted-foreground mb-6">
-                    Maalesef geçme notunu alamadınız. Tekrar deneyebilirsiniz.
+                  <p className="text-muted-foreground mb-2">
+                    Maalesef geçme notunu alamadınız.
                   </p>
+                  {exam.max_attempts ? (
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Kalan deneme hakkı: {Math.max(0, exam.max_attempts - (previousAttempts?.length || 0) - 1)} / {exam.max_attempts}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground mb-6">Tekrar deneyebilirsiniz.</p>
+                  )}
                 </>
               )}
 
