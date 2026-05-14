@@ -356,6 +356,51 @@ export type Database = {
         }
         Relationships: []
       }
+      course_join_requests: {
+        Row: {
+          course_id: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          firm_id: string | null
+          id: string
+          note: string | null
+          requested_at: string
+          status: Database["public"]["Enums"]["join_request_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          firm_id?: string | null
+          id?: string
+          note?: string | null
+          requested_at?: string
+          status?: Database["public"]["Enums"]["join_request_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          firm_id?: string | null
+          id?: string
+          note?: string | null
+          requested_at?: string
+          status?: Database["public"]["Enums"]["join_request_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       course_template_rules: {
         Row: {
           course_id: string
@@ -2305,6 +2350,10 @@ export type Database = {
       }
     }
     Functions: {
+      approve_join_request: {
+        Args: { _note?: string; _request_id: string }
+        Returns: string
+      }
       check_topic4_f2f_completion: {
         Args: {
           _course_id: string
@@ -2354,6 +2403,10 @@ export type Database = {
           _total_time?: number
         }
         Returns: string
+      }
+      reject_join_request: {
+        Args: { _note?: string; _request_id: string }
+        Returns: undefined
       }
       save_scorm_runtime_data: {
         Args: {
@@ -2434,6 +2487,7 @@ export type Database = {
         | "completed"
         | "cancelled"
       hazard_class_enum: "az_tehlikeli" | "tehlikeli" | "cok_tehlikeli"
+      join_request_status: "pending" | "approved" | "rejected" | "cancelled"
       lesson_delivery_method: "scorm" | "bbb_live" | "face_to_face" | "hybrid"
       lesson_type: "scorm" | "exam" | "live" | "content" | "face_to_face"
       question_type: "multiple_choice" | "true_false"
@@ -2621,6 +2675,7 @@ export const Constants = {
         "cancelled",
       ],
       hazard_class_enum: ["az_tehlikeli", "tehlikeli", "cok_tehlikeli"],
+      join_request_status: ["pending", "approved", "rejected", "cancelled"],
       lesson_delivery_method: ["scorm", "bbb_live", "face_to_face", "hybrid"],
       lesson_type: ["scorm", "exam", "live", "content", "face_to_face"],
       question_type: ["multiple_choice", "true_false"],

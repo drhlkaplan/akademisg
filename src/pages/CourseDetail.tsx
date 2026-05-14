@@ -10,6 +10,7 @@ import {
   Play, FileText, Loader2, ChevronDown, ChevronUp, Shield
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+import { JoinRequestButton } from "@/components/courses/JoinRequestButton";
 
 type DangerClass = Database["public"]["Enums"]["danger_class"];
 
@@ -108,15 +109,7 @@ export default function CourseDetail() {
               <span className="flex items-center gap-1.5"><Award className="h-4 w-4" /> Sertifikalı</span>
             </div>
             <div className="mt-8">
-              {user ? (
-                <Link to={`/learn/${courseId}`}>
-                  <Button variant="accent" size="lg">Eğitime Başla <ArrowRight className="h-4 w-4 ml-1" /></Button>
-                </Link>
-              ) : (
-                <Link to="/register">
-                  <Button variant="accent" size="lg">Kayıt Ol ve Başla <ArrowRight className="h-4 w-4 ml-1" /></Button>
-                </Link>
-              )}
+              <JoinRequestButton courseId={courseId!} size="lg" />
             </div>
           </div>
         </div>
@@ -212,15 +205,10 @@ export default function CourseDetail() {
                     </div>
                   ))}
                 </div>
-                {user ? (
-                  <Link to={`/learn/${courseId}`} className="block">
-                    <Button variant="accent" className="w-full" size="lg">Eğitime Başla</Button>
-                  </Link>
-                ) : (
-                  <Link to="/register" className="block">
-                    <Button variant="accent" className="w-full" size="lg">Kayıt Ol</Button>
-                  </Link>
-                )}
+                <JoinRequestButton courseId={courseId!} fullWidth />
+                <Link to="/corporate" className="block">
+                  <Button variant="outline" className="w-full">Kurumsal Teklif Alın</Button>
+                </Link>
                 <Link to="/corporate" className="block">
                   <Button variant="outline" className="w-full">Kurumsal Teklif Alın</Button>
                 </Link>

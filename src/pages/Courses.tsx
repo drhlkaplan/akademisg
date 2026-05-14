@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge-custom";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { JoinRequestButton } from "@/components/courses/JoinRequestButton";
 import type { Database } from "@/integrations/supabase/types";
 
 type DangerClass = Database["public"]["Enums"]["danger_class"];
@@ -52,11 +53,20 @@ const dangerClassLabel: Record<DangerClass, string> = {
   high: "Çok Tehlikeli",
 };
 
+const hazardToDanger: Record<string, "low" | "medium" | "high"> = {
+  az_tehlikeli: "low",
+  tehlikeli: "medium",
+  cok_tehlikeli: "high",
+};
+
 export default function Courses() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const initialFromUrl = searchParams.get("hazard");
+  const initialCategory = initialFromUrl && hazardToDanger[initialFromUrl] ? hazardToDanger[initialFromUrl] : "all";
+  const [categoryFilter, setCategoryFilter] = useState<string>(initialCategory);
 
   useEffect(() => {
     fetchCourses();
@@ -80,6 +90,7 @@ export default function Courses() {
           )
         `)
         .eq("is_active", true)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -88,6 +99,15 @@ export default function Courses() {
       console.error("Error fetching courses:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCategoryChange = (v: string) => {
+    setCategoryFilter(v);
+    if (v === "all") setSearchParams({});
+    else {
+      const reverse = Object.entries(hazardToDanger).find(([, d]) => d === v)?.[0];
+      if (reverse) setSearchParams({ hazard: reverse });
     }
   };
 
@@ -138,7 +158,7 @@ export default function Courses() {
               />
             </div>
             <div className="flex gap-3">
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <Select value={categoryFilter} onValueChange={handleCategoryChange}>
                 <SelectTrigger className="w-[180px] bg-card">
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="Tehlike Sınıfı" />
@@ -224,14 +244,13 @@ export default function Courses() {
 
                       {/* Actions */}
                       <div className="flex gap-3">
-                        <Button variant="accent" className="flex-1" asChild>
-                          <Link to={`/learn/${course.id}`}>
-                            Eğitime Başla
-                            <ArrowRight className="ml-2 h-4 w-4" />
+                        <div className="flex-1">
+                          <JoinRequestButton courseId={course.id} fullWidth />
+                        </div>
+                        <Button variant="outline" size="icon" asChild>
+                          <Link to={`/courses/${course.id}`}>
+                            <ArrowRight className="h-4 w-4" />
                           </Link>
-                        </Button>
-                        <Button variant="outline" size="icon">
-                          <Award className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
