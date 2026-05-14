@@ -114,9 +114,10 @@ export default function CourseLearning() {
         if (groupIds.length > 0) {
           const { data: groupRules } = await supabase
             .from("group_topic4_assignments" as any)
-            .select("topic4_pack_id")
+            .select("topic4_pack_id, updated_at")
             .in("group_id", groupIds)
             .eq("is_active", true)
+            .order("updated_at", { ascending: false })
             .limit(1);
           groupPackId = (groupRules?.[0] as any)?.topic4_pack_id || null;
         }
@@ -145,12 +146,19 @@ export default function CourseLearning() {
           }
         }
         const overridePackId = groupPackId || firmPackId;
-        // For each topic 4 lesson, pick effective pack and load its first active sub-lesson
+        // For each topic 4 lesson, pick effective pack and load its content
         const enriched = await Promise.all(
           rawLessons.map(async (l) => {
             if (l.topic_group !== 4) return l;
             const effectivePackId = overridePackId || l.topic4_pack_id;
             if (!effectivePackId) return l;
+            // Load pack info (own content + name)
+            const { data: pack } = await supabase
+              .from("topic4_sector_packs")
+              .select("id, name, content_url, scorm_package_id")
+              .eq("id", effectivePackId)
+              .maybeSingle();
+            // Then check sub-lessons
             const { data: packLessons } = await supabase
               .from("topic4_pack_lessons")
               .select("id, title, content_type, content_url, scorm_package_id")
@@ -160,15 +168,22 @@ export default function CourseLearning() {
               .order("sort_order")
               .limit(1);
             const first = packLessons?.[0];
-            if (!first) return l;
-            // Override lesson rendering source from pack's first item
-            if (first.scorm_package_id) {
-              return { ...l, type: "scorm", scorm_package_id: first.scorm_package_id, content_url: null };
+            const titleSuffix = pack?.name ? ` — ${pack.name}` : "";
+            const newTitle = `${l.title}${titleSuffix}`;
+            // Priority: sub-lesson > pack-level content
+            if (first?.scorm_package_id) {
+              return { ...l, title: newTitle, type: "scorm", scorm_package_id: first.scorm_package_id, content_url: null };
             }
-            if (first.content_url) {
-              return { ...l, type: "content", content_url: first.content_url };
+            if (first?.content_url) {
+              return { ...l, title: newTitle, type: "content", content_url: first.content_url };
             }
-            return l;
+            if (pack?.scorm_package_id) {
+              return { ...l, title: newTitle, type: "scorm", scorm_package_id: pack.scorm_package_id, content_url: null };
+            }
+            if (pack?.content_url) {
+              return { ...l, title: newTitle, type: "content", content_url: pack.content_url };
+            }
+            return { ...l, title: newTitle };
           })
         );
         resolvedLessons = enriched;
