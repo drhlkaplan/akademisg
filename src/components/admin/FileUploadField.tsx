@@ -33,8 +33,8 @@ export function FileUploadField({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Dosya boyutu 5MB'dan küçük olmalıdır");
+    if (file.size > 200 * 1024 * 1024) {
+      toast.error("Dosya boyutu 200MB'dan küçük olmalıdır");
       return;
     }
 
