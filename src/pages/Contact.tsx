@@ -7,16 +7,24 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Mail, Phone, MapPin, Clock, Send, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-const contactInfo = [
-  { icon: Phone, label: "Telefon", value: "0850 XXX XX XX", href: "tel:+908500000000" },
-  { icon: Mail, label: "E-posta", value: "info@isgakademi.com", href: "mailto:info@isgakademi.com" },
-  { icon: MapPin, label: "Adres", value: "İstanbul, Türkiye", href: "#" },
-  { icon: Clock, label: "Mesai Saatleri", value: "Pzt-Cuma 09:00 - 18:00", href: "#" },
-];
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 
 export default function Contact() {
   const { toast } = useToast();
+  const { settings } = useSiteSettings();
+  const { contactPhone, contactEmail, contactAddress } = settings.general;
+
+  const phoneHref = `tel:${contactPhone.replace(/[^+\d]/g, "")}`;
+  const waNumber = contactPhone.replace(/[^\d]/g, "");
+  const whatsappUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent("Merhaba, İSG eğitimleri hakkında bilgi almak istiyorum.")}`;
+
+  const contactInfo = [
+    { icon: Phone, label: "Telefon", value: contactPhone, href: phoneHref },
+    { icon: Mail, label: "E-posta", value: contactEmail, href: `mailto:${contactEmail}` },
+    { icon: MapPin, label: "Adres", value: contactAddress, href: "#" },
+    { icon: Clock, label: "Mesai Saatleri", value: "Pzt-Cuma 09:00 - 18:00", href: "#" },
+  ];
+
   const [formData, setFormData] = useState({
     name: "", email: "", phone: "", subject: "", message: "",
   });
@@ -34,8 +42,6 @@ export default function Contact() {
     setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
     setSubmitting(false);
   };
-
-  const whatsappUrl = `https://wa.me/908500000000?text=${encodeURIComponent("Merhaba, İSG eğitimleri hakkında bilgi almak istiyorum.")}`;
 
   return (
     <MainLayout>
