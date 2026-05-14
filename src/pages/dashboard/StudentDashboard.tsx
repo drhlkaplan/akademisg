@@ -461,7 +461,7 @@ export default function StudentDashboard() {
                             <span>•</span>
                             <span>%{exam.passing_score} geçme</span>
                             <span>•</span>
-                            <span>{exam.attempts_used}/{exam.max_attempts}</span>
+                            <span>{exam.attempts_used}{exam.is_pre_test || !exam.max_attempts ? "" : `/${exam.max_attempts}`}</span>
                           </div>
                         </div>
                         <Button variant="accent" size="sm" asChild>
