@@ -108,15 +108,7 @@ export default function CourseDetail() {
               <span className="flex items-center gap-1.5"><Award className="h-4 w-4" /> Sertifikalı</span>
             </div>
             <div className="mt-8">
-              {user ? (
-                <Link to={`/learn/${courseId}`}>
-                  <Button variant="accent" size="lg">Eğitime Başla <ArrowRight className="h-4 w-4 ml-1" /></Button>
-                </Link>
-              ) : (
-                <Link to="/register">
-                  <Button variant="accent" size="lg">Kayıt Ol ve Başla <ArrowRight className="h-4 w-4 ml-1" /></Button>
-                </Link>
-              )}
+              <JoinRequestButton courseId={courseId!} size="lg" />
             </div>
           </div>
         </div>
