@@ -328,6 +328,14 @@ const App = () => (
               }
             />
             <Route
+              path="/admin/group-topic4-rules"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <GroupTopic4Rules />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/face-to-face"
               element={
                 <ProtectedRoute requireAdmin>
