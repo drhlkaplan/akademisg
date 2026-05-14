@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge-custom";
@@ -17,9 +17,66 @@ import {
   Zap,
   Globe,
   X,
+  HardHat,
+  Factory,
+  Briefcase,
+  RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { JoinRequestButton } from "@/components/courses/JoinRequestButton";
+import { supabase } from "@/integrations/supabase/client";
 import heroImage from "@/assets/hero-bg.jpg";
+
+type HazardKey = "az_tehlikeli" | "tehlikeli" | "cok_tehlikeli";
+interface CategoryCourse {
+  id: string;
+  title: string;
+  training_type: "temel" | "tekrar" | string;
+  duration_minutes: number;
+}
+interface CategoryConfig {
+  key: HazardKey;
+  level: string;
+  hours: string;
+  description: string;
+  icon: typeof Briefcase;
+  badge: "dangerLow" | "dangerMedium" | "dangerHigh";
+  accent: string;
+  ring: string;
+}
+const dangerCategoryConfig: CategoryConfig[] = [
+  {
+    key: "az_tehlikeli",
+    level: "Az Tehlikeli",
+    hours: "8 Saat",
+    description: "Ofis, perakende, eğitim, sağlık (idari) gibi sektörler",
+    icon: Briefcase,
+    badge: "dangerLow",
+    accent: "bg-success/10 text-success",
+    ring: "border-success/30 hover:border-success/60",
+  },
+  {
+    key: "tehlikeli",
+    level: "Tehlikeli",
+    hours: "12 Saat",
+    description: "İmalat, lojistik, gıda üretimi, atölye işleri",
+    icon: Factory,
+    badge: "dangerMedium",
+    accent: "bg-warning/10 text-warning",
+    ring: "border-warning/30 hover:border-warning/60",
+  },
+  {
+    key: "cok_tehlikeli",
+    level: "Çok Tehlikeli",
+    hours: "16 Saat",
+    description: "Maden, inşaat, kimya, metal ve enerji sektörleri",
+    icon: HardHat,
+    badge: "dangerHigh",
+    accent: "bg-destructive/10 text-destructive",
+    ring: "border-destructive/30 hover:border-destructive/60",
+  },
+];
 
 const stats = [
   { label: "Aktif Kursiyer", value: "10,000+", icon: Users },
