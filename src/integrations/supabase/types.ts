@@ -529,6 +529,7 @@ export type Database = {
           legacy_regulation: boolean | null
           min_total_hours: number | null
           require_sequential: boolean
+          sort_order: number
           thumbnail_url: string | null
           title: string
           training_type:
@@ -553,6 +554,7 @@ export type Database = {
           legacy_regulation?: boolean | null
           min_total_hours?: number | null
           require_sequential?: boolean
+          sort_order?: number
           thumbnail_url?: string | null
           title: string
           training_type?:
@@ -577,6 +579,7 @@ export type Database = {
           legacy_regulation?: boolean | null
           min_total_hours?: number | null
           require_sequential?: boolean
+          sort_order?: number
           thumbnail_url?: string | null
           title?: string
           training_type?:
