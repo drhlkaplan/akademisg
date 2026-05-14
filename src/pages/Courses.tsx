@@ -158,7 +158,7 @@ export default function Courses() {
               />
             </div>
             <div className="flex gap-3">
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <Select value={categoryFilter} onValueChange={handleCategoryChange}>
                 <SelectTrigger className="w-[180px] bg-card">
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="Tehlike Sınıfı" />
