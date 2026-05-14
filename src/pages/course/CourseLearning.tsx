@@ -200,7 +200,7 @@ export default function CourseLearning() {
         setLessonProgress((progressData as LessonProgressItem[]) || []);
       }
 
-      const sortedLessons = (lessonsRes.data as LessonItem[] || []).sort((a, b) => a.sort_order - b.sort_order);
+      const sortedLessons = (resolvedLessons as LessonItem[]).slice().sort((a, b) => a.sort_order - b.sort_order);
       if (sortedLessons.length > 0) {
         const progressData = await supabase
           .from("lesson_progress")
