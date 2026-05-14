@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Shield, Mail, Phone, MapPin } from "lucide-react";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 
 const footerLinks = {
   platform: [
@@ -22,6 +23,13 @@ const footerLinks = {
 };
 
 export function Footer() {
+  const { settings } = useSiteSettings();
+  const { general, footer } = settings;
+  const siteName = general.siteName || "İSG Akademi";
+  // Split site name into two parts for accent styling
+  const nameParts = siteName.includes(" ")
+    ? [siteName.split(" ")[0], siteName.substring(siteName.indexOf(" ") + 1)]
+    : [siteName.slice(0, Math.ceil(siteName.length / 2)), siteName.slice(Math.ceil(siteName.length / 2))];
   return (
     <footer className="bg-primary text-primary-foreground">
       <div className="container py-12 md:py-16">
@@ -34,7 +42,7 @@ export function Footer() {
               </div>
               <div className="flex flex-col">
                 <span className="text-lg font-bold leading-tight">
-                  İSG<span className="text-accent">Akademi</span>
+                  {nameParts[0]}<span className="text-accent">{nameParts[1]}</span>
                 </span>
                 <span className="text-[10px] text-primary-foreground/70 leading-none">
                   Online Eğitim Platformu
@@ -42,8 +50,7 @@ export function Footer() {
               </div>
             </Link>
             <p className="text-sm text-primary-foreground/70 max-w-xs">
-              İş Sağlığı ve Güvenliği eğitimlerinde güvenilir çözüm ortağınız.
-              SCORM uyumlu, sertifikalı online eğitimler.
+              {footer.tagline}
             </p>
           </div>
 
@@ -87,15 +94,15 @@ export function Footer() {
             <ul className="space-y-3">
               <li className="flex items-center gap-2 text-sm text-primary-foreground/70">
                 <Mail className="h-4 w-4 text-accent" />
-                <span>info@isgakademi.com</span>
+                <span>{general.contactEmail}</span>
               </li>
               <li className="flex items-center gap-2 text-sm text-primary-foreground/70">
                 <Phone className="h-4 w-4 text-accent" />
-                <span>+90 (212) 555 00 00</span>
+                <span>{general.contactPhone}</span>
               </li>
               <li className="flex items-start gap-2 text-sm text-primary-foreground/70">
                 <MapPin className="h-4 w-4 text-accent mt-0.5" />
-                <span>İstanbul, Türkiye</span>
+                <span>{general.contactAddress}</span>
               </li>
             </ul>
           </div>
@@ -105,7 +112,7 @@ export function Footer() {
         <div className="mt-12 pt-8 border-t border-primary-foreground/10">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-primary-foreground/50">
-              © {new Date().getFullYear()} İSG Akademi. Tüm hakları saklıdır.
+              © {new Date().getFullYear()} {footer.copyrightText.replace(/^©\s*/, "")}
             </p>
             <div className="flex gap-4">
               {footerLinks.legal.map((link) => (
