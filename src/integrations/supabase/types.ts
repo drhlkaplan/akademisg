@@ -1442,6 +1442,7 @@ export type Database = {
           sort_order: number
           title: string
           topic_group: number | null
+          topic4_pack_id: string | null
           type: Database["public"]["Enums"]["lesson_type"]
           updated_at: string
         }
@@ -1462,6 +1463,7 @@ export type Database = {
           sort_order?: number
           title: string
           topic_group?: number | null
+          topic4_pack_id?: string | null
           type?: Database["public"]["Enums"]["lesson_type"]
           updated_at?: string
         }
@@ -1482,6 +1484,7 @@ export type Database = {
           sort_order?: number
           title?: string
           topic_group?: number | null
+          topic4_pack_id?: string | null
           type?: Database["public"]["Enums"]["lesson_type"]
           updated_at?: string
         }
@@ -1505,6 +1508,13 @@ export type Database = {
             columns: ["scorm_package_id"]
             isOneToOne: false
             referencedRelation: "scorm_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lessons_topic4_pack_id_fkey"
+            columns: ["topic4_pack_id"]
+            isOneToOne: false
+            referencedRelation: "topic4_sector_packs"
             referencedColumns: ["id"]
           },
         ]

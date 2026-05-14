@@ -26,7 +26,7 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import {
   Plus, Edit, Trash2, GripVertical, BookOpen, FileQuestion, Video,
   FileText, Loader2, Upload, ArrowLeft, Package, ExternalLink, RefreshCw,
-  Users,
+  Users, AlertTriangle,
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { ScormScoDetails } from "./ScormScoDetails";
@@ -35,26 +35,31 @@ import { ScormProgressReport } from "./ScormProgressReport";
 type LessonType = Database["public"]["Enums"]["lesson_type"];
 type Lesson = Database["public"]["Tables"]["lessons"]["Row"];
 
+// UI-only lesson type that maps to type='content' + topic_group=4 in DB
+type UILessonType = LessonType | "topic4";
+
 interface LessonManagementProps {
   courseId: string;
   courseTitle: string;
   onBack: () => void;
 }
 
-const lessonTypeLabels: Record<LessonType, string> = {
+const lessonTypeLabels: Record<UILessonType, string> = {
   scorm: "SCORM Eğitim",
   exam: "Sınav",
   live: "Canlı Oturum",
   content: "İçerik (Video/PDF)",
   face_to_face: "Yüz Yüze Eğitim",
+  topic4: "İşe ve İşyerine Özgü Eğitim",
 };
 
-const lessonTypeIcons: Record<LessonType, typeof BookOpen> = {
+const lessonTypeIcons: Record<UILessonType, typeof BookOpen> = {
   scorm: BookOpen,
   exam: FileQuestion,
   live: Video,
   content: FileText,
   face_to_face: Users,
+  topic4: AlertTriangle,
 };
 
 /** Sanitize filename/path segment for storage compatibility */
@@ -196,7 +201,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
 
   const [formData, setFormData] = useState({
     title: "",
-    type: "content" as LessonType,
+    type: "content" as UILessonType,
     sort_order: 0,
     duration_minutes: 0,
     is_active: true,
@@ -206,6 +211,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     scorm_package_id: "",
     min_live_duration_minutes: 0,
     f2f_session_id: "",
+    topic4_pack_id: "",
   });
 
   // Fetch lessons
@@ -263,6 +269,20 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     },
   });
 
+  // Fetch active topic 4 sector packs (for "İşe ve İşyerine Özgü" lesson selection)
+  const { data: topic4Packs } = useQuery({
+    queryKey: ["topic4-packs-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("topic4_sector_packs")
+        .select("id, name, hazard_class, sectors(name)")
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // Re-parse all SCORM manifests (client-side, fetches imsmanifest.xml from public CDN)
   const handleReparseAll = async () => {
     if (!scormPackages || scormPackages.length === 0) return;
@@ -299,20 +319,36 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     });
   };
 
+  // Map UI form data → DB row payload (UI "topic4" maps to type=content + topic_group=4 + topic4_pack_id)
+  const buildLessonPayload = (data: typeof formData) => {
+    const isTopic4 = data.type === "topic4";
+    const dbType: LessonType = isTopic4 ? "content" : (data.type as LessonType);
+    return {
+      title: data.title,
+      type: dbType,
+      sort_order: data.sort_order,
+      duration_minutes: data.duration_minutes,
+      is_active: data.is_active,
+      content_url: isTopic4
+        ? null
+        : dbType === "content"
+        ? (data.content_html || data.content_url || null)
+        : (data.content_url || null),
+      exam_id: data.exam_id || null,
+      scorm_package_id: data.scorm_package_id || null,
+      min_live_duration_minutes: dbType === "live" ? data.min_live_duration_minutes : 0,
+      topic_group: isTopic4 ? 4 : null,
+      topic4_pack_id: isTopic4 ? (data.topic4_pack_id || null) : null,
+    };
+  };
+
   // Create lesson
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      const payload = buildLessonPayload(data);
       const { data: newLesson, error } = await supabase.from("lessons").insert({
         course_id: courseId,
-        title: data.title,
-        type: data.type,
-        sort_order: data.sort_order,
-        duration_minutes: data.duration_minutes,
-        is_active: data.is_active,
-        content_url: data.type === "content" ? (data.content_html || data.content_url || null) : (data.content_url || null),
-        exam_id: data.exam_id || null,
-        scorm_package_id: data.scorm_package_id || null,
-        min_live_duration_minutes: data.type === "live" ? data.min_live_duration_minutes : 0,
+        ...payload,
       } as any).select().single();
       if (error) throw error;
       // Link f2f session to this lesson
@@ -335,19 +371,10 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
   // Update lesson
   const updateMutation = useMutation({
     mutationFn: async (data: typeof formData & { id: string }) => {
+      const payload = buildLessonPayload(data);
       const { error } = await supabase
         .from("lessons")
-        .update({
-          title: data.title,
-          type: data.type,
-          sort_order: data.sort_order,
-          duration_minutes: data.duration_minutes,
-          is_active: data.is_active,
-          content_url: data.type === "content" ? (data.content_html || data.content_url || null) : (data.content_url || null),
-          exam_id: data.exam_id || null,
-          scorm_package_id: data.scorm_package_id || null,
-          min_live_duration_minutes: data.type === "live" ? data.min_live_duration_minutes : 0,
-        } as any)
+        .update(payload as any)
         .eq("id", data.id);
       if (error) throw error;
       // Link f2f session to this lesson
@@ -637,6 +664,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       scorm_package_id: "",
       min_live_duration_minutes: 0,
       f2f_session_id: "",
+      topic4_pack_id: "",
     });
     setDialogOpen(true);
   };
@@ -651,9 +679,11 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     }
     // Find linked f2f session
     const linkedSession = f2fSessions?.find((s: any) => s.lesson_id === lesson.id);
+    // Detect topic4 (workplace-specific) lesson via topic_group=4
+    const isTopic4Lesson = (lesson as any).topic_group === 4;
     setFormData({
       title: lesson.title,
-      type: lesson.type,
+      type: isTopic4Lesson ? ("topic4" as UILessonType) : (lesson.type as UILessonType),
       sort_order: lesson.sort_order,
       duration_minutes: lesson.duration_minutes,
       is_active: lesson.is_active,
@@ -663,6 +693,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       scorm_package_id: lesson.scorm_package_id || "",
       min_live_duration_minutes: (lesson as any).min_live_duration_minutes || 0,
       f2f_session_id: linkedSession?.id || "",
+      topic4_pack_id: (lesson as any).topic4_pack_id || "",
     });
     setDialogOpen(true);
   };
@@ -838,7 +869,9 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
               </TableHeader>
               <TableBody>
                 {lessons.map((lesson) => {
-                  const LessonIcon = lessonTypeIcons[lesson.type];
+                  const isTopic4 = (lesson as any).topic_group === 4;
+                  const uiType: UILessonType = isTopic4 ? "topic4" : lesson.type;
+                  const LessonIcon = lessonTypeIcons[uiType];
                   return (
                     <TableRow key={lesson.id}>
                       <TableCell>
@@ -853,7 +886,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <LessonIcon className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{lessonTypeLabels[lesson.type]}</span>
+                          <span className="text-sm">{lessonTypeLabels[uiType]}</span>
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-muted-foreground">
@@ -918,7 +951,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
                 <Label>Ders Tipi</Label>
                 <Select
                   value={formData.type}
-                  onValueChange={(val) => setFormData({ ...formData, type: val as LessonType })}
+                  onValueChange={(val) => setFormData({ ...formData, type: val as UILessonType })}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -929,6 +962,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
                     <SelectItem value="live">Canlı Oturum</SelectItem>
                     <SelectItem value="content">İçerik (Video/PDF)</SelectItem>
                     <SelectItem value="face_to_face">Yüz Yüze Eğitim</SelectItem>
+                    <SelectItem value="topic4">İşe ve İşyerine Özgü Eğitim</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1020,6 +1054,38 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
                     </Button>
                   </label>
                 </div>
+              </div>
+            )}
+
+            {/* Topic 4 (workplace-specific) type: choose default pack */}
+            {formData.type === "topic4" && (
+              <div className="space-y-3 p-4 rounded-lg border border-warning/30 bg-warning/5">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
+                  <div className="space-y-1">
+                    <Label className="text-sm font-semibold">İşe ve İşyerine Özgü Konular Paketi (Varsayılan)</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Kullanıcının firmasına /admin/topic4-packs üzerinden bir paket atanmışsa, derste o paket otomatik gösterilir.
+                      Atama yoksa burada seçilen varsayılan paket kullanılır.
+                    </p>
+                  </div>
+                </div>
+                <Select
+                  value={formData.topic4_pack_id || "none"}
+                  onValueChange={(val) => setFormData({ ...formData, topic4_pack_id: val === "none" ? "" : val })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Varsayılan paket seçin (opsiyonel)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Varsayılan paket yok —</SelectItem>
+                    {topic4Packs?.map((p: any) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} {p.sectors?.name ? `(${p.sectors.name})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
