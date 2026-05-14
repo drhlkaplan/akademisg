@@ -59,7 +59,8 @@ interface AvailableExam {
   duration_minutes: number;
   passing_score: number;
   attempts_used: number;
-  max_attempts: number;
+  max_attempts: number | null;
+  is_pre_test?: boolean;
 }
 
 const dangerClassBadge: Record<DangerClass, "dangerLow" | "dangerMedium" | "dangerHigh"> = {
