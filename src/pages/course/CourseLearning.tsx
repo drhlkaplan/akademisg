@@ -113,10 +113,6 @@ export default function CourseLearning() {
           .single();
         if (enrollError) throw enrollError;
         enrollData = newEnroll;
-        // Activity log: course enroll
-        import("@/lib/activityLog").then(({ logActivity }) =>
-          logActivity("course_enroll", "course", courseId!, { enrollment_id: newEnroll.id }),
-        );
       } else if (enrollData.status === "pending") {
         await supabase.rpc("update_enrollment_progress", {
           _enrollment_id: enrollData.id,
