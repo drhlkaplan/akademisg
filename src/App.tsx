@@ -84,6 +84,7 @@ const MigrationDashboard = lazyRetry(() => import("./pages/admin/MigrationDashbo
 const R2CorsTest = lazyRetry(() => import("./pages/admin/R2CorsTest"));
 const JoinRequests = lazyRetry(() => import("./pages/admin/JoinRequests"));
 const AdminBlog = lazyRetry(() => import("./pages/admin/AdminBlog"));
+const AdminServices = lazyRetry(() => import("./pages/admin/AdminServices"));
 const RegulationInfo = lazyRetry(() => import("./pages/RegulationInfo"));
 const FirmDashboard = lazyRetry(() => import("./pages/firm/FirmDashboard"));
 const FirmEmployees = lazyRetry(() => import("./pages/firm/FirmEmployees"));
