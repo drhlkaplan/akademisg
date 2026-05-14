@@ -64,6 +64,8 @@ export default function CourseLearning() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const resumeNotifiedRef = useRef(false);
   const { checkAndComplete } = useCompletionEngine();
 
   useEffect(() => {
