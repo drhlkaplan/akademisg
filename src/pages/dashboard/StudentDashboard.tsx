@@ -144,7 +144,7 @@ export default function StudentDashboard() {
         
         const { data: examsData } = await supabase
           .from("exams")
-          .select("id, title, course_id, duration_minutes, passing_score, max_attempts")
+          .select("id, title, course_id, duration_minutes, passing_score, max_attempts, exam_type")
           .eq("is_active", true)
           .in("course_id", courseIds);
 
