@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge-custom";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { JoinRequestButton } from "@/components/courses/JoinRequestButton";
 import type { Database } from "@/integrations/supabase/types";
 
 type DangerClass = Database["public"]["Enums"]["danger_class"];
