@@ -149,7 +149,22 @@ export default function CourseLearning() {
         );
 
         const firstIncomplete = sortedLessons.find((l) => !completedIds.has(l.id));
-        setActiveLessonId(firstIncomplete?.id || sortedLessons[0].id);
+        const resumeLesson = firstIncomplete ?? sortedLessons[0];
+        setActiveLessonId(resumeLesson.id);
+
+        // Notify user if they're resuming from a non-first lesson
+        if (
+          !resumeNotifiedRef.current &&
+          completedIds.size > 0 &&
+          firstIncomplete &&
+          firstIncomplete.id !== sortedLessons[0].id
+        ) {
+          resumeNotifiedRef.current = true;
+          toast({
+            title: "Kaldığınız yerden devam ediyorsunuz",
+            description: `${resumeLesson.title} dersine yönlendirildiniz.`,
+          });
+        }
       }
     } catch (err: any) {
       console.error("Error loading course:", err);
