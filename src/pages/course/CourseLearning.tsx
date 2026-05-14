@@ -101,18 +101,29 @@ export default function CourseLearning() {
       const topic4Lessons = rawLessons.filter((l) => l.topic_group === 4);
       let resolvedLessons: any[] = rawLessons;
       if (topic4Lessons.length > 0 && user) {
-        // Get user's firm
+        // Get user's firm (direct, or via any joined group)
         const { data: profile } = await supabase
           .from("profiles")
           .select("firm_id")
           .eq("user_id", user.id)
           .maybeSingle();
+        let effectiveFirmId: string | null = profile?.firm_id || null;
+        if (!effectiveFirmId) {
+          const { data: userGroups } = await supabase
+            .from("users_to_groups")
+            .select("groups!inner(firm_id, is_active, deleted_at)")
+            .eq("user_id", user.id);
+          const groupFirm = (userGroups || [])
+            .map((g: any) => g.groups)
+            .find((g: any) => g && g.is_active && !g.deleted_at && g.firm_id);
+          effectiveFirmId = groupFirm?.firm_id || null;
+        }
         let firmPackId: string | null = null;
-        if (profile?.firm_id) {
+        if (effectiveFirmId) {
           const { data: assignment } = await supabase
             .from("company_topic4_assignments")
             .select("topic4_pack_id")
-            .eq("firm_id", profile.firm_id)
+            .eq("firm_id", effectiveFirmId)
             .eq("is_active", true)
             .maybeSingle();
           firmPackId = assignment?.topic4_pack_id || null;
