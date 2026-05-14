@@ -269,6 +269,20 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     },
   });
 
+  // Fetch active topic 4 sector packs (for "İşe ve İşyerine Özgü" lesson selection)
+  const { data: topic4Packs } = useQuery({
+    queryKey: ["topic4-packs-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("topic4_sector_packs")
+        .select("id, name, hazard_class, sectors(name)")
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // Re-parse all SCORM manifests (client-side, fetches imsmanifest.xml from public CDN)
   const handleReparseAll = async () => {
     if (!scormPackages || scormPackages.length === 0) return;
