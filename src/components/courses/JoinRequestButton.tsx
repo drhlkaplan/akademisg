@@ -131,8 +131,8 @@ export function JoinRequestButton({ courseId, size = "lg", className, variant = 
 
   if (status === "guest") {
     return (
-      <Button size={size} variant={variant} className={`${w} ${className ?? ""}`} onClick={() => navigate("/register")}>
-        Kayıt Ol ve Talep Gönder <ArrowRight className="h-4 w-4 ml-1" />
+      <Button size={size} variant={variant} className={`${w} ${className ?? ""}`} onClick={() => navigate("/login")}>
+        <CheckCircle className="h-4 w-4 mr-2" /> Katılma Talebi Gönder
       </Button>
     );
   }
