@@ -244,44 +244,64 @@ const Index = () => {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-5">
-            {dangerCategories.map((category) => (
-              <div
-                key={category.level}
-                className={`group relative p-6 bg-card rounded-2xl border-2 ${category.color} hover:border-accent/50 transition-all duration-300`}
-                style={{ boxShadow: "var(--shadow-card)" }}
-              >
-                <Badge variant={category.badge} className="mb-4">
-                  {category.level}
-                </Badge>
-
-                <h3 className="text-xl font-bold text-foreground mb-2 tracking-tight">{category.level} İşler</h3>
-                <p className="text-sm text-muted-foreground mb-4">{category.description}</p>
-
-                <div className="flex items-center justify-between py-4 border-t border-border">
-                  <div>
-                    <span className="text-2xl font-bold text-foreground tracking-tight">{category.hours}</span>
-                    <span className="text-xs text-muted-foreground ml-1">eğitim</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-lg font-semibold text-accent">{category.courses}</span>
-                    <span className="text-xs text-muted-foreground ml-1">kurs</span>
-                  </div>
-                </div>
-
-                <Button
-                  variant="outline"
-                  className="w-full mt-4 group-hover:bg-accent group-hover:text-accent-foreground group-hover:border-accent transition-colors"
-                  asChild
+          <div className="grid md:grid-cols-3 gap-6">
+            {dangerCategories.map((category) => {
+              const Icon = category.icon;
+              const list = coursesByHazard[category.key] || [];
+              return (
+                <div
+                  key={category.level}
+                  className={`group relative p-6 bg-card rounded-2xl border-2 ${category.ring} transition-all duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col`}
+                  style={{ boxShadow: "var(--shadow-card)" }}
                 >
-                  <Link to={`/courses?category=${category.level}`}>
-                    Eğitimleri Görüntüle
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              </div>
-            ))}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`w-12 h-12 rounded-xl ${category.accent} flex items-center justify-center`}>
+                      <Icon className="h-6 w-6" />
+                    </div>
+                    <Badge variant={category.badge}>{category.hours}</Badge>
+                  </div>
+                  <h3 className="text-xl font-bold text-foreground mb-1 tracking-tight">{category.level} İşler</h3>
+                  <p className="text-sm text-muted-foreground mb-5">{category.description}</p>
+                  <div className="space-y-2 mb-4 flex-1">
+                    {list.length === 0 && (
+                      <div className="text-xs text-muted-foreground italic py-3">Eğitim hazırlanıyor...</div>
+                    )}
+                    {list.map((c) => (
+                      <Link
+                        key={c.id}
+                        to={`/courses/${c.id}`}
+                        className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-secondary/40 hover:bg-accent/10 hover:border-accent/40 transition-colors group/item"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          {c.training_type === "temel" ? (
+                            <Sparkles className="h-4 w-4 text-accent flex-shrink-0" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4 text-info flex-shrink-0" />
+                          )}
+                          <div className="min-w-0">
+                            <div className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
+                              {c.training_type === "temel" ? "Temel Eğitim" : "Tekrar Eğitimi"}
+                            </div>
+                            <div className="text-sm font-medium text-foreground truncate">
+                              {Math.round(c.duration_minutes / 60)} saat
+                            </div>
+                          </div>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover/item:text-accent group-hover/item:translate-x-0.5 transition-all flex-shrink-0" />
+                      </Link>
+                    ))}
+                  </div>
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link to={`/courses?hazard=${category.key}`}>
+                      Tüm Eğitimleri Gör
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
+              );
+            })}
           </div>
+
         </div>
       </section>
 
