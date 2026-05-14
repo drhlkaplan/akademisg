@@ -78,11 +78,11 @@ export default function Contact() {
               </div>
 
               {/* WhatsApp */}
-              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
-                <Button variant="success" size="lg" className="w-full">
+              <Button asChild variant="success" size="lg" className="w-full" disabled={!waNumber}>
+                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
                   <MessageCircle className="h-5 w-5 mr-2" /> WhatsApp ile Yazın
-                </Button>
-              </a>
+                </a>
+              </Button>
             </div>
 
             {/* Form */}
