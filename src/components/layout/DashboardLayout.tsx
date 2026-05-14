@@ -85,6 +85,7 @@ const adminNavGroups = [
       { icon: Building2, label: "Firmalar", href: "/admin/companies" },
       { icon: KeyRound, label: "Gruplar", href: "/admin/groups" },
       { icon: Briefcase, label: "Sektörler", href: "/admin/sectors" },
+      { icon: UserPlus, label: "Katılma Talepleri", href: "/admin/join-requests" },
     ],
   },
   {
