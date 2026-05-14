@@ -134,7 +134,8 @@ export default function MyExams() {
         ) : (
           <div className="grid md:grid-cols-2 gap-4">
             {exams.map((exam) => {
-              const canRetake = !exam.passed && exam.attempts_used < exam.max_attempts;
+              const unlimited = exam.is_pre_test || !exam.max_attempts;
+              const canRetake = !exam.passed && (unlimited || exam.attempts_used < (exam.max_attempts as number));
               return (
                 <Card key={exam.exam_id} className={exam.passed ? "border-success/30" : ""}>
                   <CardContent className="p-5">
@@ -153,7 +154,7 @@ export default function MyExams() {
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Başarılı
                         </Badge>
-                      ) : exam.attempts_used >= exam.max_attempts ? (
+                      ) : !unlimited && exam.attempts_used >= (exam.max_attempts as number) ? (
                         <Badge variant="destructive">
                           <XCircle className="h-3 w-3 mr-1" />
                           Hak Bitti
@@ -170,7 +171,7 @@ export default function MyExams() {
                       </div>
                       <div>Geçme: %{exam.passing_score}</div>
                       <div>
-                        Deneme: {exam.attempts_used}/{exam.max_attempts}
+                        Deneme: {exam.attempts_used}{unlimited ? "" : `/${exam.max_attempts}`}
                       </div>
                     </div>
 
