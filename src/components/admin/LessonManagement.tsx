@@ -201,7 +201,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
 
   const [formData, setFormData] = useState({
     title: "",
-    type: "content" as LessonType,
+    type: "content" as UILessonType,
     sort_order: 0,
     duration_minutes: 0,
     is_active: true,
@@ -211,6 +211,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     scorm_package_id: "",
     min_live_duration_minutes: 0,
     f2f_session_id: "",
+    topic4_pack_id: "",
   });
 
   // Fetch lessons
