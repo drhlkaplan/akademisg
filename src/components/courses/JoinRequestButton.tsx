@@ -25,7 +25,7 @@ interface Props {
  * - Bekleyen talep → "Talebiniz inceleniyor" (disabled)
  * - Reddedilmiş veya yok → "Katılma Talebi Gönder"
  */
-export function JoinRequestButton({ courseId, size = "lg", className, variant = "accent", fullWidth }: Props) {
+export function JoinRequestButton({ courseId, size = "lg", className, variant = "accent", fullWidth, alwaysRequest = false }: Props) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
