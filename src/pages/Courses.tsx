@@ -244,14 +244,13 @@ export default function Courses() {
 
                       {/* Actions */}
                       <div className="flex gap-3">
-                        <Button variant="accent" className="flex-1" asChild>
-                          <Link to={`/learn/${course.id}`}>
-                            Eğitime Başla
-                            <ArrowRight className="ml-2 h-4 w-4" />
+                        <div className="flex-1">
+                          <JoinRequestButton courseId={course.id} fullWidth />
+                        </div>
+                        <Button variant="outline" size="icon" asChild>
+                          <Link to={`/courses/${course.id}`}>
+                            <ArrowRight className="h-4 w-4" />
                           </Link>
-                        </Button>
-                        <Button variant="outline" size="icon">
-                          <Award className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
