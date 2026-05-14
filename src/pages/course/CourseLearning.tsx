@@ -83,7 +83,7 @@ export default function CourseLearning() {
           .single(),
         supabase
           .from("lessons")
-          .select("id, title, type, sort_order, duration_minutes, is_active, scorm_package_id, exam_id, content_url, min_live_duration_minutes, topic_group, delivery_method")
+          .select("id, title, type, sort_order, duration_minutes, is_active, scorm_package_id, exam_id, content_url, min_live_duration_minutes, topic_group, delivery_method, topic4_pack_id")
           .eq("course_id", courseId!)
           .eq("is_active", true)
           .order("sort_order"),
@@ -95,7 +95,72 @@ export default function CourseLearning() {
 
       if (courseRes.error) throw courseRes.error;
       setCourse(courseRes.data as CourseData);
-      setLessons((lessonsRes.data as LessonItem[]) || []);
+      const rawLessons = (lessonsRes.data as any[]) || [];
+
+      // Resolve workplace-specific (topic 4) lessons: firm assignment overrides default pack
+      const topic4Lessons = rawLessons.filter((l) => l.topic_group === 4);
+      let resolvedLessons: any[] = rawLessons;
+      if (topic4Lessons.length > 0 && user) {
+        // Get user's firm
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("firm_id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        let firmPackId: string | null = null;
+        if (profile?.firm_id) {
+          const { data: assignment } = await supabase
+            .from("company_topic4_assignments")
+            .select("topic4_pack_id")
+            .eq("firm_id", profile.firm_id)
+            .eq("is_active", true)
+            .maybeSingle();
+          firmPackId = assignment?.topic4_pack_id || null;
+        }
+        // For each topic 4 lesson, pick effective pack and load its first active sub-lesson
+        const enriched = await Promise.all(
+          rawLessons.map(async (l) => {
+            if (l.topic_group !== 4) return l;
+            const effectivePackId = firmPackId || l.topic4_pack_id;
+            if (!effectivePackId) return l;
+            const { data: packLessons } = await supabase
+              .from("topic4_pack_lessons")
+              .select("id, title, content_type, content_url, scorm_package_id")
+              .eq("topic4_pack_id", effectivePackId)
+              .eq("is_active", true)
+              .is("deleted_at", null)
+              .order("sort_order")
+              .limit(1);
+            const first = packLessons?.[0];
+            if (!first) return l;
+            // Override lesson rendering source from pack's first item
+            if (first.scorm_package_id) {
+              return { ...l, type: "scorm", scorm_package_id: first.scorm_package_id, content_url: null };
+            }
+            if (first.content_url) {
+              return { ...l, type: "content", content_url: first.content_url };
+            }
+            return l;
+          })
+        );
+        resolvedLessons = enriched;
+
+        // Also load any extra scorm packages referenced by topic 4 packs
+        const extraScormIds = enriched
+          .filter((l) => l.scorm_package_id)
+          .map((l) => l.scorm_package_id as string);
+        if (extraScormIds.length > 0) {
+          const { data: extraPkgs } = await supabase
+            .from("scorm_packages")
+            .select("id, package_url, entry_point, scorm_version, course_id")
+            .in("id", extraScormIds);
+          extraPkgs?.forEach((p) => {
+            scormRes.data?.push(p as any);
+          });
+        }
+      }
+
+      setLessons(resolvedLessons as LessonItem[]);
 
       const pkgMap: Record<string, ScormPackageData> = {};
       scormRes.data?.forEach((p) => { pkgMap[p.id] = p as ScormPackageData; });
