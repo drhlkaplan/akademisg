@@ -1224,6 +1224,54 @@ export type Database = {
           },
         ]
       }
+      group_topic4_assignments: {
+        Row: {
+          assigned_by: string | null
+          created_at: string | null
+          group_id: string
+          id: string
+          is_active: boolean | null
+          notes: string | null
+          topic4_pack_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string | null
+          group_id: string
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          topic4_pack_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string | null
+          group_id?: string
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          topic4_pack_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_topic4_assignments_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_topic4_assignments_topic4_pack_id_fkey"
+            columns: ["topic4_pack_id"]
+            isOneToOne: false
+            referencedRelation: "topic4_sector_packs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       groups: {
         Row: {
           created_at: string
