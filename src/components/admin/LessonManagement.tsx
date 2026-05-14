@@ -664,6 +664,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       scorm_package_id: "",
       min_live_duration_minutes: 0,
       f2f_session_id: "",
+      topic4_pack_id: "",
     });
     setDialogOpen(true);
   };
@@ -678,9 +679,11 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     }
     // Find linked f2f session
     const linkedSession = f2fSessions?.find((s: any) => s.lesson_id === lesson.id);
+    // Detect topic4 (workplace-specific) lesson via topic_group=4
+    const isTopic4Lesson = (lesson as any).topic_group === 4;
     setFormData({
       title: lesson.title,
-      type: lesson.type,
+      type: isTopic4Lesson ? ("topic4" as UILessonType) : (lesson.type as UILessonType),
       sort_order: lesson.sort_order,
       duration_minutes: lesson.duration_minutes,
       is_active: lesson.is_active,
@@ -690,6 +693,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
       scorm_package_id: lesson.scorm_package_id || "",
       min_live_duration_minutes: (lesson as any).min_live_duration_minutes || 0,
       f2f_session_id: linkedSession?.id || "",
+      topic4_pack_id: (lesson as any).topic4_pack_id || "",
     });
     setDialogOpen(true);
   };
