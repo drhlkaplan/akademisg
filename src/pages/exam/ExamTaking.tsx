@@ -314,7 +314,7 @@ export default function ExamTaking() {
                   <p className="text-muted-foreground mb-2">
                     Maalesef geçme notunu alamadınız.
                   </p>
-                  {exam.max_attempts ? (
+                  {!isPreTest && exam.max_attempts ? (
                     <p className="text-sm text-muted-foreground mb-6">
                       Kalan deneme hakkı: {Math.max(0, exam.max_attempts - (previousAttempts?.length || 0) - 1)} / {exam.max_attempts}
                     </p>
