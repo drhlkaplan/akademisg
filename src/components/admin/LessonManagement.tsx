@@ -26,7 +26,7 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import {
   Plus, Edit, Trash2, GripVertical, BookOpen, FileQuestion, Video,
   FileText, Loader2, Upload, ArrowLeft, Package, ExternalLink, RefreshCw,
-  Users,
+  Users, AlertTriangle,
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { ScormScoDetails } from "./ScormScoDetails";
