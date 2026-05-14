@@ -10,6 +10,7 @@ import {
   Play, FileText, Loader2, ChevronDown, ChevronUp, Shield
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+import { JoinRequestButton } from "@/components/courses/JoinRequestButton";
 
 type DangerClass = Database["public"]["Enums"]["danger_class"];
 
