@@ -319,20 +319,36 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
     });
   };
 
+  // Map UI form data → DB row payload (UI "topic4" maps to type=content + topic_group=4 + topic4_pack_id)
+  const buildLessonPayload = (data: typeof formData) => {
+    const isTopic4 = data.type === "topic4";
+    const dbType: LessonType = isTopic4 ? "content" : (data.type as LessonType);
+    return {
+      title: data.title,
+      type: dbType,
+      sort_order: data.sort_order,
+      duration_minutes: data.duration_minutes,
+      is_active: data.is_active,
+      content_url: isTopic4
+        ? null
+        : dbType === "content"
+        ? (data.content_html || data.content_url || null)
+        : (data.content_url || null),
+      exam_id: data.exam_id || null,
+      scorm_package_id: data.scorm_package_id || null,
+      min_live_duration_minutes: dbType === "live" ? data.min_live_duration_minutes : 0,
+      topic_group: isTopic4 ? 4 : null,
+      topic4_pack_id: isTopic4 ? (data.topic4_pack_id || null) : null,
+    };
+  };
+
   // Create lesson
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      const payload = buildLessonPayload(data);
       const { data: newLesson, error } = await supabase.from("lessons").insert({
         course_id: courseId,
-        title: data.title,
-        type: data.type,
-        sort_order: data.sort_order,
-        duration_minutes: data.duration_minutes,
-        is_active: data.is_active,
-        content_url: data.type === "content" ? (data.content_html || data.content_url || null) : (data.content_url || null),
-        exam_id: data.exam_id || null,
-        scorm_package_id: data.scorm_package_id || null,
-        min_live_duration_minutes: data.type === "live" ? data.min_live_duration_minutes : 0,
+        ...payload,
       } as any).select().single();
       if (error) throw error;
       // Link f2f session to this lesson
@@ -355,19 +371,10 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
   // Update lesson
   const updateMutation = useMutation({
     mutationFn: async (data: typeof formData & { id: string }) => {
+      const payload = buildLessonPayload(data);
       const { error } = await supabase
         .from("lessons")
-        .update({
-          title: data.title,
-          type: data.type,
-          sort_order: data.sort_order,
-          duration_minutes: data.duration_minutes,
-          is_active: data.is_active,
-          content_url: data.type === "content" ? (data.content_html || data.content_url || null) : (data.content_url || null),
-          exam_id: data.exam_id || null,
-          scorm_package_id: data.scorm_package_id || null,
-          min_live_duration_minutes: data.type === "live" ? data.min_live_duration_minutes : 0,
-        } as any)
+        .update(payload as any)
         .eq("id", data.id);
       if (error) throw error;
       // Link f2f session to this lesson
