@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { useParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LessonSidebar, type LessonItem, type LessonProgressItem } from "@/components/course/LessonSidebar";
@@ -63,6 +64,8 @@ export default function CourseLearning() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const resumeNotifiedRef = useRef(false);
   const { checkAndComplete } = useCompletionEngine();
 
   useEffect(() => {
@@ -146,7 +149,22 @@ export default function CourseLearning() {
         );
 
         const firstIncomplete = sortedLessons.find((l) => !completedIds.has(l.id));
-        setActiveLessonId(firstIncomplete?.id || sortedLessons[0].id);
+        const resumeLesson = firstIncomplete ?? sortedLessons[0];
+        setActiveLessonId(resumeLesson.id);
+
+        // Notify user if they're resuming from a non-first lesson
+        if (
+          !resumeNotifiedRef.current &&
+          completedIds.size > 0 &&
+          firstIncomplete &&
+          firstIncomplete.id !== sortedLessons[0].id
+        ) {
+          resumeNotifiedRef.current = true;
+          toast({
+            title: "Kaldığınız yerden devam ediyorsunuz",
+            description: `${resumeLesson.title} dersine yönlendirildiniz.`,
+          });
+        }
       }
     } catch (err: any) {
       console.error("Error loading course:", err);
