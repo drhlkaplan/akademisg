@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Shield, Mail, Phone, MapPin } from "lucide-react";
+import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 
 const footerLinks = {
   platform: [
