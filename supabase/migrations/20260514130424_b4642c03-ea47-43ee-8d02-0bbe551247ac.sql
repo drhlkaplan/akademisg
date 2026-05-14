@@ -1,0 +1,2 @@
+ALTER TABLE public.lessons ADD COLUMN IF NOT EXISTS topic4_pack_id uuid REFERENCES public.topic4_sector_packs(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_lessons_topic4_pack_id ON public.lessons(topic4_pack_id);
