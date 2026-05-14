@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { formatLessonsShort } from "@/lib/lessonDuration";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge-custom";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -231,7 +232,7 @@ export default function Courses() {
                       <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
                         <div className="flex items-center gap-1">
                           <Clock className="h-4 w-4" />
-                          {Math.round(course.duration_minutes / 60)} Saat
+                          {formatLessonsShort(course.duration_minutes)}
                         </div>
                         <div className="flex items-center gap-1">
                           <Users className="h-4 w-4" />

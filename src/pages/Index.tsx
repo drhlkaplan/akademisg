@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { formatLessonsShort } from "@/lib/lessonDuration";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge-custom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -283,7 +284,7 @@ const Index = () => {
                               {c.training_type === "temel" ? "Temel Eğitim" : "Tekrar Eğitimi"}
                             </div>
                             <div className="text-sm font-medium text-foreground truncate">
-                              {Math.round(c.duration_minutes / 60)} saat
+                              {formatLessonsShort(c.duration_minutes)}
                             </div>
                           </div>
                         </div>

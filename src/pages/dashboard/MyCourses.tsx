@@ -13,6 +13,7 @@ import {
   Loader2,
   Search,
 } from "lucide-react";
+import { formatLessonsShort } from "@/lib/lessonDuration";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -175,7 +176,7 @@ export default function MyCourses() {
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Clock className="h-4 w-4" />
-                            {Math.round(course.duration_minutes / 60)} Saat
+                            {formatLessonsShort(course.duration_minutes)}
                           </span>
                           <span className="flex items-center gap-1">
                             <TrendingUp className="h-4 w-4" />
