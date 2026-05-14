@@ -14,6 +14,8 @@ interface Props {
   className?: string;
   variant?: "accent" | "outline" | "default";
   fullWidth?: boolean;
+  /** Always show the "Katılma Talebi Gönder" action even if the user is already enrolled. */
+  alwaysRequest?: boolean;
 }
 
 /**
@@ -23,7 +25,7 @@ interface Props {
  * - Bekleyen talep → "Talebiniz inceleniyor" (disabled)
  * - Reddedilmiş veya yok → "Katılma Talebi Gönder"
  */
-export function JoinRequestButton({ courseId, size = "lg", className, variant = "accent", fullWidth }: Props) {
+export function JoinRequestButton({ courseId, size = "lg", className, variant = "accent", fullWidth, alwaysRequest = false }: Props) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -46,8 +48,10 @@ export function JoinRequestButton({ courseId, size = "lg", className, variant = 
       .maybeSingle();
 
     if (enr && ["pending", "active", "completed"].includes(enr.status as string)) {
-      setStatus("enrolled");
-      return;
+      if (!alwaysRequest) {
+        setStatus("enrolled");
+        return;
+      }
     }
 
     const { data: req } = await (supabase as any)
