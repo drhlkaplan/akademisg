@@ -101,38 +101,55 @@ export default function CourseLearning() {
       const topic4Lessons = rawLessons.filter((l) => l.topic_group === 4);
       let resolvedLessons: any[] = rawLessons;
       if (topic4Lessons.length > 0 && user) {
-        // Get user's firm (direct, or via any joined group)
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("firm_id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        let effectiveFirmId: string | null = profile?.firm_id || null;
-        if (!effectiveFirmId) {
-          const { data: userGroups } = await supabase
-            .from("users_to_groups")
-            .select("groups!inner(firm_id, is_active, deleted_at)")
-            .eq("user_id", user.id);
-          const groupFirm = (userGroups || [])
-            .map((g: any) => g.groups)
-            .find((g: any) => g && g.is_active && !g.deleted_at && g.firm_id);
-          effectiveFirmId = groupFirm?.firm_id || null;
-        }
-        let firmPackId: string | null = null;
-        if (effectiveFirmId) {
-          const { data: assignment } = await supabase
-            .from("company_topic4_assignments")
+        // 1) Group-level rule wins
+        let groupPackId: string | null = null;
+        const { data: userGroups } = await supabase
+          .from("users_to_groups")
+          .select("group_id, groups!inner(firm_id, is_active, deleted_at)")
+          .eq("user_id", user.id);
+        const activeGroups = (userGroups || []).filter(
+          (g: any) => g.groups && g.groups.is_active && !g.groups.deleted_at
+        );
+        const groupIds = activeGroups.map((g: any) => g.group_id);
+        if (groupIds.length > 0) {
+          const { data: groupRules } = await supabase
+            .from("group_topic4_assignments" as any)
             .select("topic4_pack_id")
-            .eq("firm_id", effectiveFirmId)
+            .in("group_id", groupIds)
             .eq("is_active", true)
-            .maybeSingle();
-          firmPackId = assignment?.topic4_pack_id || null;
+            .limit(1);
+          groupPackId = (groupRules?.[0] as any)?.topic4_pack_id || null;
         }
+
+        // 2) Firm-level fallback (profile firm or first active group's firm)
+        let firmPackId: string | null = null;
+        if (!groupPackId) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("firm_id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          let effectiveFirmId: string | null = profile?.firm_id || null;
+          if (!effectiveFirmId) {
+            const groupFirm = activeGroups.map((g: any) => g.groups).find((g: any) => g.firm_id);
+            effectiveFirmId = groupFirm?.firm_id || null;
+          }
+          if (effectiveFirmId) {
+            const { data: assignment } = await supabase
+              .from("company_topic4_assignments")
+              .select("topic4_pack_id")
+              .eq("firm_id", effectiveFirmId)
+              .eq("is_active", true)
+              .maybeSingle();
+            firmPackId = assignment?.topic4_pack_id || null;
+          }
+        }
+        const overridePackId = groupPackId || firmPackId;
         // For each topic 4 lesson, pick effective pack and load its first active sub-lesson
         const enriched = await Promise.all(
           rawLessons.map(async (l) => {
             if (l.topic_group !== 4) return l;
-            const effectivePackId = firmPackId || l.topic4_pack_id;
+            const effectivePackId = overridePackId || l.topic4_pack_id;
             if (!effectivePackId) return l;
             const { data: packLessons } = await supabase
               .from("topic4_pack_lessons")
