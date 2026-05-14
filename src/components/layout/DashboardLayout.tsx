@@ -104,6 +104,7 @@ const adminNavGroups = [
       { icon: Users, label: "Yüz Yüze Oturumlar", href: "/admin/face-to-face" },
       { icon: Shield, label: "İşyeri Konuları", href: "/admin/topic4-packs" },
       { icon: Link2, label: "Firma İşyeri Konusu", href: "/admin/company-topic4" },
+      { icon: FileText, label: "Blog Yazıları", href: "/admin/blog" },
     ],
   },
   {
