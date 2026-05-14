@@ -205,15 +205,10 @@ export default function CourseDetail() {
                     </div>
                   ))}
                 </div>
-                {user ? (
-                  <Link to={`/learn/${courseId}`} className="block">
-                    <Button variant="accent" className="w-full" size="lg">Eğitime Başla</Button>
-                  </Link>
-                ) : (
-                  <Link to="/register" className="block">
-                    <Button variant="accent" className="w-full" size="lg">Kayıt Ol</Button>
-                  </Link>
-                )}
+                <JoinRequestButton courseId={courseId!} fullWidth />
+                <Link to="/corporate" className="block">
+                  <Button variant="outline" className="w-full">Kurumsal Teklif Alın</Button>
+                </Link>
                 <Link to="/corporate" className="block">
                   <Button variant="outline" className="w-full">Kurumsal Teklif Alın</Button>
                 </Link>
