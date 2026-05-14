@@ -2016,16 +2016,81 @@ export type Database = {
           },
         ]
       }
+      topic4_pack_lessons: {
+        Row: {
+          content_type: string
+          content_url: string | null
+          created_at: string
+          deleted_at: string | null
+          duration_lessons: number
+          id: string
+          is_active: boolean
+          lesson_type: string
+          scorm_package_id: string | null
+          sort_order: number
+          title: string
+          topic4_pack_id: string
+          updated_at: string
+        }
+        Insert: {
+          content_type?: string
+          content_url?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          duration_lessons?: number
+          id?: string
+          is_active?: boolean
+          lesson_type?: string
+          scorm_package_id?: string | null
+          sort_order?: number
+          title: string
+          topic4_pack_id: string
+          updated_at?: string
+        }
+        Update: {
+          content_type?: string
+          content_url?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          duration_lessons?: number
+          id?: string
+          is_active?: boolean
+          lesson_type?: string
+          scorm_package_id?: string | null
+          sort_order?: number
+          title?: string
+          topic4_pack_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topic4_pack_lessons_scorm_package_id_fkey"
+            columns: ["scorm_package_id"]
+            isOneToOne: false
+            referencedRelation: "scorm_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topic4_pack_lessons_topic4_pack_id_fkey"
+            columns: ["topic4_pack_id"]
+            isOneToOne: false
+            referencedRelation: "topic4_sector_packs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       topic4_sector_packs: {
         Row: {
           content_url: string | null
           created_at: string | null
+          default_delivery_method: string | null
           description: string | null
           duration_minutes: number | null
           hazard_class: Database["public"]["Enums"]["hazard_class_enum"]
           id: string
           is_active: boolean | null
           key_hazards: Json | null
+          lesson_count: number | null
           name: string
           scorm_package_id: string | null
           sector_id: string | null
@@ -2034,12 +2099,14 @@ export type Database = {
         Insert: {
           content_url?: string | null
           created_at?: string | null
+          default_delivery_method?: string | null
           description?: string | null
           duration_minutes?: number | null
           hazard_class: Database["public"]["Enums"]["hazard_class_enum"]
           id?: string
           is_active?: boolean | null
           key_hazards?: Json | null
+          lesson_count?: number | null
           name: string
           scorm_package_id?: string | null
           sector_id?: string | null
@@ -2048,12 +2115,14 @@ export type Database = {
         Update: {
           content_url?: string | null
           created_at?: string | null
+          default_delivery_method?: string | null
           description?: string | null
           duration_minutes?: number | null
           hazard_class?: Database["public"]["Enums"]["hazard_class_enum"]
           id?: string
           is_active?: boolean | null
           key_hazards?: Json | null
+          lesson_count?: number | null
           name?: string
           scorm_package_id?: string | null
           sector_id?: string | null
