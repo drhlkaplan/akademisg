@@ -14,6 +14,8 @@ interface Props {
   className?: string;
   variant?: "accent" | "outline" | "default";
   fullWidth?: boolean;
+  /** Always show the "Katılma Talebi Gönder" action even if the user is already enrolled. */
+  alwaysRequest?: boolean;
 }
 
 /**
