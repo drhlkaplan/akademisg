@@ -85,6 +85,7 @@ const R2CorsTest = lazyRetry(() => import("./pages/admin/R2CorsTest"));
 const JoinRequests = lazyRetry(() => import("./pages/admin/JoinRequests"));
 const AdminBlog = lazyRetry(() => import("./pages/admin/AdminBlog"));
 const AdminServices = lazyRetry(() => import("./pages/admin/AdminServices"));
+const AdminCourseCovers = lazyRetry(() => import("./pages/admin/AdminCourseCovers"));
 const RegulationInfo = lazyRetry(() => import("./pages/RegulationInfo"));
 const FirmDashboard = lazyRetry(() => import("./pages/firm/FirmDashboard"));
 const FirmEmployees = lazyRetry(() => import("./pages/firm/FirmEmployees"));
@@ -199,6 +200,14 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminServices />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/course-covers"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminCourseCovers />
                 </ProtectedRoute>
               }
             />

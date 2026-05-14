@@ -43,6 +43,7 @@ import {
   Database,
   PieChart,
   UserPlus,
+  Image as ImageIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFirmBranding } from "@/contexts/FirmBrandingContext";
@@ -92,6 +93,7 @@ const adminNavGroups = [
     label: "Eğitim Yönetimi",
     items: [
       { icon: GraduationCap, label: "Eğitimler", href: "/admin/courses" },
+      { icon: ImageIcon, label: "Eğitim Kapakları", href: "/admin/course-covers" },
       { icon: FolderOpen, label: "Eğitim Türleri", href: "/admin/training-types" },
       { icon: ClipboardCheck, label: "Şablon Kuralları", href: "/admin/course-template-rules" },
       { icon: FileCheck, label: "Sınavlar", href: "/admin/exams" },
