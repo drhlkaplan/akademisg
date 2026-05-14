@@ -168,6 +168,7 @@ export default function StudentDashboard() {
           if (passedExams.has(exam.id)) return; // Skip passed exams
           const enrollment = activeEnrollmentsList.find((e) => e.course?.id === exam.course_id);
           if (enrollment) {
+            const isPre = (exam as any).exam_type === "pre_test" || (exam as any).exam_type === "pre";
             examsWithEnrollment.push({
               exam_id: exam.id,
               exam_title: exam.title,
@@ -176,7 +177,8 @@ export default function StudentDashboard() {
               duration_minutes: exam.duration_minutes || 60,
               passing_score: exam.passing_score || 70,
               attempts_used: attemptsByExam[exam.id] || 0,
-              max_attempts: exam.max_attempts || 3,
+              max_attempts: isPre ? null : (exam.max_attempts || 3),
+              is_pre_test: isPre,
             });
           }
         });
