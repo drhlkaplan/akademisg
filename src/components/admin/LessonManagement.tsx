@@ -951,7 +951,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
                 <Label>Ders Tipi</Label>
                 <Select
                   value={formData.type}
-                  onValueChange={(val) => setFormData({ ...formData, type: val as LessonType })}
+                  onValueChange={(val) => setFormData({ ...formData, type: val as UILessonType })}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -962,6 +962,7 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
                     <SelectItem value="live">Canlı Oturum</SelectItem>
                     <SelectItem value="content">İçerik (Video/PDF)</SelectItem>
                     <SelectItem value="face_to_face">Yüz Yüze Eğitim</SelectItem>
+                    <SelectItem value="topic4">İşe ve İşyerine Özgü Eğitim</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
