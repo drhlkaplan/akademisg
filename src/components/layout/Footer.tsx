@@ -42,7 +42,7 @@ export function Footer() {
               </div>
               <div className="flex flex-col">
                 <span className="text-lg font-bold leading-tight">
-                  İSG<span className="text-accent">Akademi</span>
+                  {nameParts[0]}<span className="text-accent">{nameParts[1]}</span>
                 </span>
                 <span className="text-[10px] text-primary-foreground/70 leading-none">
                   Online Eğitim Platformu
@@ -50,8 +50,7 @@ export function Footer() {
               </div>
             </Link>
             <p className="text-sm text-primary-foreground/70 max-w-xs">
-              İş Sağlığı ve Güvenliği eğitimlerinde güvenilir çözüm ortağınız.
-              SCORM uyumlu, sertifikalı online eğitimler.
+              {footer.tagline}
             </p>
           </div>
 
