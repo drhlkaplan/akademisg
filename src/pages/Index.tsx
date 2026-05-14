@@ -135,6 +135,8 @@ const dangerCategories = [
   },
 ];
 
+const dangerCategories = dangerCategoryConfig;
+
 const trustPoints = [
   { icon: Zap, text: "SCORM 1.2 & 2004" },
   { icon: Shield, text: "KVKK Uyumlu" },
@@ -144,6 +146,31 @@ const trustPoints = [
 
 const Index = () => {
   const [videoOpen, setVideoOpen] = useState(false);
+  const [coursesByHazard, setCoursesByHazard] = useState<Record<HazardKey, CategoryCourse[]>>({
+    az_tehlikeli: [], tehlikeli: [], cok_tehlikeli: [],
+  });
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("courses")
+        .select("id, title, training_type, duration_minutes, hazard_class_new")
+        .eq("is_active", true)
+        .is("deleted_at", null)
+        .in("training_type", ["temel", "tekrar"]);
+      const grouped: Record<HazardKey, CategoryCourse[]> = { az_tehlikeli: [], tehlikeli: [], cok_tehlikeli: [] };
+      (data || []).forEach((c: any) => {
+        const k = c.hazard_class_new as HazardKey;
+        if (grouped[k]) grouped[k].push(c);
+      });
+      // temel önce, tekrar sonra
+      (Object.keys(grouped) as HazardKey[]).forEach((k) =>
+        grouped[k].sort((a, b) => (a.training_type === "temel" ? -1 : 1))
+      );
+      setCoursesByHazard(grouped);
+    })();
+  }, []);
+
 
   return (
     <MainLayout>
