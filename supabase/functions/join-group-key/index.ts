@@ -86,6 +86,21 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Sync user's profile firm_id from group's firm if not already set
+    if (group.firm_id) {
+      const { data: profile } = await adminClient
+        .from("profiles")
+        .select("firm_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (profile && !profile.firm_id) {
+        await adminClient
+          .from("profiles")
+          .update({ firm_id: group.firm_id })
+          .eq("user_id", user.id);
+      }
+    }
+
     const { data: groupCourses, error: groupCoursesError } = await adminClient
       .from("group_courses")
       .select("course_id")
