@@ -1,4 +1,31 @@
 project_id = "evrceedcbvhjifdildlq"
 
-[functions.gsc-setup]
+[functions.generate-certificate]
+verify_jwt = false
+
+[functions.submit-exam]
+verify_jwt = false
+
+[functions.join-group-key]
+verify_jwt = false
+
+[functions.manage-firm-employees]
+verify_jwt = false
+
+[functions.ai-content]
+verify_jwt = false
+
+[functions.ai-tutor]
+verify_jwt = false
+
+[functions.migrate-legacy-data]
+verify_jwt = false
+
+[functions.recurrence-scheduler]
+verify_jwt = false
+
+[functions.lookup-tc]
+verify_jwt = false
+
+[functions.attend-session]
 verify_jwt = false
