@@ -43,6 +43,7 @@ import {
   Database,
   PieChart,
   UserPlus,
+  Image as ImageIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFirmBranding } from "@/contexts/FirmBrandingContext";
