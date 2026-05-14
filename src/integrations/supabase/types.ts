@@ -1909,6 +1909,51 @@ export type Database = {
         }
         Relationships: []
       }
+      site_services: {
+        Row: {
+          created_at: string
+          danger_class: string | null
+          deleted_at: string | null
+          description: string | null
+          features: Json
+          icon_name: string
+          id: string
+          is_active: boolean
+          link_url: string | null
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          danger_class?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          features?: Json
+          icon_name?: string
+          id?: string
+          is_active?: boolean
+          link_url?: string | null
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          danger_class?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          features?: Json
+          icon_name?: string
+          id?: string
+          is_active?: boolean
+          link_url?: string | null
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       site_settings: {
         Row: {
           key: string
