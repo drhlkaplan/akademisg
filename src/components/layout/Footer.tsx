@@ -23,6 +23,13 @@ const footerLinks = {
 };
 
 export function Footer() {
+  const { settings } = useSiteSettings();
+  const { general, footer } = settings;
+  const siteName = general.siteName || "İSG Akademi";
+  // Split site name into two parts for accent styling
+  const nameParts = siteName.includes(" ")
+    ? [siteName.split(" ")[0], siteName.substring(siteName.indexOf(" ") + 1)]
+    : [siteName.slice(0, Math.ceil(siteName.length / 2)), siteName.slice(Math.ceil(siteName.length / 2))];
   return (
     <footer className="bg-primary text-primary-foreground">
       <div className="container py-12 md:py-16">
