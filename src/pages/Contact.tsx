@@ -16,7 +16,21 @@ export default function Contact() {
 
   const phoneHref = `tel:${contactPhone.replace(/[^+\d]/g, "")}`;
   const waNumber = contactPhone.replace(/[^\d]/g, "");
-  const whatsappUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent("Merhaba, İSG eğitimleri hakkında bilgi almak istiyorum.")}`;
+  const whatsappMessage = encodeURIComponent("Merhaba, İSG eğitimleri hakkında bilgi almak istiyorum.");
+  const whatsappUrl = `https://web.whatsapp.com/send?phone=${waNumber}&text=${whatsappMessage}`;
+
+  const handleWhatsappClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!waNumber) {
+      e.preventDefault();
+      return;
+    }
+
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile) {
+      e.preventDefault();
+      window.open(`https://wa.me/${waNumber}?text=${whatsappMessage}`, "_blank", "noopener,noreferrer");
+    }
+  };
 
   const contactInfo = [
     { icon: Phone, label: "Telefon", value: contactPhone, href: phoneHref },
@@ -79,7 +93,7 @@ export default function Contact() {
 
               {/* WhatsApp */}
               <Button asChild variant="success" size="lg" className="w-full" disabled={!waNumber}>
-                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" onClick={handleWhatsappClick}>
                   <MessageCircle className="h-5 w-5 mr-2" /> WhatsApp ile Yazın
                 </a>
               </Button>
