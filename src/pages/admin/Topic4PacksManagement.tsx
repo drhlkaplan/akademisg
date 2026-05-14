@@ -68,7 +68,8 @@ export default function Topic4PacksManagement() {
         hazard_class: data.hazard_class as any,
         name: data.name,
         description: data.description,
-        duration_minutes: data.duration_minutes,
+        duration_minutes: data.lesson_count * MINUTES_PER_LESSON,
+        lesson_count: data.lesson_count,
         key_hazards: hazards,
       };
       if (data.id) {
@@ -107,7 +108,7 @@ export default function Topic4PacksManagement() {
       hazard_class: pack.hazard_class || "az_tehlikeli",
       name: pack.name,
       description: pack.description || "",
-      duration_minutes: pack.duration_minutes || 120,
+      lesson_count: pack.lesson_count || Math.max(1, Math.round((pack.duration_minutes || 120) / MINUTES_PER_LESSON)),
       key_hazards: hazards,
     });
     setDialogOpen(true);
