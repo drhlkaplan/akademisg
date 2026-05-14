@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
 
     const { data: group, error: groupError } = await adminClient
       .from("groups")
-      .select("id, name, is_active")
+      .select("id, name, is_active, firm_id")
       .eq("group_key", groupKey)
       .eq("is_active", true)
       .maybeSingle();
