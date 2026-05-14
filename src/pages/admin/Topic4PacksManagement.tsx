@@ -13,7 +13,9 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, AlertTriangle, Search, Clock } from "lucide-react";
+import { Plus, Pencil, AlertTriangle, Search, Clock, ListChecks } from "lucide-react";
+import { Link } from "react-router-dom";
+import { MINUTES_PER_LESSON, formatLessonDuration } from "@/lib/lessonDuration";
 
 const hazardLabels: Record<string, { label: string; variant: "default" | "secondary" | "destructive" }> = {
   az_tehlikeli: { label: "Az Tehlikeli", variant: "secondary" },
@@ -26,11 +28,11 @@ interface PackForm {
   hazard_class: string;
   name: string;
   description: string;
-  duration_minutes: number;
+  lesson_count: number;
   key_hazards: string;
 }
 
-const emptyPack: PackForm = { sector_id: "", hazard_class: "az_tehlikeli", name: "", description: "", duration_minutes: 120, key_hazards: "" };
+const emptyPack: PackForm = { sector_id: "", hazard_class: "az_tehlikeli", name: "", description: "", lesson_count: 3, key_hazards: "" };
 
 export default function Topic4PacksManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -66,7 +68,8 @@ export default function Topic4PacksManagement() {
         hazard_class: data.hazard_class as any,
         name: data.name,
         description: data.description,
-        duration_minutes: data.duration_minutes,
+        duration_minutes: data.lesson_count * MINUTES_PER_LESSON,
+        lesson_count: data.lesson_count,
         key_hazards: hazards,
       };
       if (data.id) {
@@ -105,7 +108,7 @@ export default function Topic4PacksManagement() {
       hazard_class: pack.hazard_class || "az_tehlikeli",
       name: pack.name,
       description: pack.description || "",
-      duration_minutes: pack.duration_minutes || 120,
+      lesson_count: pack.lesson_count || Math.max(1, Math.round((pack.duration_minutes || 120) / MINUTES_PER_LESSON)),
       key_hazards: hazards,
     });
     setDialogOpen(true);
@@ -153,8 +156,14 @@ export default function Topic4PacksManagement() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Süre (dakika)</Label>
-                  <Input type="number" value={form.duration_minutes} onChange={e => setForm({ ...form, duration_minutes: parseInt(e.target.value) || 0 })} />
+                  <Label>Ders Sayısı (her ders {MINUTES_PER_LESSON} dk)</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={form.lesson_count}
+                    onChange={e => setForm({ ...form, lesson_count: Math.max(1, parseInt(e.target.value) || 1) })}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Toplam: {form.lesson_count * MINUTES_PER_LESSON} dakika</p>
                 </div>
                 <div>
                   <Label>Açıklama</Label>
@@ -215,7 +224,7 @@ export default function Topic4PacksManagement() {
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {Math.round(p.duration_minutes / 60)} saat
+                          {formatLessonDuration(p.duration_minutes)}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -228,7 +237,12 @@ export default function Topic4PacksManagement() {
                       </TableCell>
                       <TableCell><Switch checked={p.is_active} onCheckedChange={v => toggleActive.mutate({ id: p.id, is_active: v })} /></TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="sm" asChild title="Ders İçerikleri">
+                            <Link to={`/admin/topic4-packs/${p.id}/lessons`}><ListChecks className="h-4 w-4" /></Link>
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => openEdit(p)} title="Düzenle"><Pencil className="h-4 w-4" /></Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

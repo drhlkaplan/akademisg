@@ -70,6 +70,7 @@ const LiveSessionsManagement = lazyRetry(() => import("./pages/admin/LiveSession
 const SectorsManagement = lazyRetry(() => import("./pages/admin/SectorsManagement"));
 const TrainingTypesManagement = lazyRetry(() => import("./pages/admin/TrainingTypesManagement"));
 const Topic4PacksManagement = lazyRetry(() => import("./pages/admin/Topic4PacksManagement"));
+const Topic4PackLessons = lazyRetry(() => import("./pages/admin/Topic4PackLessons"));
 const FaceToFaceSessionsManagement = lazyRetry(() => import("./pages/admin/FaceToFaceSessionsManagement"));
 const SessionAttendance = lazyRetry(() => import("./pages/admin/SessionAttendance"));
 const FaqManagement = lazyRetry(() => import("./pages/admin/FaqManagement"));
@@ -306,6 +307,14 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <Topic4PacksManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/topic4-packs/:packId/lessons"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <Topic4PackLessons />
                 </ProtectedRoute>
               }
             />

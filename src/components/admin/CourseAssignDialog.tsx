@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { formatLessonsShort } from "@/lib/lessonDuration";
 import {
   Dialog,
   DialogContent,
@@ -196,7 +197,7 @@ export function CourseAssignDialog({
                           </Badge>
                         )}
                         <Badge variant="secondary" className="text-xs">
-                          {Math.round((course.duration_minutes || 0) / 60)} saat
+                          {formatLessonsShort(course.duration_minutes || 0)}
                         </Badge>
                       </div>
                     </div>
