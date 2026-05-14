@@ -53,11 +53,20 @@ const dangerClassLabel: Record<DangerClass, string> = {
   high: "Çok Tehlikeli",
 };
 
+const hazardToDanger: Record<string, "low" | "medium" | "high"> = {
+  az_tehlikeli: "low",
+  tehlikeli: "medium",
+  cok_tehlikeli: "high",
+};
+
 export default function Courses() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const initialFromUrl = searchParams.get("hazard");
+  const initialCategory = initialFromUrl && hazardToDanger[initialFromUrl] ? hazardToDanger[initialFromUrl] : "all";
+  const [categoryFilter, setCategoryFilter] = useState<string>(initialCategory);
 
   useEffect(() => {
     fetchCourses();
@@ -81,6 +90,7 @@ export default function Courses() {
           )
         `)
         .eq("is_active", true)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -89,6 +99,15 @@ export default function Courses() {
       console.error("Error fetching courses:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCategoryChange = (v: string) => {
+    setCategoryFilter(v);
+    if (v === "all") setSearchParams({});
+    else {
+      const reverse = Object.entries(hazardToDanger).find(([, d]) => d === v)?.[0];
+      if (reverse) setSearchParams({ hazard: reverse });
     }
   };
 
