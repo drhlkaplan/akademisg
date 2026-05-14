@@ -44,20 +44,22 @@ interface LessonManagementProps {
   onBack: () => void;
 }
 
-const lessonTypeLabels: Record<LessonType, string> = {
+const lessonTypeLabels: Record<UILessonType, string> = {
   scorm: "SCORM Eğitim",
   exam: "Sınav",
   live: "Canlı Oturum",
   content: "İçerik (Video/PDF)",
   face_to_face: "Yüz Yüze Eğitim",
+  topic4: "İşe ve İşyerine Özgü Eğitim",
 };
 
-const lessonTypeIcons: Record<LessonType, typeof BookOpen> = {
+const lessonTypeIcons: Record<UILessonType, typeof BookOpen> = {
   scorm: BookOpen,
   exam: FileQuestion,
   live: Video,
   content: FileText,
   face_to_face: Users,
+  topic4: AlertTriangle,
 };
 
 /** Sanitize filename/path segment for storage compatibility */
