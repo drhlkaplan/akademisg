@@ -81,6 +81,7 @@ const F2FAttendanceReport = lazyRetry(() => import("./pages/admin/F2FAttendanceR
 const DocumentGeneration = lazyRetry(() => import("./pages/admin/DocumentGeneration"));
 const MigrationDashboard = lazyRetry(() => import("./pages/admin/MigrationDashboard"));
 const R2CorsTest = lazyRetry(() => import("./pages/admin/R2CorsTest"));
+const JoinRequests = lazyRetry(() => import("./pages/admin/JoinRequests"));
 const RegulationInfo = lazyRetry(() => import("./pages/RegulationInfo"));
 const FirmDashboard = lazyRetry(() => import("./pages/firm/FirmDashboard"));
 const FirmEmployees = lazyRetry(() => import("./pages/firm/FirmEmployees"));
@@ -170,6 +171,14 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <FirmsManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/join-requests"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <JoinRequests />
                 </ProtectedRoute>
               }
             />
