@@ -12,3 +12,18 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /firm
+Disallow: /firm/
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /learn/
+Disallow: /exam/
+Disallow: /attend
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+
+Sitemap: https://gratisakademi.com/sitemap.xml
