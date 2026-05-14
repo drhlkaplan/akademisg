@@ -35,6 +35,9 @@ import { ScormProgressReport } from "./ScormProgressReport";
 type LessonType = Database["public"]["Enums"]["lesson_type"];
 type Lesson = Database["public"]["Tables"]["lessons"]["Row"];
 
+// UI-only lesson type that maps to type='content' + topic_group=4 in DB
+type UILessonType = LessonType | "topic4";
+
 interface LessonManagementProps {
   courseId: string;
   courseTitle: string;
