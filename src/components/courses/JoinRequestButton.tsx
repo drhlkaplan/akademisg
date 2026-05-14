@@ -48,8 +48,10 @@ export function JoinRequestButton({ courseId, size = "lg", className, variant = 
       .maybeSingle();
 
     if (enr && ["pending", "active", "completed"].includes(enr.status as string)) {
-      setStatus("enrolled");
-      return;
+      if (!alwaysRequest) {
+        setStatus("enrolled");
+        return;
+      }
     }
 
     const { data: req } = await (supabase as any)
