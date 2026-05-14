@@ -246,13 +246,8 @@ export default function Courses() {
                       {/* Actions */}
                       <div className="flex gap-3">
                         <div className="flex-1">
-                          <JoinRequestButton courseId={course.id} fullWidth />
+                          <JoinRequestButton courseId={course.id} fullWidth alwaysRequest />
                         </div>
-                        <Button variant="outline" size="icon" asChild>
-                          <Link to={`/courses/${course.id}`}>
-                            <ArrowRight className="h-4 w-4" />
-                          </Link>
-                        </Button>
                       </div>
                     </div>
                   </div>
