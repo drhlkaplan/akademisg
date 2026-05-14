@@ -1057,6 +1057,38 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
               </div>
             )}
 
+            {/* Topic 4 (workplace-specific) type: choose default pack */}
+            {formData.type === "topic4" && (
+              <div className="space-y-3 p-4 rounded-lg border border-warning/30 bg-warning/5">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
+                  <div className="space-y-1">
+                    <Label className="text-sm font-semibold">İşe ve İşyerine Özgü Konular Paketi (Varsayılan)</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Kullanıcının firmasına /admin/topic4-packs üzerinden bir paket atanmışsa, derste o paket otomatik gösterilir.
+                      Atama yoksa burada seçilen varsayılan paket kullanılır.
+                    </p>
+                  </div>
+                </div>
+                <Select
+                  value={formData.topic4_pack_id || "none"}
+                  onValueChange={(val) => setFormData({ ...formData, topic4_pack_id: val === "none" ? "" : val })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Varsayılan paket seçin (opsiyonel)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Varsayılan paket yok —</SelectItem>
+                    {topic4Packs?.map((p: any) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} {p.sectors?.name ? `(${p.sectors.name})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Exam type - radio choice */}
             {formData.type === "exam" && (
               <div className="space-y-4">
