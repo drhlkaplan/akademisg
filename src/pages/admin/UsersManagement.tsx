@@ -473,6 +473,13 @@ export default function UsersManagement() {
                               <Eye className="mr-2 h-4 w-4" />
                               Kurslarını Gör
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              setExamsViewUser(user);
+                              setExamsViewOpen(true);
+                            }}>
+                              <FileQuestion className="mr-2 h-4 w-4" />
+                              Sınavlarını Gör
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem className="text-destructive">
                               Kullanıcıyı Sil
