@@ -106,6 +106,8 @@ export default function UsersManagement() {
   const [courseAssignUser, setCourseAssignUser] = useState<UserWithRoles | null>(null);
   const [coursesViewOpen, setCoursesViewOpen] = useState(false);
   const [coursesViewUser, setCoursesViewUser] = useState<UserWithRoles | null>(null);
+  const [examsViewOpen, setExamsViewOpen] = useState(false);
+  const [examsViewUser, setExamsViewUser] = useState<UserWithRoles | null>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
