@@ -266,9 +266,22 @@ export default function Topic4ScormCheck() {
                         </Select>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link to={`/admin/topic4-packs/${r.topic4_pack_id}/lessons`}>Aç</Link>
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          {r.content_url && /\.zip(\?|$)/i.test(r.content_url) && (
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => openConvert(r)}
+                              title="Zip dosyasını SCORM paketi olarak çıkar ve derse otomatik bağla"
+                            >
+                              <Wand2 className="h-4 w-4 mr-1" />
+                              Zip'i SCORM'a çevir & bağla
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link to={`/admin/topic4-packs/${r.topic4_pack_id}/lessons`}>Aç</Link>
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
