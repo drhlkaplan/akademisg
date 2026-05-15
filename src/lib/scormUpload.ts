@@ -162,6 +162,12 @@ export async function uploadAndCreateScormPackage(
     const fullKey = `${safePrefix}/${sRel}`;
     const ct = getContentTypeByPath(clean);
     const fileBuf = await entry.async("arraybuffer");
+    if (!fileBuf || fileBuf.byteLength === 0) {
+      console.warn(`[scorm-upload] Skipping empty file: ${clean}`);
+      uploaded++;
+      onProgress?.(Math.round((uploaded / total) * 90));
+      return;
+    }
     const res = await fetch(proxyUrl, {
       method: "POST",
       headers: {
