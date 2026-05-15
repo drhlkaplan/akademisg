@@ -49,9 +49,11 @@ import {
   RefreshCw,
   BookOpen,
   Eye,
+  FileQuestion,
 } from "lucide-react";
 import { CourseAssignDialog } from "@/components/admin/CourseAssignDialog";
 import { UserCoursesDialog } from "@/components/admin/UserCoursesDialog";
+import { UserExamsDialog } from "@/components/admin/UserExamsDialog";
 import type { Database } from "@/integrations/supabase/types";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
