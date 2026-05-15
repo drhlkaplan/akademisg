@@ -962,6 +962,16 @@ export default function ExamsManagement() {
             }}
           />
         )}
+
+        {usersDialogExam && (
+          <ExamUsersDialog
+            open={!!usersDialogExam}
+            onOpenChange={(o) => !o && setUsersDialogExam(null)}
+            examId={usersDialogExam.id}
+            examTitle={usersDialogExam.title}
+            courseId={usersDialogExam.courseId}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
