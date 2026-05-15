@@ -99,6 +99,41 @@ export default function Topic4PackLessons() {
     },
   });
 
+  const { data: courses = [] } = useQuery({
+    queryKey: ["courses-for-scorm-host"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("courses")
+        .select("id, title")
+        .is("deleted_at", null)
+        .order("title")
+        .limit(500);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const handleZipScormUpload = async (file: File) => {
+    if (!hostCourseId) {
+      toast({ title: "Önce ev sahibi kurs seçin", variant: "destructive" });
+      return;
+    }
+    setScormUploading(true);
+    setScormProgress(0);
+    try {
+      const result = await uploadAndCreateScormPackage(file, hostCourseId, (p) => setScormProgress(p));
+      setForm((f) => ({ ...f, scorm_package_id: result.packageId, content_url: result.packageUrl }));
+      qc.invalidateQueries({ queryKey: ["scorm-packages-all"] });
+      toast({ title: "SCORM paketi oluşturuldu", description: "Kaydedince derse bağlanacak." });
+    } catch (e: any) {
+      toast({ title: "SCORM dönüştürme hatası", description: e.message, variant: "destructive" });
+    } finally {
+      setScormUploading(false);
+      setScormProgress(0);
+      if (zipInputRef.current) zipInputRef.current.value = "";
+    }
+  };
+
   const saveMutation = useMutation({
     mutationFn: async (data: LessonForm & { id?: string }) => {
       const payload = {
