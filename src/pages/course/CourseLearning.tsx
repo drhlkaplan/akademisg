@@ -146,6 +146,7 @@ export default function CourseLearning() {
           }
         }
         const overridePackId = groupPackId || firmPackId;
+        const syntheticPackages: any[] = [];
         // For each topic 4 lesson, pick effective pack and load its content
         const enriched = await Promise.all(
           rawLessons.map(async (l) => {
