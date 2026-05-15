@@ -101,6 +101,7 @@ export default function ExamsManagement() {
   const [bankSourceExamId, setBankSourceExamId] = useState<string>("");
   const [selectedBankQuestions, setSelectedBankQuestions] = useState<Set<string>>(new Set());
   const [aiQuestionOpen, setAiQuestionOpen] = useState(false);
+  const [usersDialogExam, setUsersDialogExam] = useState<{ id: string; title: string; courseId: string } | null>(null);
   const [aiExamContext, setAiExamContext] = useState<any>(null);
   
   const [examForm, setExamForm] = useState({
