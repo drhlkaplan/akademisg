@@ -606,6 +606,10 @@ export default function ExamsManagement() {
                             <ToggleLeft className="h-4 w-4" />
                           )}
                         </Button>
+                        <Button variant="ghost" size="icon" title="Atanan kullanıcılar"
+                          onClick={() => setUsersDialogExam({ id: exam.id, title: exam.title, courseId: exam.course_id })}>
+                          <Users className="h-4 w-4" />
+                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => handleEditExam(exam)}>
                           <Edit className="h-4 w-4" />
                         </Button>
