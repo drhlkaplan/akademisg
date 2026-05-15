@@ -104,6 +104,7 @@ export default function CoursesManagement() {
   const [managingLessonsCourseTitle, setManagingLessonsCourseTitle] = useState<string>("");
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [aiCourseContext, setAiCourseContext] = useState<any>(null);
+  const [enrollmentsCourse, setEnrollmentsCourse] = useState<{ id: string; title: string } | null>(null);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
