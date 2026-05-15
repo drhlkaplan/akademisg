@@ -6,11 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, ExternalLink, RefreshCw } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ExternalLink, RefreshCw, Wand2, Loader2 } from "lucide-react";
+import { uploadAndCreateScormPackage } from "@/lib/scormUpload";
 
 type Issue = "missing_package" | "zip_url_no_package" | "no_content" | "ok";
 
@@ -48,6 +51,65 @@ export default function Topic4ScormCheck() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [filter, setFilter] = useState<"all" | "issues">("issues");
+  const [convertRow, setConvertRow] = useState<Row | null>(null);
+  const [convertCourseId, setConvertCourseId] = useState<string>("");
+  const [converting, setConverting] = useState(false);
+  const [convertProgress, setConvertProgress] = useState(0);
+
+  const { data: courses = [] } = useQuery({
+    queryKey: ["scorm-host-courses"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("courses")
+        .select("id,title,hazard_class_new,training_type")
+        .eq("is_active", true)
+        .is("deleted_at", null)
+        .order("title");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const openConvert = (r: Row) => {
+    setConvertRow(r);
+    setConvertCourseId(courses[0]?.id || "");
+    setConvertProgress(0);
+  };
+
+  const runConvert = async () => {
+    if (!convertRow || !convertRow.content_url || !convertCourseId) return;
+    setConverting(true);
+    setConvertProgress(0);
+    try {
+      // 1) Fetch zip blob from current content_url
+      const res = await fetch(convertRow.content_url);
+      if (!res.ok) throw new Error(`Zip indirilemedi (${res.status})`);
+      const blob = await res.blob();
+
+      // 2) Upload + extract + create scorm_packages row
+      const result = await uploadAndCreateScormPackage(blob, convertCourseId, (p) =>
+        setConvertProgress(p),
+      );
+
+      // 3) Link to topic4_pack_lessons
+      const { error: upErr } = await supabase
+        .from("topic4_pack_lessons")
+        .update({ scorm_package_id: result.packageId })
+        .eq("id", convertRow.id);
+      if (upErr) throw upErr;
+
+      toast({ title: "Başarılı", description: "SCORM paketi oluşturuldu ve derse bağlandı." });
+      qc.invalidateQueries({ queryKey: ["topic4-scorm-check"] });
+      qc.invalidateQueries({ queryKey: ["scorm-packages-all-check"] });
+      setConvertRow(null);
+    } catch (e: any) {
+      console.error("[topic4-convert] failed:", e);
+      toast({ title: "Hata", description: e.message || String(e), variant: "destructive" });
+    } finally {
+      setConverting(false);
+    }
+  };
+
 
   const { data: rows = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ["topic4-scorm-check"],
@@ -204,9 +266,22 @@ export default function Topic4ScormCheck() {
                         </Select>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link to={`/admin/topic4-packs/${r.topic4_pack_id}/lessons`}>Aç</Link>
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          {r.content_url && /\.zip(\?|$)/i.test(r.content_url) && (
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => openConvert(r)}
+                              title="Zip dosyasını SCORM paketi olarak çıkar ve derse otomatik bağla"
+                            >
+                              <Wand2 className="h-4 w-4 mr-1" />
+                              Zip'i SCORM'a çevir & bağla
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link to={`/admin/topic4-packs/${r.topic4_pack_id}/lessons`}>Aç</Link>
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -225,6 +300,55 @@ export default function Topic4ScormCheck() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={!!convertRow} onOpenChange={(v) => !converting && !v && setConvertRow(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Zip'i SCORM Paketine Çevir</DialogTitle>
+            <DialogDescription>
+              Mevcut .zip dosyası R2 üzerine açılacak, yeni bir SCORM paketi oluşturulacak ve aşağıdaki derse otomatik bağlanacak.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-md border p-3 bg-muted/30 text-sm">
+              <div className="font-medium">{convertRow?.pack_name}</div>
+              <div className="text-xs text-muted-foreground">{convertRow?.title}</div>
+              {convertRow?.content_url && (
+                <div className="text-xs text-muted-foreground mt-1 truncate">
+                  {convertRow.content_url.split("/").pop()}
+                </div>
+              )}
+            </div>
+            <div>
+              <Label>Host Kurs (SCORM paketi bu kursa bağlanır)</Label>
+              <Select value={convertCourseId} onValueChange={setConvertCourseId} disabled={converting}>
+                <SelectTrigger><SelectValue placeholder="Kurs seçin" /></SelectTrigger>
+                <SelectContent>
+                  {courses.map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Öğrenciler bu kursa kayıtlı olduklarında SCORM paketine erişebilir. Topic 4 paketinin kullanıldığı temel kursu seçmek genelde doğrudur.
+              </p>
+            </div>
+            {converting && (
+              <div className="space-y-1">
+                <Progress value={convertProgress} />
+                <div className="text-xs text-muted-foreground">{convertProgress}% — yükleniyor…</div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConvertRow(null)} disabled={converting}>İptal</Button>
+            <Button onClick={runConvert} disabled={converting || !convertCourseId}>
+              {converting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
+              Çevir & Bağla
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
