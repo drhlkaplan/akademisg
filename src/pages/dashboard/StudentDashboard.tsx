@@ -94,9 +94,14 @@ export default function StudentDashboard() {
   }, [isFirmAdmin, navigate]);
 
   useEffect(() => {
-    if (user) {
-      fetchData();
-    }
+    if (!user) return;
+    fetchData();
+    const ch = supabase
+      .channel(`student-dashboard-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "enrollments", filter: `user_id=eq.${user.id}` }, () => fetchData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "exam_results", filter: `user_id=eq.${user.id}` }, () => fetchData())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
   }, [user]);
 
   const fetchData = async () => {

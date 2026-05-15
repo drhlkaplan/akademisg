@@ -55,7 +55,9 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
+  Users,
 } from "lucide-react";
+import { ExamUsersDialog } from "@/components/admin/ExamUsersDialog";
 import type { Database } from "@/integrations/supabase/types";
 
 type Exam = Database["public"]["Tables"]["exams"]["Row"];
@@ -99,6 +101,7 @@ export default function ExamsManagement() {
   const [bankSourceExamId, setBankSourceExamId] = useState<string>("");
   const [selectedBankQuestions, setSelectedBankQuestions] = useState<Set<string>>(new Set());
   const [aiQuestionOpen, setAiQuestionOpen] = useState(false);
+  const [usersDialogExam, setUsersDialogExam] = useState<{ id: string; title: string; courseId: string } | null>(null);
   const [aiExamContext, setAiExamContext] = useState<any>(null);
   
   const [examForm, setExamForm] = useState({
@@ -603,6 +606,10 @@ export default function ExamsManagement() {
                             <ToggleLeft className="h-4 w-4" />
                           )}
                         </Button>
+                        <Button variant="ghost" size="icon" title="Atanan kullanıcılar"
+                          onClick={() => setUsersDialogExam({ id: exam.id, title: exam.title, courseId: exam.course_id })}>
+                          <Users className="h-4 w-4" />
+                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => handleEditExam(exam)}>
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -953,6 +960,16 @@ export default function ExamsManagement() {
             onQuestionsGenerated={() => {
               queryClient.invalidateQueries({ queryKey: ["exam-questions", expandedExamId] });
             }}
+          />
+        )}
+
+        {usersDialogExam && (
+          <ExamUsersDialog
+            open={!!usersDialogExam}
+            onOpenChange={(o) => !o && setUsersDialogExam(null)}
+            examId={usersDialogExam.id}
+            examTitle={usersDialogExam.title}
+            courseId={usersDialogExam.courseId}
           />
         )}
       </div>

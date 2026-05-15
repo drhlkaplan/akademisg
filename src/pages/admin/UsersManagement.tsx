@@ -49,9 +49,11 @@ import {
   RefreshCw,
   BookOpen,
   Eye,
+  FileQuestion,
 } from "lucide-react";
 import { CourseAssignDialog } from "@/components/admin/CourseAssignDialog";
 import { UserCoursesDialog } from "@/components/admin/UserCoursesDialog";
+import { UserExamsDialog } from "@/components/admin/UserExamsDialog";
 import type { Database } from "@/integrations/supabase/types";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
@@ -104,6 +106,8 @@ export default function UsersManagement() {
   const [courseAssignUser, setCourseAssignUser] = useState<UserWithRoles | null>(null);
   const [coursesViewOpen, setCoursesViewOpen] = useState(false);
   const [coursesViewUser, setCoursesViewUser] = useState<UserWithRoles | null>(null);
+  const [examsViewOpen, setExamsViewOpen] = useState(false);
+  const [examsViewUser, setExamsViewUser] = useState<UserWithRoles | null>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -469,6 +473,13 @@ export default function UsersManagement() {
                               <Eye className="mr-2 h-4 w-4" />
                               Kurslarını Gör
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              setExamsViewUser(user);
+                              setExamsViewOpen(true);
+                            }}>
+                              <FileQuestion className="mr-2 h-4 w-4" />
+                              Sınavlarını Gör
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem className="text-destructive">
                               Kullanıcıyı Sil
@@ -621,6 +632,15 @@ export default function UsersManagement() {
           onOpenChange={setCoursesViewOpen}
           userId={coursesViewUser.user_id}
           userName={`${coursesViewUser.first_name} ${coursesViewUser.last_name}`}
+        />
+      )}
+
+      {examsViewUser && (
+        <UserExamsDialog
+          open={examsViewOpen}
+          onOpenChange={setExamsViewOpen}
+          userId={examsViewUser.user_id}
+          userName={`${examsViewUser.first_name} ${examsViewUser.last_name}`}
         />
       )}
     </DashboardLayout>
