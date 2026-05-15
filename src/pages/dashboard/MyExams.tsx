@@ -35,7 +35,14 @@ export default function MyExams() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (user) fetchExams();
+    if (!user) return;
+    fetchExams();
+    const ch = supabase
+      .channel(`my-exams-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "enrollments", filter: `user_id=eq.${user.id}` }, () => fetchExams())
+      .on("postgres_changes", { event: "*", schema: "public", table: "exam_results", filter: `user_id=eq.${user.id}` }, () => fetchExams())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
   }, [user]);
 
   const fetchExams = async () => {
@@ -46,6 +53,7 @@ export default function MyExams() {
         .from("enrollments")
         .select("id, course_id, course:courses(title)")
         .eq("user_id", user!.id)
+        .is("deleted_at", null)
         .in("status", ["active", "completed"]);
 
       if (!enrollments || enrollments.length === 0) {
