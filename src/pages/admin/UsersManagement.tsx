@@ -634,6 +634,15 @@ export default function UsersManagement() {
           userName={`${coursesViewUser.first_name} ${coursesViewUser.last_name}`}
         />
       )}
+
+      {examsViewUser && (
+        <UserExamsDialog
+          open={examsViewOpen}
+          onOpenChange={setExamsViewOpen}
+          userId={examsViewUser.user_id}
+          userName={`${examsViewUser.first_name} ${examsViewUser.last_name}`}
+        />
+      )}
     </DashboardLayout>
   );
 }
