@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,12 +10,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Progress } from "@/components/ui/progress";
 import { FileUploadField } from "@/components/admin/FileUploadField";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, ArrowLeft, FileText, Play, FileQuestion, Video, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowLeft, FileText, Play, FileQuestion, Video, ArrowUp, ArrowDown, Upload, Loader2 } from "lucide-react";
 import { formatLessonDuration, MINUTES_PER_LESSON } from "@/lib/lessonDuration";
+import { uploadAndCreateScormPackage } from "@/lib/scormUpload";
 
 type ContentType = "scorm" | "html" | "pdf" | "pptx" | "video";
 
