@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,12 +10,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Progress } from "@/components/ui/progress";
 import { FileUploadField } from "@/components/admin/FileUploadField";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, ArrowLeft, FileText, Play, FileQuestion, Video, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowLeft, FileText, Play, FileQuestion, Video, ArrowUp, ArrowDown, Upload, Loader2 } from "lucide-react";
 import { formatLessonDuration, MINUTES_PER_LESSON } from "@/lib/lessonDuration";
+import { uploadAndCreateScormPackage } from "@/lib/scormUpload";
 
 type ContentType = "scorm" | "html" | "pdf" | "pptx" | "video";
 
@@ -50,6 +52,10 @@ export default function Topic4PackLessons() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<LessonForm>(emptyForm);
+  const [hostCourseId, setHostCourseId] = useState<string>("");
+  const [scormUploading, setScormUploading] = useState(false);
+  const [scormProgress, setScormProgress] = useState(0);
+  const zipInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -92,6 +98,41 @@ export default function Topic4PackLessons() {
       return data;
     },
   });
+
+  const { data: courses = [] } = useQuery({
+    queryKey: ["courses-for-scorm-host"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("courses")
+        .select("id, title")
+        .is("deleted_at", null)
+        .order("title")
+        .limit(500);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const handleZipScormUpload = async (file: File) => {
+    if (!hostCourseId) {
+      toast({ title: "Önce ev sahibi kurs seçin", variant: "destructive" });
+      return;
+    }
+    setScormUploading(true);
+    setScormProgress(0);
+    try {
+      const result = await uploadAndCreateScormPackage(file, hostCourseId, (p) => setScormProgress(p));
+      setForm((f) => ({ ...f, scorm_package_id: result.packageId, content_url: result.packageUrl }));
+      qc.invalidateQueries({ queryKey: ["scorm-packages-all"] });
+      toast({ title: "SCORM paketi oluşturuldu", description: "Kaydedince derse bağlanacak." });
+    } catch (e: any) {
+      toast({ title: "SCORM dönüştürme hatası", description: e.message, variant: "destructive" });
+    } finally {
+      setScormUploading(false);
+      setScormProgress(0);
+      if (zipInputRef.current) zipInputRef.current.value = "";
+    }
+  };
 
   const saveMutation = useMutation({
     mutationFn: async (data: LessonForm & { id?: string }) => {
@@ -282,6 +323,54 @@ export default function Topic4PackLessons() {
 
               {form.content_type === "scorm" ? (
                 <>
+                  <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-3 space-y-3">
+                    <div>
+                      <Label>Otomatik SCORM Yükleme (.zip)</Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Zip dosyası seçtiğinizde otomatik olarak açılır, R2'ye çıkarılır ve SCORM paketi olarak bu derse bağlanır.
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Ev Sahibi Kurs (RLS için zorunlu)</Label>
+                      <Select value={hostCourseId || "none"} onValueChange={v => setHostCourseId(v === "none" ? "" : v)}>
+                        <SelectTrigger><SelectValue placeholder="Bir kurs seçin" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">— Seçin —</SelectItem>
+                          {courses.map((c: any) => (
+                            <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <input
+                      ref={zipInputRef}
+                      type="file"
+                      accept=".zip"
+                      className="hidden"
+                      onChange={e => {
+                        const f = e.target.files?.[0];
+                        if (f) handleZipScormUpload(f);
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="w-full"
+                      disabled={scormUploading || !hostCourseId}
+                      onClick={() => zipInputRef.current?.click()}
+                    >
+                      {scormUploading ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Yükleniyor... %{scormProgress}</>
+                      ) : (
+                        <><Upload className="h-4 w-4 mr-2" />Zip seç ve SCORM'a çevir</>
+                      )}
+                    </Button>
+                    {scormUploading && <Progress value={scormProgress} className="h-2" />}
+                    {form.scorm_package_id && !scormUploading && (
+                      <p className="text-xs text-success">✓ SCORM paketi hazır: {form.scorm_package_id.slice(0, 8)}…</p>
+                    )}
+                  </div>
+
                   <div>
                     <Label>Mevcut SCORM Paketi (opsiyonel)</Label>
                     <Select value={form.scorm_package_id || "none"} onValueChange={v => setForm({ ...form, scorm_package_id: v === "none" ? "" : v })}>
@@ -293,17 +382,7 @@ export default function Topic4PackLessons() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground mt-1">Veya aşağıdan SCORM .zip URL'si girin/yükleyin.</p>
                   </div>
-                  <FileUploadField
-                    label="SCORM Paket URL'si"
-                    value={form.content_url}
-                    onChange={url => setForm({ ...form, content_url: url })}
-                    bucket="topic4-content"
-                    folder={`pack-${packId}/scorm`}
-                    accept=".zip"
-                    placeholder="https://.../paket.zip"
-                  />
                 </>
               ) : (
                 <FileUploadField
