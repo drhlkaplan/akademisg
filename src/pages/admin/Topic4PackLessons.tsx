@@ -52,6 +52,10 @@ export default function Topic4PackLessons() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<LessonForm>(emptyForm);
+  const [hostCourseId, setHostCourseId] = useState<string>("");
+  const [scormUploading, setScormUploading] = useState(false);
+  const [scormProgress, setScormProgress] = useState(0);
+  const zipInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const qc = useQueryClient();
 
