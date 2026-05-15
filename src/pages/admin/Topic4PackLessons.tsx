@@ -323,6 +323,54 @@ export default function Topic4PackLessons() {
 
               {form.content_type === "scorm" ? (
                 <>
+                  <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-3 space-y-3">
+                    <div>
+                      <Label>Otomatik SCORM Yükleme (.zip)</Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Zip dosyası seçtiğinizde otomatik olarak açılır, R2'ye çıkarılır ve SCORM paketi olarak bu derse bağlanır.
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Ev Sahibi Kurs (RLS için zorunlu)</Label>
+                      <Select value={hostCourseId || "none"} onValueChange={v => setHostCourseId(v === "none" ? "" : v)}>
+                        <SelectTrigger><SelectValue placeholder="Bir kurs seçin" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">— Seçin —</SelectItem>
+                          {courses.map((c: any) => (
+                            <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <input
+                      ref={zipInputRef}
+                      type="file"
+                      accept=".zip"
+                      className="hidden"
+                      onChange={e => {
+                        const f = e.target.files?.[0];
+                        if (f) handleZipScormUpload(f);
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="w-full"
+                      disabled={scormUploading || !hostCourseId}
+                      onClick={() => zipInputRef.current?.click()}
+                    >
+                      {scormUploading ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Yükleniyor... %{scormProgress}</>
+                      ) : (
+                        <><Upload className="h-4 w-4 mr-2" />Zip seç ve SCORM'a çevir</>
+                      )}
+                    </Button>
+                    {scormUploading && <Progress value={scormProgress} className="h-2" />}
+                    {form.scorm_package_id && !scormUploading && (
+                      <p className="text-xs text-success">✓ SCORM paketi hazır: {form.scorm_package_id.slice(0, 8)}…</p>
+                    )}
+                  </div>
+
                   <div>
                     <Label>Mevcut SCORM Paketi (opsiyonel)</Label>
                     <Select value={form.scorm_package_id || "none"} onValueChange={v => setForm({ ...form, scorm_package_id: v === "none" ? "" : v })}>
@@ -334,17 +382,7 @@ export default function Topic4PackLessons() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground mt-1">Veya aşağıdan SCORM .zip URL'si girin/yükleyin.</p>
                   </div>
-                  <FileUploadField
-                    label="SCORM Paket URL'si"
-                    value={form.content_url}
-                    onChange={url => setForm({ ...form, content_url: url })}
-                    bucket="topic4-content"
-                    folder={`pack-${packId}/scorm`}
-                    accept=".zip"
-                    placeholder="https://.../paket.zip"
-                  />
                 </>
               ) : (
                 <FileUploadField
