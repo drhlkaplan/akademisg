@@ -6,11 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle2, ExternalLink, RefreshCw } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ExternalLink, RefreshCw, Wand2, Loader2 } from "lucide-react";
+import { uploadAndCreateScormPackage } from "@/lib/scormUpload";
 
 type Issue = "missing_package" | "zip_url_no_package" | "no_content" | "ok";
 
