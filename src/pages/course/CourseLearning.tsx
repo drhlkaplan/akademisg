@@ -178,13 +178,13 @@ export default function CourseLearning() {
             }
             if (first?.content_type === "scorm" && first?.content_url) {
               const synthId = `synthetic-${first.id}`;
-              syntheticPackages.push({ id: synthId, package_url: first.content_url, entry_point: "index.html", scorm_version: "1.2", course_id: l.course_id });
+              syntheticPackages.push({ id: synthId, package_url: first.content_url, entry_point: "index.html", scorm_version: "1.2", course_id: courseId! });
               return { ...l, title: newTitle, type: "scorm", scorm_package_id: synthId, content_url: null };
             }
             if (first?.content_url) {
               if (isScormUrl(first.content_url)) {
                 const synthId = `synthetic-${first.id}`;
-                syntheticPackages.push({ id: synthId, package_url: first.content_url, entry_point: "index.html", scorm_version: "1.2", course_id: l.course_id });
+                syntheticPackages.push({ id: synthId, package_url: first.content_url, entry_point: "index.html", scorm_version: "1.2", course_id: courseId! });
                 return { ...l, title: newTitle, type: "scorm", scorm_package_id: synthId, content_url: null };
               }
               return { ...l, title: newTitle, type: "content", content_url: first.content_url };
@@ -195,7 +195,7 @@ export default function CourseLearning() {
             if (pack?.content_url) {
               if (isScormUrl(pack.content_url)) {
                 const synthId = `synthetic-pack-${pack.id}`;
-                syntheticPackages.push({ id: synthId, package_url: pack.content_url, entry_point: "index.html", scorm_version: "1.2", course_id: l.course_id });
+                syntheticPackages.push({ id: synthId, package_url: pack.content_url, entry_point: "index.html", scorm_version: "1.2", course_id: courseId! });
                 return { ...l, title: newTitle, type: "scorm", scorm_package_id: synthId, content_url: null };
               }
               return { ...l, title: newTitle, type: "content", content_url: pack.content_url };
