@@ -300,6 +300,55 @@ export default function Topic4ScormCheck() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={!!convertRow} onOpenChange={(v) => !converting && !v && setConvertRow(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Zip'i SCORM Paketine Çevir</DialogTitle>
+            <DialogDescription>
+              Mevcut .zip dosyası R2 üzerine açılacak, yeni bir SCORM paketi oluşturulacak ve aşağıdaki derse otomatik bağlanacak.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-md border p-3 bg-muted/30 text-sm">
+              <div className="font-medium">{convertRow?.pack_name}</div>
+              <div className="text-xs text-muted-foreground">{convertRow?.title}</div>
+              {convertRow?.content_url && (
+                <div className="text-xs text-muted-foreground mt-1 truncate">
+                  {convertRow.content_url.split("/").pop()}
+                </div>
+              )}
+            </div>
+            <div>
+              <Label>Host Kurs (SCORM paketi bu kursa bağlanır)</Label>
+              <Select value={convertCourseId} onValueChange={setConvertCourseId} disabled={converting}>
+                <SelectTrigger><SelectValue placeholder="Kurs seçin" /></SelectTrigger>
+                <SelectContent>
+                  {courses.map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Öğrenciler bu kursa kayıtlı olduklarında SCORM paketine erişebilir. Topic 4 paketinin kullanıldığı temel kursu seçmek genelde doğrudur.
+              </p>
+            </div>
+            {converting && (
+              <div className="space-y-1">
+                <Progress value={convertProgress} />
+                <div className="text-xs text-muted-foreground">{convertProgress}% — yükleniyor…</div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConvertRow(null)} disabled={converting}>İptal</Button>
+            <Button onClick={runConvert} disabled={converting || !convertCourseId}>
+              {converting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
+              Çevir & Bağla
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
