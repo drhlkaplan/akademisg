@@ -51,6 +51,65 @@ export default function Topic4ScormCheck() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [filter, setFilter] = useState<"all" | "issues">("issues");
+  const [convertRow, setConvertRow] = useState<Row | null>(null);
+  const [convertCourseId, setConvertCourseId] = useState<string>("");
+  const [converting, setConverting] = useState(false);
+  const [convertProgress, setConvertProgress] = useState(0);
+
+  const { data: courses = [] } = useQuery({
+    queryKey: ["scorm-host-courses"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("courses")
+        .select("id,title,hazard_class_new,training_type")
+        .eq("is_active", true)
+        .is("deleted_at", null)
+        .order("title");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const openConvert = (r: Row) => {
+    setConvertRow(r);
+    setConvertCourseId(courses[0]?.id || "");
+    setConvertProgress(0);
+  };
+
+  const runConvert = async () => {
+    if (!convertRow || !convertRow.content_url || !convertCourseId) return;
+    setConverting(true);
+    setConvertProgress(0);
+    try {
+      // 1) Fetch zip blob from current content_url
+      const res = await fetch(convertRow.content_url);
+      if (!res.ok) throw new Error(`Zip indirilemedi (${res.status})`);
+      const blob = await res.blob();
+
+      // 2) Upload + extract + create scorm_packages row
+      const result = await uploadAndCreateScormPackage(blob, convertCourseId, (p) =>
+        setConvertProgress(p),
+      );
+
+      // 3) Link to topic4_pack_lessons
+      const { error: upErr } = await supabase
+        .from("topic4_pack_lessons")
+        .update({ scorm_package_id: result.packageId })
+        .eq("id", convertRow.id);
+      if (upErr) throw upErr;
+
+      toast({ title: "Başarılı", description: "SCORM paketi oluşturuldu ve derse bağlandı." });
+      qc.invalidateQueries({ queryKey: ["topic4-scorm-check"] });
+      qc.invalidateQueries({ queryKey: ["scorm-packages-all-check"] });
+      setConvertRow(null);
+    } catch (e: any) {
+      console.error("[topic4-convert] failed:", e);
+      toast({ title: "Hata", description: e.message || String(e), variant: "destructive" });
+    } finally {
+      setConverting(false);
+    }
+  };
+
 
   const { data: rows = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ["topic4-scorm-check"],
