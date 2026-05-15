@@ -590,6 +590,14 @@ export default function CoursesManagement() {
                               <List className="mr-2 h-4 w-4" />
                               Dersler
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                setEnrollmentsCourse({ id: course.id, title: course.title })
+                              }
+                            >
+                              <Users className="mr-2 h-4 w-4" />
+                              Kullanıcılar
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => {
