@@ -75,6 +75,7 @@ export default function MyCourses() {
           course:courses(id, title, duration_minutes, category:course_categories(danger_class, name))
         `)
         .eq("user_id", user!.id)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
       setEnrollments((data as EnrollmentWithCourse[]) || []);
