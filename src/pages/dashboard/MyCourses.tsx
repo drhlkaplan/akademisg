@@ -62,7 +62,13 @@ export default function MyCourses() {
   const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => {
-    if (user) fetchEnrollments();
+    if (!user) return;
+    fetchEnrollments();
+    const ch = supabase
+      .channel(`my-courses-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "enrollments", filter: `user_id=eq.${user.id}` }, () => fetchEnrollments())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
   }, [user]);
 
   const fetchEnrollments = async () => {
