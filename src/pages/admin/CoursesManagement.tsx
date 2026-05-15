@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LessonManagement } from "@/components/admin/LessonManagement";
 import { AIContentGenerator } from "@/components/admin/AIContentGenerator";
+import { CourseEnrollmentsDialog } from "@/components/admin/CourseEnrollmentsDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +69,7 @@ import {
   Sparkles,
   Archive,
   RotateCcw,
+  Users,
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -103,6 +105,7 @@ export default function CoursesManagement() {
   const [managingLessonsCourseTitle, setManagingLessonsCourseTitle] = useState<string>("");
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [aiCourseContext, setAiCourseContext] = useState<any>(null);
+  const [enrollmentsCourse, setEnrollmentsCourse] = useState<{ id: string; title: string } | null>(null);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -587,6 +590,14 @@ export default function CoursesManagement() {
                               <List className="mr-2 h-4 w-4" />
                               Dersler
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                setEnrollmentsCourse({ id: course.id, title: course.title })
+                              }
+                            >
+                              <Users className="mr-2 h-4 w-4" />
+                              Kullanıcılar
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => {
@@ -807,6 +818,15 @@ export default function CoursesManagement() {
             navigator.clipboard.writeText(desc);
             toast({ title: "Açıklama panoya kopyalandı" });
           }}
+        />
+      )}
+
+      {enrollmentsCourse && (
+        <CourseEnrollmentsDialog
+          open={!!enrollmentsCourse}
+          onOpenChange={(o) => !o && setEnrollmentsCourse(null)}
+          courseId={enrollmentsCourse.id}
+          courseTitle={enrollmentsCourse.title}
         />
       )}
     </DashboardLayout>
