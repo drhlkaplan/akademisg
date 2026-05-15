@@ -535,6 +535,12 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
         const fullKey = `${safePrefix}/${sanitizedRel}`;
         const contentType = getContentTypeByPath(cleanPath);
         const buffer = await zipEntry.async("arraybuffer");
+        if (!buffer || buffer.byteLength === 0) {
+          console.warn(`[scorm-upload] Skipping empty file: ${cleanPath}`);
+          uploadedCount++;
+          setUploadProgress(Math.round((uploadedCount / totalFiles) * 90));
+          return;
+        }
 
         const res = await fetch(proxyUrl, {
           method: "POST",
