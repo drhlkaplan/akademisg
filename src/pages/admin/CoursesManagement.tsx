@@ -820,6 +820,15 @@ export default function CoursesManagement() {
           }}
         />
       )}
+
+      {enrollmentsCourse && (
+        <CourseEnrollmentsDialog
+          open={!!enrollmentsCourse}
+          onOpenChange={(o) => !o && setEnrollmentsCourse(null)}
+          courseId={enrollmentsCourse.id}
+          courseTitle={enrollmentsCourse.title}
+        />
+      )}
     </DashboardLayout>
   );
 }
