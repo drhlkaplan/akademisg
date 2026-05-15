@@ -55,7 +55,9 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
+  Users,
 } from "lucide-react";
+import { ExamUsersDialog } from "@/components/admin/ExamUsersDialog";
 import type { Database } from "@/integrations/supabase/types";
 
 type Exam = Database["public"]["Tables"]["exams"]["Row"];
