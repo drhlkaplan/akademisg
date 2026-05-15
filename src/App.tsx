@@ -71,6 +71,7 @@ const SectorsManagement = lazyRetry(() => import("./pages/admin/SectorsManagemen
 const TrainingTypesManagement = lazyRetry(() => import("./pages/admin/TrainingTypesManagement"));
 const Topic4PacksManagement = lazyRetry(() => import("./pages/admin/Topic4PacksManagement"));
 const Topic4PackLessons = lazyRetry(() => import("./pages/admin/Topic4PackLessons"));
+const Topic4ScormCheck = lazyRetry(() => import("./pages/admin/Topic4ScormCheck"));
 const FaceToFaceSessionsManagement = lazyRetry(() => import("./pages/admin/FaceToFaceSessionsManagement"));
 const SessionAttendance = lazyRetry(() => import("./pages/admin/SessionAttendance"));
 const FaqManagement = lazyRetry(() => import("./pages/admin/FaqManagement"));
