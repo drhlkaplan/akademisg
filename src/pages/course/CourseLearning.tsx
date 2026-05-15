@@ -146,6 +146,7 @@ export default function CourseLearning() {
           }
         }
         const overridePackId = groupPackId || firmPackId;
+        const syntheticPackages: any[] = [];
         // For each topic 4 lesson, pick effective pack and load its content
         const enriched = await Promise.all(
           rawLessons.map(async (l) => {
@@ -170,17 +171,33 @@ export default function CourseLearning() {
             const first = packLessons?.[0];
             const titleSuffix = pack?.name ? ` — ${pack.name}` : "";
             const newTitle = `${l.title}${titleSuffix}`;
+            const isScormUrl = (u?: string | null) => !!u && /\.zip(\?|$)/i.test(u);
             // Priority: sub-lesson > pack-level content
             if (first?.scorm_package_id) {
               return { ...l, title: newTitle, type: "scorm", scorm_package_id: first.scorm_package_id, content_url: null };
             }
+            if (first?.content_type === "scorm" && first?.content_url) {
+              const synthId = `synthetic-${first.id}`;
+              syntheticPackages.push({ id: synthId, package_url: first.content_url, entry_point: "index.html", scorm_version: "1.2", course_id: courseId! });
+              return { ...l, title: newTitle, type: "scorm", scorm_package_id: synthId, content_url: null };
+            }
             if (first?.content_url) {
+              if (isScormUrl(first.content_url)) {
+                const synthId = `synthetic-${first.id}`;
+                syntheticPackages.push({ id: synthId, package_url: first.content_url, entry_point: "index.html", scorm_version: "1.2", course_id: courseId! });
+                return { ...l, title: newTitle, type: "scorm", scorm_package_id: synthId, content_url: null };
+              }
               return { ...l, title: newTitle, type: "content", content_url: first.content_url };
             }
             if (pack?.scorm_package_id) {
               return { ...l, title: newTitle, type: "scorm", scorm_package_id: pack.scorm_package_id, content_url: null };
             }
             if (pack?.content_url) {
+              if (isScormUrl(pack.content_url)) {
+                const synthId = `synthetic-pack-${pack.id}`;
+                syntheticPackages.push({ id: synthId, package_url: pack.content_url, entry_point: "index.html", scorm_version: "1.2", course_id: courseId! });
+                return { ...l, title: newTitle, type: "scorm", scorm_package_id: synthId, content_url: null };
+              }
               return { ...l, title: newTitle, type: "content", content_url: pack.content_url };
             }
             return { ...l, title: newTitle };
@@ -188,9 +205,9 @@ export default function CourseLearning() {
         );
         resolvedLessons = enriched;
 
-        // Also load any extra scorm packages referenced by topic 4 packs
+        // Also load any extra scorm packages referenced by topic 4 packs (DB-backed only)
         const extraScormIds = enriched
-          .filter((l) => l.scorm_package_id)
+          .filter((l) => l.scorm_package_id && !String(l.scorm_package_id).startsWith("synthetic-"))
           .map((l) => l.scorm_package_id as string);
         if (extraScormIds.length > 0) {
           const { data: extraPkgs } = await supabase
@@ -201,6 +218,8 @@ export default function CourseLearning() {
             scormRes.data?.push(p as any);
           });
         }
+        // Inject synthetic packages
+        syntheticPackages.forEach((p) => scormRes.data?.push(p as any));
       }
 
       setLessons(resolvedLessons as LessonItem[]);
