@@ -170,6 +170,24 @@ export default function AdminBlog() {
               </DialogHeader>
               {editing && (
                 <div className="space-y-4">
+                  <div className="rounded-lg border border-accent/30 bg-accent/5 p-3 space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Sparkles className="h-4 w-4 text-accent" />
+                      AI ile Blog Yazısı Oluştur
+                    </div>
+                    <Textarea
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      rows={2}
+                      placeholder="Örn: İnşaat sektöründe yüksekte çalışmada KKD kullanımının önemi hakkında detaylı bir blog yazısı"
+                    />
+                    <div className="flex justify-end">
+                      <Button type="button" size="sm" variant="accent" onClick={generateWithAi} disabled={aiLoading}>
+                        {aiLoading ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Oluşturuluyor...</> : <><Sparkles className="h-4 w-4 mr-1" /> AI ile Oluştur</>}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">İstem girip oluşturduğunuzda başlık, slug, özet ve içerik aşağıdaki alanlara otomatik doldurulur.</p>
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label>Başlık *</Label>
