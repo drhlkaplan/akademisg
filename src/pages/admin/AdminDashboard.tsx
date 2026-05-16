@@ -233,28 +233,28 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {statItems.map((stat) => (
             <Link key={stat.title} to={stat.href} className="stat-card group cursor-pointer">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 truncate">
                     {stat.title}
                   </p>
                   {statsLoading ? (
-                    <Skeleton className="h-8 w-16" />
+                    <Skeleton className="h-9 w-20" />
                   ) : (
-                    <p className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight">
+                    <p className="text-3xl font-bold text-foreground tracking-tight leading-none">
                       {stat.value.toLocaleString("tr-TR")}
                     </p>
                   )}
                 </div>
                 <div
-                  className={`h-10 w-10 rounded-xl ${stat.bgColor} flex items-center justify-center transition-transform group-hover:scale-110`}
+                  className={`h-12 w-12 shrink-0 rounded-2xl ${stat.bgColor} ring-1 ring-inset ring-border/40 flex items-center justify-center shadow-sm transition-transform group-hover:scale-110 group-hover:rotate-3`}
                 >
-                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
                 </div>
               </div>
-              <div className="flex items-center gap-1 mt-3 pt-3 border-t border-border/50">
+              <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-border/50">
                 <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-accent transition-colors" />
-                <span className="text-xs text-muted-foreground group-hover:text-accent transition-colors">
+                <span className="text-xs font-medium text-muted-foreground group-hover:text-accent transition-colors">
                   Detaylı görüntüle
                 </span>
               </div>
