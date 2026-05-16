@@ -331,7 +331,7 @@ export default function AdminDashboard() {
                   <Link to="/admin/users">Tümünü Gör</Link>
                 </Button>
               </div>
-              <div className="p-5">
+              <div className="p-5 px-0 py-0">
                 {enrollmentsLoading ? (
                   <div className="space-y-4">
                     {[...Array(5)].map((_, i) => (
