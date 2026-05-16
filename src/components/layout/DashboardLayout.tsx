@@ -32,6 +32,7 @@ import {
   KeyRound,
   Search,
   ChevronRight,
+  ChevronDown as ChevronDownIcon,
   Video,
   UserCog,
   ArrowRightLeft,
@@ -45,6 +46,8 @@ import {
   UserPlus,
   Image as ImageIcon,
   AlertTriangle,
+  X,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFirmBranding } from "@/contexts/FirmBrandingContext";
