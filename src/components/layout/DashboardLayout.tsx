@@ -33,7 +33,6 @@ import {
   Search,
   ChevronRight,
   Video,
-  Video,
   UserCog,
   ArrowRightLeft,
   Link2,
