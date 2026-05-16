@@ -154,6 +154,8 @@ export function DashboardLayout({
   userRole = "student",
 }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [navQuery, setNavQuery] = useState("");
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const location = useLocation();
   const navigate = useNavigate();
   const { branding } = useFirmBranding();
