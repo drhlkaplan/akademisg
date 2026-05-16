@@ -205,11 +205,12 @@ export default function Courses() {
                     className="group bg-card rounded-xl border border-border overflow-hidden hover:shadow-xl transition-all duration-300 hover:border-accent/50"
                   >
                     {/* Image */}
-                    <div className="relative h-48 bg-secondary overflow-hidden">
+                    <div className="relative h-48 bg-secondary overflow-hidden flex items-center justify-center">
                       <img
                         src={course.thumbnail_url || "/placeholder.svg"}
                         alt={course.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                        className="absolute inset-0 w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                       />
                       <Badge
                         variant={dangerClassBadge[dangerClass]}
