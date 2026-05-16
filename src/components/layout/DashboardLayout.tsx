@@ -411,31 +411,34 @@ export function DashboardLayout({
       )}
 
       {/* User Section */}
-      <div className="p-3 border-t border-sidebar-border/50">
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-sidebar-accent/50">
-          <Avatar className="h-9 w-9 border-2 border-sidebar-primary/30">
-            <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs font-semibold">
-              {getInitials()}
-            </AvatarFallback>
-          </Avatar>
+      <div className="p-3 border-t border-sidebar-border/40 bg-sidebar-background/40">
+        <div className="flex items-center gap-3 px-2.5 py-2 rounded-xl bg-sidebar-accent/40 border border-sidebar-border/40">
+          <div className="relative">
+            <Avatar className="h-9 w-9 ring-2 ring-sidebar-primary/30">
+              <AvatarFallback className="bg-gradient-to-br from-sidebar-primary to-sidebar-primary/70 text-sidebar-primary-foreground text-xs font-semibold">
+                {getInitials()}
+              </AvatarFallback>
+            </Avatar>
+            <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-sidebar-background" />
+          </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-sidebar-foreground truncate">
+            <p className="text-[13px] font-semibold text-sidebar-foreground truncate leading-tight">
               {userName}
             </p>
-            <p className="text-[11px] text-sidebar-foreground/40 truncate">
+            <p className="text-[10.5px] text-sidebar-foreground/45 truncate mt-0.5">
               {userEmail}
             </p>
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0 text-sidebar-foreground/45 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+            onClick={handleSignOut}
+            title="Çıkış Yap"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+          </Button>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full mt-2 justify-start text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 text-xs"
-          onClick={handleSignOut}
-        >
-          <LogOut className="h-4 w-4 mr-2" />
-          Çıkış Yap
-        </Button>
       </div>
     </div>
   );
