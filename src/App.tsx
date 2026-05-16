@@ -101,6 +101,9 @@ const KVKK = lazyRetry(() => import("./pages/legal/KVKK"));
 const PrivacyPolicy = lazyRetry(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService = lazyRetry(() => import("./pages/legal/TermsOfService"));
 const CookiePolicy = lazyRetry(() => import("./pages/legal/CookiePolicy"));
+const AdminLayout = lazyRetry(() => import("./components/layout/AdminLayout"));
+const StudentLayout = lazyRetry(() => import("./components/layout/StudentLayout"));
+const CompanyLayout = lazyRetry(() => import("./components/layout/CompanyLayout"));
 
 const queryClient = new QueryClient();
 
