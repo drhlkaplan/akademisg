@@ -68,9 +68,6 @@ export function ScormBottomBar({
   const s = sessionSeconds % 60;
   return (
     <div className="flex items-center gap-3 px-4 py-2 bg-background/95 border-t">
-      <Button variant="outline" size="sm" onClick={onPrevious} disabled={!hasPrevious}>
-        <ChevronLeft className="h-4 w-4 mr-1" /> Önceki
-      </Button>
       <div className="flex-1 flex items-center gap-2">
         <span className="text-xs text-muted-foreground tabular-nums">
           {String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}
@@ -78,9 +75,6 @@ export function ScormBottomBar({
         <Progress value={progressPercent} className="flex-1 h-2" />
         <span className="text-xs text-muted-foreground w-10 text-right">{progressPercent}%</span>
       </div>
-      <Button variant="outline" size="sm" onClick={onNext} disabled={!hasNext}>
-        Sonraki <ChevronRight className="h-4 w-4 ml-1" />
-      </Button>
     </div>
   );
 }
