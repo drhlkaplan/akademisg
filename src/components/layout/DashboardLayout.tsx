@@ -214,31 +214,28 @@ export function DashboardLayout({
       background: `linear-gradient(180deg, ${branding.secondary_color} 0%, ${adjustColor(branding.secondary_color, -20)} 100%)`,
     } : {}}>
       {/* Logo */}
-      <div className="p-5 border-b border-sidebar-border/50">
-        <Link to="/" className="flex items-center gap-3">
+      <div className="px-4 pt-5 pb-4 border-b border-sidebar-border/40">
+        <Link to="/" className="flex items-center gap-3 group">
           {branding?.logo_url && showFirmBranding ? (
-            <div className="flex items-center gap-3">
-              <img
-                src={branding.logo_url}
-                alt={branding.name}
-                className="h-10 max-w-[180px] object-contain"
-                onError={(e) => {
-                  // Fallback if logo fails to load
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-              <span className="text-sm font-semibold text-sidebar-foreground opacity-70">{dashboardTitle === branding.name ? "" : ""}</span>
-            </div>
+            <img
+              src={branding.logo_url}
+              alt={branding.name}
+              className="h-10 max-w-[180px] object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
           ) : (
             <>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sidebar-primary shadow-lg">
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-sidebar-primary to-sidebar-primary/70 shadow-lg shadow-sidebar-primary/30 ring-1 ring-sidebar-primary/40 group-hover:scale-105 transition-transform">
                 <Shield className="h-5 w-5 text-sidebar-primary-foreground" />
+                <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-sidebar-background" />
               </div>
-              <div className="flex flex-col">
-                <span className="text-base font-bold text-sidebar-foreground leading-tight tracking-tight">
+              <div className="flex flex-col min-w-0">
+                <span className="text-[15px] font-bold text-sidebar-foreground leading-tight tracking-tight">
                   İSG<span className="text-sidebar-primary">Akademi</span>
                 </span>
-                <span className="text-[10px] text-sidebar-foreground/50 leading-none font-medium">
+                <span className="text-[10px] text-sidebar-foreground/45 leading-none font-medium uppercase tracking-wider mt-0.5">
                   {dashboardTitle}
                 </span>
               </div>
@@ -247,8 +244,33 @@ export function DashboardLayout({
         </Link>
       </div>
 
+      {/* Search (admin only) */}
+      {(userRole === "admin" || userRole === "superadmin") && (
+        <div className="px-3 pt-3 pb-1">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-sidebar-foreground/40 pointer-events-none" />
+            <input
+              type="text"
+              value={navQuery}
+              onChange={(e) => setNavQuery(e.target.value)}
+              placeholder="Menüde ara..."
+              className="w-full h-8 pl-8 pr-7 rounded-md bg-sidebar-accent/40 border border-sidebar-border/40 text-[12px] text-sidebar-foreground placeholder:text-sidebar-foreground/35 focus:outline-none focus:border-sidebar-primary/50 focus:bg-sidebar-accent/60 transition-colors"
+            />
+            {navQuery && (
+              <button
+                onClick={() => setNavQuery("")}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-5 w-5 flex items-center justify-center rounded text-sidebar-foreground/40 hover:text-sidebar-foreground hover:bg-sidebar-accent/60"
+                aria-label="Temizle"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <nav className="sidebar-scroll flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
         {userRole === "student" || userRole === "company" ? (
           (userRole === "student" ? studentNavItems : companyNavItems).map((item) => {
             const isActive = location.pathname === item.href;
@@ -262,36 +284,79 @@ export function DashboardLayout({
                   isActive ? "sidebar-nav-item-active" : "sidebar-nav-item-inactive"
                 )}
               >
-                <item.icon className="h-[18px] w-[18px]" />
-                {item.label}
+                <item.icon className="h-[17px] w-[17px] shrink-0" />
+                <span className="truncate">{item.label}</span>
               </Link>
             );
           })
         ) : (
-          adminNavGroups.map((group) => (
-            <div key={group.label} className="mb-3">
-              <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/30">
-                {group.label}
-              </p>
-              {group.items.map((item) => {
-                const isActive = location.pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    onClick={() => setSidebarOpen(false)}
-                    className={cn(
-                      "sidebar-nav-item",
-                      isActive ? "sidebar-nav-item-active" : "sidebar-nav-item-inactive"
-                    )}
+          (() => {
+            const q = navQuery.trim().toLocaleLowerCase("tr");
+            const filtered = adminNavGroups
+              .map((g) => ({
+                ...g,
+                items: q ? g.items.filter((i) => i.label.toLocaleLowerCase("tr").includes(q)) : g.items,
+              }))
+              .filter((g) => g.items.length > 0);
+
+            if (filtered.length === 0) {
+              return (
+                <div className="px-3 py-6 text-center text-xs text-sidebar-foreground/40">
+                  Sonuç bulunamadı
+                </div>
+              );
+            }
+
+            return filtered.map((group) => {
+              const groupHasActive = group.items.some((i) => location.pathname === i.href);
+              const isCollapsed = q ? false : (collapsedGroups[group.label] ?? false);
+              return (
+                <div key={group.label} className="mb-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCollapsedGroups((prev) => ({ ...prev, [group.label]: !isCollapsed }))
+                    }
+                    className="sidebar-group-header"
                   >
-                    <item.icon className="h-[18px] w-[18px]" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
-          ))
+                    <span className="flex items-center gap-1.5">
+                      {groupHasActive && (
+                        <span className="h-1 w-1 rounded-full bg-sidebar-primary" />
+                      )}
+                      {group.label}
+                    </span>
+                    <ChevronDownIcon
+                      className={cn(
+                        "h-3 w-3 transition-transform duration-200",
+                        isCollapsed && "-rotate-90"
+                      )}
+                    />
+                  </button>
+                  {!isCollapsed && (
+                    <div className="space-y-0.5">
+                      {group.items.map((item) => {
+                        const isActive = location.pathname === item.href;
+                        return (
+                          <Link
+                            key={item.href}
+                            to={item.href}
+                            onClick={() => setSidebarOpen(false)}
+                            className={cn(
+                              "sidebar-nav-item",
+                              isActive ? "sidebar-nav-item-active" : "sidebar-nav-item-inactive"
+                            )}
+                          >
+                            <item.icon className="h-[17px] w-[17px] shrink-0" />
+                            <span className="truncate">{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            });
+          })()
         )}
       </nav>
 
