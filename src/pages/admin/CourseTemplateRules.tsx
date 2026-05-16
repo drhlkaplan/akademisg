@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -194,7 +193,7 @@ export default function CourseTemplateRules() {
   const isTopic4ForcedF2F = formData.hazard_class === "tehlikeli" || formData.hazard_class === "cok_tehlikeli";
 
   return (
-    <DashboardLayout userRole="admin">
+    <>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -460,6 +459,6 @@ export default function CourseTemplateRules() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </DashboardLayout>
+    </>
   );
 }

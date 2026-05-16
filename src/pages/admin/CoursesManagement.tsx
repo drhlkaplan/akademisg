@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { LessonManagement } from "@/components/admin/LessonManagement";
 import { AIContentGenerator } from "@/components/admin/AIContentGenerator";
 import { CourseEnrollmentsDialog } from "@/components/admin/CourseEnrollmentsDialog";
@@ -390,18 +389,18 @@ export default function CoursesManagement() {
 
   if (managingLessonsCourseId) {
     return (
-      <DashboardLayout userRole="admin">
+      <>
         <LessonManagement
           courseId={managingLessonsCourseId}
           courseTitle={managingLessonsCourseTitle}
           onBack={() => setManagingLessonsCourseId(null)}
         />
-      </DashboardLayout>
+      </>
     );
   }
 
   return (
-    <DashboardLayout userRole="admin">
+    <>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -829,6 +828,6 @@ export default function CoursesManagement() {
           courseTitle={enrollmentsCourse.title}
         />
       )}
-    </DashboardLayout>
+    </>
   );
 }

@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import autoTable from "jspdf-autotable";
 import { ROBOTO_REGULAR_BASE64, ROBOTO_BOLD_BASE64 } from "@/lib/pdfFonts";
 import { supabase } from "@/integrations/supabase/client";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge-custom";
@@ -151,7 +150,7 @@ export default function FirmReports() {
   };
 
   return (
-    <DashboardLayout userRole="company">
+    <>
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -265,6 +264,6 @@ export default function FirmReports() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

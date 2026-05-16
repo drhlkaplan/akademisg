@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge-custom";
 import { Button } from "@/components/ui/button";
@@ -275,16 +274,16 @@ export default function StudentDashboard() {
 
   if (isLoading) {
     return (
-      <DashboardLayout userRole="student">
+      <>
         <div className="flex items-center justify-center h-[50vh]">
           <Loader2 className="h-8 w-8 animate-spin text-accent" />
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   return (
-    <DashboardLayout userRole="student">
+    <>
       <div className="space-y-6 animate-fade-in">
         {/* Welcome */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -552,7 +551,7 @@ export default function StudentDashboard() {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 }
 

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -110,7 +109,7 @@ export default function CompanyTopic4Assignment() {
   const unassignedFirms = firms.filter((f: any) => !assignedFirmIds.has(f.id));
 
   return (
-    <DashboardLayout userRole="admin">
+    <>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -257,6 +256,6 @@ export default function CompanyTopic4Assignment() {
           </DialogContent>
         </Dialog>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

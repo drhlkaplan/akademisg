@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -86,7 +85,7 @@ const MigrationDashboard = () => {
   const score = getComplianceScore();
 
   return (
-    <DashboardLayout userRole="admin">
+    <>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -237,7 +236,7 @@ const MigrationDashboard = () => {
           </AlertDescription>
         </Alert>
       </div>
-    </DashboardLayout>
+    </>
   );
 };
 

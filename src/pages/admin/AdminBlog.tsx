@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -153,7 +152,7 @@ export default function AdminBlog() {
   const openEdit = (p: BlogPost) => { setEditing(p); setAiPrompt(""); setOpen(true); };
 
   return (
-    <DashboardLayout userRole="admin">
+    <>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
@@ -286,6 +285,6 @@ export default function AdminBlog() {
           </Table>
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

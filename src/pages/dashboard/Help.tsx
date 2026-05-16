@@ -1,4 +1,3 @@
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Accordion,
@@ -44,7 +43,7 @@ const helpSections = [
 
 export default function Help() {
   return (
-    <DashboardLayout userRole="student">
+    <>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Yardım</h1>
@@ -96,6 +95,6 @@ export default function Help() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

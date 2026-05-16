@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -159,7 +158,7 @@ export default function FaceToFaceSessionsManagement() {
   const trainerMap = new Map(trainerProfiles.map((t: any) => [t.user_id, `${t.first_name} ${t.last_name}`]));
 
   return (
-    <DashboardLayout userRole="admin">
+    <>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -353,6 +352,6 @@ export default function FaceToFaceSessionsManagement() {
           sessionId={detailSessionId}
         />
       </div>
-    </DashboardLayout>
+    </>
   );
 }

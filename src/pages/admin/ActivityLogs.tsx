@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -101,7 +100,7 @@ export default function ActivityLogs() {
   ) || [];
 
   return (
-    <DashboardLayout userRole="admin">
+    <>
       <div className="space-y-6 animate-fade-in">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -249,6 +248,6 @@ export default function ActivityLogs() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }

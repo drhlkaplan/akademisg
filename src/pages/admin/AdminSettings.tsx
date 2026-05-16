@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,16 +48,16 @@ export default function AdminSettings() {
 
   if (isLoading) {
     return (
-      <DashboardLayout userRole="admin">
+      <>
         <div className="flex items-center justify-center min-h-[40vh]">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   return (
-    <DashboardLayout userRole="admin">
+    <>
       <div className="space-y-6 animate-fade-in">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Genel Ayarlar</h1>
@@ -237,6 +236,6 @@ export default function AdminSettings() {
           </TabsContent>
         </Tabs>
       </div>
-    </DashboardLayout>
+    </>
   );
 }
