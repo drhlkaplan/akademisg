@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AIContentGenerator } from "@/components/admin/AIContentGenerator";
 import { supabase } from "@/integrations/supabase/client";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -414,7 +413,7 @@ export default function ExamsManagement() {
   });
 
   return (
-    <DashboardLayout userRole="admin">
+    <>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -973,6 +972,6 @@ export default function ExamsManagement() {
           />
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }

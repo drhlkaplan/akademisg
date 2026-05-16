@@ -101,6 +101,9 @@ const KVKK = lazyRetry(() => import("./pages/legal/KVKK"));
 const PrivacyPolicy = lazyRetry(() => import("./pages/legal/PrivacyPolicy"));
 const TermsOfService = lazyRetry(() => import("./pages/legal/TermsOfService"));
 const CookiePolicy = lazyRetry(() => import("./pages/legal/CookiePolicy"));
+const AdminLayout = lazyRetry(() => import("./components/layout/AdminLayout"));
+const StudentLayout = lazyRetry(() => import("./components/layout/StudentLayout"));
+const CompanyLayout = lazyRetry(() => import("./components/layout/CompanyLayout"));
 
 const queryClient = new QueryClient();
 
@@ -139,358 +142,84 @@ const App = () => (
             <Route path="/regulation" element={<RegulationInfo />} />
             <Route path="/attend" element={<ProtectedRoute><AttendSession /></ProtectedRoute>} />
             
-            {/* Protected Student Dashboard */}
+            {/* Protected Student Dashboard - shared layout */}
             <Route
-              path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <StudentDashboard />
+                  <StudentLayout />
                 </ProtectedRoute>
               }
-            />
-            
-            {/* Protected Admin Dashboard */}
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/users"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <UsersManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/courses"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <CoursesManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/companies"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <FirmsManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/join-requests"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <JoinRequests />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/blog"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminBlog />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/services"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminServices />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/course-covers"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminCourseCovers />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/exams"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <ExamsManagement />
-                </ProtectedRoute>
-              }
-            />
-            
-            {/* Exam Reports */}
-            <Route
-              path="/admin/reports"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <ExamReports />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/certificates"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <CertificatesManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/groups"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <GroupsManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/certificate-templates"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <CertificateTemplates />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/analytics"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AnalyticsDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/report-center"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <ReportCenter />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/logs"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <ActivityLogs />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/settings"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminSettings />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/sectors"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <SectorsManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/training-types"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <TrainingTypesManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/topic4-packs"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <Topic4PacksManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/topic4-packs/:packId/lessons"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <Topic4PackLessons />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/topic4-scorm-check"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <Topic4ScormCheck />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/company-topic4"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <CompanyTopic4Assignment />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/group-topic4-rules"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <GroupTopic4Rules />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/face-to-face"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <FaceToFaceSessionsManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/attendance/:sessionId"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <SessionAttendance />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/faq"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <FaqManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/course-template-rules"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <CourseTemplateRules />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/live-sessions"
-              element={
-                <ProtectedRoute requireAdmin>
-                  <LiveSessionsManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/admin/compliance-report" element={<ProtectedRoute requireAdmin><ComplianceReport /></ProtectedRoute>} />
-            <Route path="/admin/recurrence-report" element={<ProtectedRoute requireAdmin><RecurrenceReport /></ProtectedRoute>} />
-            <Route path="/admin/f2f-attendance-report" element={<ProtectedRoute requireAdmin><F2FAttendanceReport /></ProtectedRoute>} />
-            <Route path="/admin/documents" element={<ProtectedRoute requireAdmin><DocumentGeneration /></ProtectedRoute>} />
-            <Route path="/admin/migration" element={<ProtectedRoute requireAdmin><MigrationDashboard /></ProtectedRoute>} />
-            <Route path="/admin/r2-cors-test" element={<ProtectedRoute requireAdmin><R2CorsTest /></ProtectedRoute>} />
-            
-            <Route
-              path="/firm"
-              element={
-                <ProtectedRoute requireFirmAdmin>
-                  <FirmDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/firm/employees"
-              element={
-                <ProtectedRoute requireFirmAdmin>
-                  <FirmEmployees />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/firm/courses"
-              element={
-                <ProtectedRoute requireFirmAdmin>
-                  <FirmCourses />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/firm/reports"
-              element={
-                <ProtectedRoute requireFirmAdmin>
-                  <FirmReports />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/firm/certificates"
-              element={
-                <ProtectedRoute requireFirmAdmin>
-                  <FirmCertificates />
-                </ProtectedRoute>
-              }
-            />
-            
-            {/* Student Certificates */}
-            <Route
-              path="/dashboard/certificates"
-              element={
-                <ProtectedRoute>
-                  <MyCertificates />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/courses"
-              element={
-                <ProtectedRoute>
-                  <MyCourses />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/courses/:enrollmentId"
-              element={
-                <ProtectedRoute>
-                  <CourseHistory />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/exams"
-              element={
-                <ProtectedRoute>
-                  <MyExams />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/help"
-              element={
-                <ProtectedRoute>
-                  <Help />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/face-to-face"
-              element={
-                <ProtectedRoute>
-                  <MyFaceToFaceSessions />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/profile"
-              element={
-                <ProtectedRoute>
-                  <ProfileSettings />
-                </ProtectedRoute>
-              }
-            />
+            >
+              <Route path="/dashboard" element={<StudentDashboard />} />
+              <Route path="/dashboard/certificates" element={<MyCertificates />} />
+              <Route path="/dashboard/courses" element={<MyCourses />} />
+              <Route path="/dashboard/courses/:enrollmentId" element={<CourseHistory />} />
+              <Route path="/dashboard/exams" element={<MyExams />} />
+              <Route path="/dashboard/help" element={<Help />} />
+              <Route path="/dashboard/face-to-face" element={<MyFaceToFaceSessions />} />
+              <Route path="/dashboard/profile" element={<ProfileSettings />} />
+            </Route>
 
-            {/* Protected Course Learning */}
+            {/* Protected Admin Dashboard - shared layout */}
+            <Route
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/users" element={<UsersManagement />} />
+              <Route path="/admin/courses" element={<CoursesManagement />} />
+              <Route path="/admin/companies" element={<FirmsManagement />} />
+              <Route path="/admin/join-requests" element={<JoinRequests />} />
+              <Route path="/admin/blog" element={<AdminBlog />} />
+              <Route path="/admin/services" element={<AdminServices />} />
+              <Route path="/admin/course-covers" element={<AdminCourseCovers />} />
+              <Route path="/admin/exams" element={<ExamsManagement />} />
+              <Route path="/admin/reports" element={<ExamReports />} />
+              <Route path="/admin/certificates" element={<CertificatesManagement />} />
+              <Route path="/admin/groups" element={<GroupsManagement />} />
+              <Route path="/admin/certificate-templates" element={<CertificateTemplates />} />
+              <Route path="/admin/analytics" element={<AnalyticsDashboard />} />
+              <Route path="/admin/report-center" element={<ReportCenter />} />
+              <Route path="/admin/logs" element={<ActivityLogs />} />
+              <Route path="/admin/settings" element={<AdminSettings />} />
+              <Route path="/admin/sectors" element={<SectorsManagement />} />
+              <Route path="/admin/training-types" element={<TrainingTypesManagement />} />
+              <Route path="/admin/topic4-packs" element={<Topic4PacksManagement />} />
+              <Route path="/admin/topic4-packs/:packId/lessons" element={<Topic4PackLessons />} />
+              <Route path="/admin/topic4-scorm-check" element={<Topic4ScormCheck />} />
+              <Route path="/admin/company-topic4" element={<CompanyTopic4Assignment />} />
+              <Route path="/admin/group-topic4-rules" element={<GroupTopic4Rules />} />
+              <Route path="/admin/face-to-face" element={<FaceToFaceSessionsManagement />} />
+              <Route path="/admin/attendance/:sessionId" element={<SessionAttendance />} />
+              <Route path="/admin/faq" element={<FaqManagement />} />
+              <Route path="/admin/course-template-rules" element={<CourseTemplateRules />} />
+              <Route path="/admin/live-sessions" element={<LiveSessionsManagement />} />
+              <Route path="/admin/compliance-report" element={<ComplianceReport />} />
+              <Route path="/admin/recurrence-report" element={<RecurrenceReport />} />
+              <Route path="/admin/f2f-attendance-report" element={<F2FAttendanceReport />} />
+              <Route path="/admin/documents" element={<DocumentGeneration />} />
+              <Route path="/admin/migration" element={<MigrationDashboard />} />
+              <Route path="/admin/r2-cors-test" element={<R2CorsTest />} />
+            </Route>
+
+            {/* Protected Firm Admin Dashboard - shared layout */}
+            <Route
+              element={
+                <ProtectedRoute requireFirmAdmin>
+                  <CompanyLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/firm" element={<FirmDashboard />} />
+              <Route path="/firm/employees" element={<FirmEmployees />} />
+              <Route path="/firm/courses" element={<FirmCourses />} />
+              <Route path="/firm/reports" element={<FirmReports />} />
+              <Route path="/firm/certificates" element={<FirmCertificates />} />
+            </Route>
+
             <Route
               path="/learn/:courseId"
               element={

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge-custom";
 import { Button } from "@/components/ui/button";
@@ -95,24 +94,24 @@ export default function CourseHistory() {
 
   if (loading) {
     return (
-      <DashboardLayout userRole="student">
+      <>
         <div className="flex items-center justify-center h-[50vh]">
           <Loader2 className="h-8 w-8 animate-spin text-accent" />
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   if (!enrollment) {
     return (
-      <DashboardLayout userRole="student">
+      <>
         <div className="flex flex-col items-center justify-center h-[50vh] gap-4">
           <p className="text-muted-foreground">Kayıt bulunamadı.</p>
           <Button variant="outline" onClick={() => navigate("/dashboard/courses")}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Eğitimlerime Dön
           </Button>
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
@@ -128,7 +127,7 @@ export default function CourseHistory() {
   const totalTime = lessonProgress.reduce((sum: number, p: any) => sum + (p.total_time || 0), 0);
 
   return (
-    <DashboardLayout userRole="student">
+    <>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
@@ -324,6 +323,6 @@ export default function CourseHistory() {
           </Card>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }

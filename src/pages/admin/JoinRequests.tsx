@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -194,7 +193,7 @@ export default function JoinRequests() {
   };
 
   return (
-    <DashboardLayout userRole="admin">
+    <>
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
@@ -385,6 +384,6 @@ export default function JoinRequests() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </DashboardLayout>
+    </>
   );
 }

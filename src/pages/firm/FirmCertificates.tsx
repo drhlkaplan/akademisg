@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge-custom";
 import { Button } from "@/components/ui/button";
@@ -63,7 +62,7 @@ export default function FirmCertificates() {
   const expiredCount = certificates?.filter((c) => !c.is_valid).length || 0;
 
   return (
-    <DashboardLayout userRole="company">
+    <>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Sertifikalar</h1>
@@ -168,6 +167,6 @@ export default function FirmCertificates() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

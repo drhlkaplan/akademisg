@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge-custom";
 import { Button } from "@/components/ui/button";
@@ -104,16 +103,16 @@ export default function MyCourses() {
 
   if (isLoading) {
     return (
-      <DashboardLayout userRole="student">
+      <>
         <div className="flex items-center justify-center h-[50vh]">
           <Loader2 className="h-8 w-8 animate-spin text-accent" />
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   return (
-    <DashboardLayout userRole="student">
+    <>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Eğitimlerim</h1>
@@ -215,6 +214,6 @@ export default function MyCourses() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }

@@ -1,6 +1,5 @@
 import { useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -223,7 +222,7 @@ export default function Topic4PackLessons() {
   const totalMinutes = totalLessons * MINUTES_PER_LESSON;
 
   return (
-    <DashboardLayout userRole="admin">
+    <>
       <div className="space-y-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" asChild>
@@ -428,6 +427,6 @@ export default function Topic4PackLessons() {
           </DialogContent>
         </Dialog>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

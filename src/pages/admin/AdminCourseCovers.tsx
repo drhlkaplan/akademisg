@@ -1,6 +1,5 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -95,7 +94,7 @@ export default function AdminCourseCovers() {
   };
 
   return (
-    <DashboardLayout userRole="admin">
+    <>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold">Eğitim Kapakları</h1>
@@ -184,6 +183,6 @@ export default function AdminCourseCovers() {
           </Table>
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

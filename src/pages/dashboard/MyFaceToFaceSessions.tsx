@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
@@ -72,7 +71,7 @@ export default function MyFaceToFaceSessions() {
   const past = sessions.filter((s: any) => s.status === "completed");
 
   return (
-    <DashboardLayout userRole="student">
+    <>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Yüz Yüze Derslerim</h1>
@@ -165,6 +164,6 @@ export default function MyFaceToFaceSessions() {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }

@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge-custom";
 import { Progress } from "@/components/ui/progress";
@@ -59,7 +58,7 @@ export default function FirmCourses() {
   const courses = Array.from(courseMap.entries()).map(([id, data]) => ({ id, ...data }));
 
   return (
-    <DashboardLayout userRole="company">
+    <>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Eğitimler</h1>
@@ -127,6 +126,6 @@ export default function FirmCourses() {
           </Card>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }
