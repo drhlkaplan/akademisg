@@ -149,8 +149,8 @@ export default function AdminBlog() {
     },
   });
 
-  const openCreate = () => { setEditing({ ...empty }); setOpen(true); };
-  const openEdit = (p: BlogPost) => { setEditing(p); setOpen(true); };
+  const openCreate = () => { setEditing({ ...empty }); setAiPrompt(""); setOpen(true); };
+  const openEdit = (p: BlogPost) => { setEditing(p); setAiPrompt(""); setOpen(true); };
 
   return (
     <DashboardLayout userRole="admin">
