@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Sparkles, Loader2 } from "lucide-react";
 
 type BlogPost = {
   id: string;
@@ -44,6 +44,40 @@ export default function AdminBlog() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Partial<BlogPost> | null>(null);
   const [open, setOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const generateWithAi = async () => {
+    if (!aiPrompt.trim()) {
+      toast({ title: "İstem girin", description: "Blog yazısı için bir konu/istem yazın.", variant: "destructive" });
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-content", {
+        body: { action: "generate_blog_post", context: { prompt: aiPrompt, category: editing?.category || "" } },
+      });
+      if (error) throw error;
+      let content = (data?.content || "").trim();
+      content = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+      const parsed = JSON.parse(content);
+      setEditing((prev) => ({
+        ...(prev || {}),
+        title: parsed.title || prev?.title || "",
+        slug: parsed.slug || prev?.slug || "",
+        excerpt: parsed.excerpt || prev?.excerpt || "",
+        category: parsed.category || prev?.category || "",
+        read_time: parsed.read_time || prev?.read_time || "",
+        content: parsed.content || prev?.content || "",
+        published: prev?.published ?? true,
+      }));
+      toast({ title: "Blog yazısı oluşturuldu", description: "İçeriği kontrol edip kaydedebilirsiniz." });
+    } catch (e) {
+      toast({ title: "AI hatası", description: e instanceof Error ? e.message : "Bilinmeyen hata", variant: "destructive" });
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const { data: posts, isLoading } = useQuery({
     queryKey: ["admin-blog-posts"],
@@ -115,8 +149,8 @@ export default function AdminBlog() {
     },
   });
 
-  const openCreate = () => { setEditing({ ...empty }); setOpen(true); };
-  const openEdit = (p: BlogPost) => { setEditing(p); setOpen(true); };
+  const openCreate = () => { setEditing({ ...empty }); setAiPrompt(""); setOpen(true); };
+  const openEdit = (p: BlogPost) => { setEditing(p); setAiPrompt(""); setOpen(true); };
 
   return (
     <DashboardLayout userRole="admin">
@@ -136,6 +170,24 @@ export default function AdminBlog() {
               </DialogHeader>
               {editing && (
                 <div className="space-y-4">
+                  <div className="rounded-lg border border-accent/30 bg-accent/5 p-3 space-y-2">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Sparkles className="h-4 w-4 text-accent" />
+                      AI ile Blog Yazısı Oluştur
+                    </div>
+                    <Textarea
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      rows={2}
+                      placeholder="Örn: İnşaat sektöründe yüksekte çalışmada KKD kullanımının önemi hakkında detaylı bir blog yazısı"
+                    />
+                    <div className="flex justify-end">
+                      <Button type="button" size="sm" variant="accent" onClick={generateWithAi} disabled={aiLoading}>
+                        {aiLoading ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Oluşturuluyor...</> : <><Sparkles className="h-4 w-4 mr-1" /> AI ile Oluştur</>}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">İstem girip oluşturduğunuzda başlık, slug, özet ve içerik aşağıdaki alanlara otomatik doldurulur.</p>
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label>Başlık *</Label>

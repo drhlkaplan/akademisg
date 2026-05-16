@@ -71,6 +71,25 @@ Detaylı, bilgilendirici ve eğitici bir özet yaz.`;
         break;
       }
 
+      case "generate_blog_post": {
+        systemPrompt = `Sen iş sağlığı ve güvenliği alanında uzman bir blog yazarısın. Türkçe, akıcı ve SEO uyumlu yazılar üretirsin. Yanıtını SADECE geçerli JSON formatında ver, başka açıklama ekleme.`;
+        userPrompt = `Aşağıdaki istem için kapsamlı bir blog yazısı oluştur:
+
+İSTEM: ${context.prompt}
+${context.category ? `KATEGORİ: ${context.category}` : ""}
+
+Yanıtı SADECE şu JSON formatında ver (markdown kod bloğu kullanma, ham JSON):
+{
+  "title": "Çekici, SEO uyumlu başlık",
+  "slug": "kebab-case-slug-turkce-karakter-yok",
+  "excerpt": "1-2 cümlelik özet (en fazla 160 karakter)",
+  "category": "Uygun kategori",
+  "read_time": "X dk",
+  "content": "Markdown formatında en az 600 kelimelik detaylı içerik. ## başlıklar, listeler, kalın metinler kullan. Giriş, ana bölümler ve sonuç içersin."
+}`;
+        break;
+      }
+
       default:
         return new Response(JSON.stringify({ error: "Unknown action" }), {
           status: 400,
