@@ -302,15 +302,15 @@ export default function AdminDashboard() {
         {/* Quick Access - Compliance & Reports */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { to: "/admin/compliance-report", icon: Shield, color: "success", title: "Uyumluluk Raporu", sub: "Firma bazlı durum" },
-            { to: "/admin/recurrence-report", icon: Clock, color: "warning", title: "Tekrar Eğitim Vadesi", sub: "Yaklaşan vadeler" },
-            { to: "/admin/f2f-attendance-report", icon: Users, color: "info", title: "Yüz Yüze Katılım", sub: "Oturum istatistikleri" },
-            { to: "/admin/documents", icon: FileText, color: "accent", title: "Belge Üretimi", sub: "Tutanak ve raporlar" },
+            { to: "/admin/compliance-report", icon: Shield, iconClass: "text-success", bgClass: "bg-success/10 ring-success/20", title: "Uyumluluk Raporu", sub: "Firma bazlı durum" },
+            { to: "/admin/recurrence-report", icon: Clock, iconClass: "text-warning", bgClass: "bg-warning/10 ring-warning/20", title: "Tekrar Eğitim Vadesi", sub: "Yaklaşan vadeler" },
+            { to: "/admin/f2f-attendance-report", icon: Users, iconClass: "text-info", bgClass: "bg-info/10 ring-info/20", title: "Yüz Yüze Katılım", sub: "Oturum istatistikleri" },
+            { to: "/admin/documents", icon: FileText, iconClass: "text-accent", bgClass: "bg-accent/10 ring-accent/20", title: "Belge Üretimi", sub: "Tutanak ve raporlar" },
           ].map((q) => (
             <Link key={q.to} to={q.to} className="stat-card group cursor-pointer">
               <div className="flex items-center gap-3">
-                <div className={`h-11 w-11 shrink-0 rounded-xl bg-${q.color}/10 ring-1 ring-inset ring-${q.color}/20 flex items-center justify-center shadow-sm transition-transform group-hover:scale-110`}>
-                  <q.icon className={`h-5 w-5 text-${q.color}`} />
+                <div className={`h-11 w-11 shrink-0 rounded-xl ${q.bgClass} ring-1 ring-inset flex items-center justify-center shadow-sm transition-transform group-hover:scale-110`}>
+                  <q.icon className={`h-5 w-5 ${q.iconClass}`} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">{q.title}</p>
