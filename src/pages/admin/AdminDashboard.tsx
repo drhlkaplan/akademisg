@@ -443,7 +443,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Quick Actions */}
-            <div className="dashboard-card bg-primary text-primary-foreground">
+            <div className="dashboard-card bg-primary text-primary-foreground mx-[10px] my-[10px] px-[10px] py-[10px]">
               <div className="p-5 px-0 py-0">
                 <h3 className="font-semibold text-sm mb-3 text-black">Hızlı İşlemler</h3>
                 <div className="space-y-1.5">
