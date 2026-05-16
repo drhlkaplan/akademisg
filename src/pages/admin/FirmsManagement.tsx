@@ -723,7 +723,7 @@ export default function FirmsManagement() {
           </DialogHeader>
           <div className="grid gap-4 py-4 max-h-[65vh] overflow-y-auto pr-2">
             {/* Basic Info */}
-            <h3 className="font-semibold text-sm mb-3 text-black uppercase tracking-wide">Temel Bilgiler</h3>
+            <h3 className="font-semibold text-sm mb-3 text-black mx-[10px] my-[10px] px-[10px] py-[10px] uppercase tracking-wide">Temel Bilgiler</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Firma Adı *</Label>
