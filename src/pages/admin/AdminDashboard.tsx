@@ -331,7 +331,7 @@ export default function AdminDashboard() {
                   <Link to="/admin/users">Tümünü Gör</Link>
                 </Button>
               </div>
-              <div className="p-5">
+              <div className="p-5 px-0 py-0">
                 {enrollmentsLoading ? (
                   <div className="space-y-4">
                     {[...Array(5)].map((_, i) => (
@@ -445,7 +445,7 @@ export default function AdminDashboard() {
 
             {/* Quick Actions */}
             <div className="dashboard-card bg-primary text-primary-foreground">
-              <div className="p-5">
+              <div className="p-5 px-0 py-0">
                 <h3 className="font-semibold text-sm mb-3 text-black">Hızlı İşlemler</h3>
                 <div className="space-y-1.5">
                   {[
