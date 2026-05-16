@@ -44,6 +44,40 @@ export default function AdminBlog() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Partial<BlogPost> | null>(null);
   const [open, setOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const generateWithAi = async () => {
+    if (!aiPrompt.trim()) {
+      toast({ title: "İstem girin", description: "Blog yazısı için bir konu/istem yazın.", variant: "destructive" });
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-content", {
+        body: { action: "generate_blog_post", context: { prompt: aiPrompt, category: editing?.category || "" } },
+      });
+      if (error) throw error;
+      let content = (data?.content || "").trim();
+      content = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+      const parsed = JSON.parse(content);
+      setEditing((prev) => ({
+        ...(prev || {}),
+        title: parsed.title || prev?.title || "",
+        slug: parsed.slug || prev?.slug || "",
+        excerpt: parsed.excerpt || prev?.excerpt || "",
+        category: parsed.category || prev?.category || "",
+        read_time: parsed.read_time || prev?.read_time || "",
+        content: parsed.content || prev?.content || "",
+        published: prev?.published ?? true,
+      }));
+      toast({ title: "Blog yazısı oluşturuldu", description: "İçeriği kontrol edip kaydedebilirsiniz." });
+    } catch (e) {
+      toast({ title: "AI hatası", description: e instanceof Error ? e.message : "Bilinmeyen hata", variant: "destructive" });
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const { data: posts, isLoading } = useQuery({
     queryKey: ["admin-blog-posts"],
