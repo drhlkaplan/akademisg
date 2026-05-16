@@ -181,7 +181,7 @@ export default function Topic4ScormCheck() {
       <div className="space-y-6">
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Topic 4 SCORM Eşleşme Kontrolü</h1>
+            <h1 className="text-2xl font-bold text-foreground">İşe Özgü Konu Scorm Kontrol</h1>
             <p className="text-muted-foreground">
               İşe ve işyerine özgü konularda SCORM paket bağlantısı eksik olan dersleri listeler ve bağlamayı sağlar.
             </p>
