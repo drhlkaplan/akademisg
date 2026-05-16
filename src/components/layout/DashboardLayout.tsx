@@ -32,7 +32,7 @@ import {
   KeyRound,
   Search,
   ChevronRight,
-  ChevronDown as ChevronDownIcon,
+  ChevronRight,
   Video,
   UserCog,
   ArrowRightLeft,
