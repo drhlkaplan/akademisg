@@ -265,31 +265,31 @@ export default function AdminDashboard() {
         {/* Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="stat-card">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-info/10 flex items-center justify-center">
-                <Activity className="h-5 w-5 text-info" />
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 shrink-0 rounded-2xl bg-info/10 ring-1 ring-inset ring-info/20 flex items-center justify-center shadow-sm">
+                <Activity className="h-6 w-6 text-info" />
               </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Aktif Kayıtlar</p>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Aktif Kayıtlar</p>
                 {statsLoading ? (
                   <Skeleton className="h-7 w-12 mt-1" />
                 ) : (
-                  <p className="text-xl font-bold text-foreground">{stats?.activeEnrollments ?? 0}</p>
+                  <p className="text-2xl font-bold text-foreground leading-none mt-1">{stats?.activeEnrollments ?? 0}</p>
                 )}
               </div>
             </div>
           </div>
           <div className="stat-card">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-success/10 flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-success" />
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 shrink-0 rounded-2xl bg-success/10 ring-1 ring-inset ring-success/20 flex items-center justify-center shadow-sm">
+                <TrendingUp className="h-6 w-6 text-success" />
               </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tamamlanan Kayıtlar</p>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Tamamlanan Kayıtlar</p>
                 {statsLoading ? (
                   <Skeleton className="h-7 w-12 mt-1" />
                 ) : (
-                  <p className="text-xl font-bold text-foreground">{stats?.completedEnrollments ?? 0}</p>
+                  <p className="text-2xl font-bold text-foreground leading-none mt-1">{stats?.completedEnrollments ?? 0}</p>
                 )}
               </div>
             </div>
@@ -301,50 +301,24 @@ export default function AdminDashboard() {
 
         {/* Quick Access - Compliance & Reports */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Link to="/admin/compliance-report" className="stat-card group cursor-pointer hover:border-accent/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-success/10 flex items-center justify-center">
-                <Shield className="h-4 w-4 text-success" />
+          {[
+            { to: "/admin/compliance-report", icon: Shield, color: "success", title: "Uyumluluk Raporu", sub: "Firma bazlı durum" },
+            { to: "/admin/recurrence-report", icon: Clock, color: "warning", title: "Tekrar Eğitim Vadesi", sub: "Yaklaşan vadeler" },
+            { to: "/admin/f2f-attendance-report", icon: Users, color: "info", title: "Yüz Yüze Katılım", sub: "Oturum istatistikleri" },
+            { to: "/admin/documents", icon: FileText, color: "accent", title: "Belge Üretimi", sub: "Tutanak ve raporlar" },
+          ].map((q) => (
+            <Link key={q.to} to={q.to} className="stat-card group cursor-pointer">
+              <div className="flex items-center gap-3">
+                <div className={`h-11 w-11 shrink-0 rounded-xl bg-${q.color}/10 ring-1 ring-inset ring-${q.color}/20 flex items-center justify-center shadow-sm transition-transform group-hover:scale-110`}>
+                  <q.icon className={`h-5 w-5 text-${q.color}`} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">{q.title}</p>
+                  <p className="text-xs text-muted-foreground truncate">{q.sub}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">Uyumluluk Raporu</p>
-                <p className="text-xs text-muted-foreground">Firma bazlı durum</p>
-              </div>
-            </div>
-          </Link>
-          <Link to="/admin/recurrence-report" className="stat-card group cursor-pointer hover:border-accent/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-warning/10 flex items-center justify-center">
-                <Clock className="h-4 w-4 text-warning" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">Tekrar Eğitim Vadesi</p>
-                <p className="text-xs text-muted-foreground">Yaklaşan vadeler</p>
-              </div>
-            </div>
-          </Link>
-          <Link to="/admin/f2f-attendance-report" className="stat-card group cursor-pointer hover:border-accent/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-info/10 flex items-center justify-center">
-                <Users className="h-4 w-4 text-info" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">Yüz Yüze Katılım</p>
-                <p className="text-xs text-muted-foreground">Oturum istatistikleri</p>
-              </div>
-            </div>
-          </Link>
-          <Link to="/admin/documents" className="stat-card group cursor-pointer hover:border-accent/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-accent/10 flex items-center justify-center">
-                <FileText className="h-4 w-4 text-accent" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">Belge Üretimi</p>
-                <p className="text-xs text-muted-foreground">Tutanak ve raporlar</p>
-              </div>
-            </div>
-          </Link>
+            </Link>
+          ))}
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
