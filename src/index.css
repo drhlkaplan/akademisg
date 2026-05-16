@@ -199,13 +199,29 @@
 
   /* Stat Card */
   .stat-card {
-    @apply relative overflow-hidden rounded-xl border border-border bg-card p-5 transition-all duration-300;
+    @apply relative overflow-hidden rounded-2xl border border-border/70 bg-card p-5 transition-all duration-300;
+    background-image: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--muted) / 0.35) 100%);
     box-shadow: var(--shadow-card);
   }
 
   .stat-card:hover {
     box-shadow: var(--shadow-card-hover);
-    @apply border-accent/20;
+    transform: translateY(-2px);
+    @apply border-accent/40;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: var(--gradient-accent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .stat-card:hover::before {
+    opacity: 1;
   }
 
   .stat-card::after {
@@ -213,20 +229,28 @@
     position: absolute;
     top: 0;
     right: 0;
-    width: 100px;
-    height: 100px;
-    background: radial-gradient(circle at top right, hsl(var(--accent) / 0.06), transparent 70%);
+    width: 140px;
+    height: 140px;
+    background: radial-gradient(circle at top right, hsl(var(--accent) / 0.12), transparent 70%);
     pointer-events: none;
+    transition: opacity 0.3s ease;
+    opacity: 0.7;
+  }
+
+  .stat-card:hover::after {
+    opacity: 1;
   }
 
   /* Dashboard card */
   .dashboard-card {
-    @apply rounded-xl border border-border bg-card overflow-hidden;
+    @apply rounded-2xl border border-border/70 bg-card overflow-hidden transition-all duration-300;
+    background-image: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--muted) / 0.2) 100%);
     box-shadow: var(--shadow-card);
   }
 
   .dashboard-card:hover {
     box-shadow: var(--shadow-card-hover);
+    @apply border-accent/30;
   }
 
   /* Sidebar nav item */
