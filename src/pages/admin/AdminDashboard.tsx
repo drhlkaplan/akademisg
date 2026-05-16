@@ -445,8 +445,8 @@ export default function AdminDashboard() {
             {/* Quick Actions */}
             <div className="dashboard-card bg-primary text-primary-foreground mx-[10px] my-[10px] px-[10px] py-[10px]">
               <div className="p-5 px-0 py-0">
-                <h3 className="font-semibold text-sm mb-3 text-black">Hızlı İşlemler</h3>
-                <div className="space-y-1.5">
+                <h3 className="font-semibold text-sm mb-3 text-black py-0 my-0 mx-0 px-0">Hızlı İşlemler</h3>
+                <div className="space-y-1.5 text-center mx-[10px] my-[10px] px-[10px] py-[10px]">
                   {[
                     { icon: Users, label: "Kullanıcı Yönetimi", href: "/admin/users" },
                     { icon: BookOpen, label: "Kurs Yönetimi", href: "/admin/courses" },
