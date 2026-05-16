@@ -324,7 +324,7 @@ export function DashboardLayout({
                       )}
                       {group.label}
                     </span>
-                    <ChevronDownIcon
+                    <ChevronDown
                       className={cn(
                         "h-3 w-3 transition-transform duration-200",
                         isCollapsed && "-rotate-90"
