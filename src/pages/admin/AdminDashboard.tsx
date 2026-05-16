@@ -233,28 +233,28 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {statItems.map((stat) => (
             <Link key={stat.title} to={stat.href} className="stat-card group cursor-pointer">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 truncate">
                     {stat.title}
                   </p>
                   {statsLoading ? (
-                    <Skeleton className="h-8 w-16" />
+                    <Skeleton className="h-9 w-20" />
                   ) : (
-                    <p className="text-2xl lg:text-3xl font-bold text-foreground tracking-tight">
+                    <p className="text-3xl font-bold text-foreground tracking-tight leading-none">
                       {stat.value.toLocaleString("tr-TR")}
                     </p>
                   )}
                 </div>
                 <div
-                  className={`h-10 w-10 rounded-xl ${stat.bgColor} flex items-center justify-center transition-transform group-hover:scale-110`}
+                  className={`h-12 w-12 shrink-0 rounded-2xl ${stat.bgColor} ring-1 ring-inset ring-border/40 flex items-center justify-center shadow-sm transition-transform group-hover:scale-110 group-hover:rotate-3`}
                 >
-                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
                 </div>
               </div>
-              <div className="flex items-center gap-1 mt-3 pt-3 border-t border-border/50">
+              <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-border/50">
                 <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-accent transition-colors" />
-                <span className="text-xs text-muted-foreground group-hover:text-accent transition-colors">
+                <span className="text-xs font-medium text-muted-foreground group-hover:text-accent transition-colors">
                   Detaylı görüntüle
                 </span>
               </div>
@@ -265,31 +265,31 @@ export default function AdminDashboard() {
         {/* Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="stat-card">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-info/10 flex items-center justify-center">
-                <Activity className="h-5 w-5 text-info" />
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 shrink-0 rounded-2xl bg-info/10 ring-1 ring-inset ring-info/20 flex items-center justify-center shadow-sm">
+                <Activity className="h-6 w-6 text-info" />
               </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Aktif Kayıtlar</p>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Aktif Kayıtlar</p>
                 {statsLoading ? (
                   <Skeleton className="h-7 w-12 mt-1" />
                 ) : (
-                  <p className="text-xl font-bold text-foreground">{stats?.activeEnrollments ?? 0}</p>
+                  <p className="text-2xl font-bold text-foreground leading-none mt-1">{stats?.activeEnrollments ?? 0}</p>
                 )}
               </div>
             </div>
           </div>
           <div className="stat-card">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-success/10 flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-success" />
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 shrink-0 rounded-2xl bg-success/10 ring-1 ring-inset ring-success/20 flex items-center justify-center shadow-sm">
+                <TrendingUp className="h-6 w-6 text-success" />
               </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tamamlanan Kayıtlar</p>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Tamamlanan Kayıtlar</p>
                 {statsLoading ? (
                   <Skeleton className="h-7 w-12 mt-1" />
                 ) : (
-                  <p className="text-xl font-bold text-foreground">{stats?.completedEnrollments ?? 0}</p>
+                  <p className="text-2xl font-bold text-foreground leading-none mt-1">{stats?.completedEnrollments ?? 0}</p>
                 )}
               </div>
             </div>
@@ -301,50 +301,24 @@ export default function AdminDashboard() {
 
         {/* Quick Access - Compliance & Reports */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Link to="/admin/compliance-report" className="stat-card group cursor-pointer hover:border-accent/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-success/10 flex items-center justify-center">
-                <Shield className="h-4 w-4 text-success" />
+          {[
+            { to: "/admin/compliance-report", icon: Shield, iconClass: "text-success", bgClass: "bg-success/10 ring-success/20", title: "Uyumluluk Raporu", sub: "Firma bazlı durum" },
+            { to: "/admin/recurrence-report", icon: Clock, iconClass: "text-warning", bgClass: "bg-warning/10 ring-warning/20", title: "Tekrar Eğitim Vadesi", sub: "Yaklaşan vadeler" },
+            { to: "/admin/f2f-attendance-report", icon: Users, iconClass: "text-info", bgClass: "bg-info/10 ring-info/20", title: "Yüz Yüze Katılım", sub: "Oturum istatistikleri" },
+            { to: "/admin/documents", icon: FileText, iconClass: "text-accent", bgClass: "bg-accent/10 ring-accent/20", title: "Belge Üretimi", sub: "Tutanak ve raporlar" },
+          ].map((q) => (
+            <Link key={q.to} to={q.to} className="stat-card group cursor-pointer">
+              <div className="flex items-center gap-3">
+                <div className={`h-11 w-11 shrink-0 rounded-xl ${q.bgClass} ring-1 ring-inset flex items-center justify-center shadow-sm transition-transform group-hover:scale-110`}>
+                  <q.icon className={`h-5 w-5 ${q.iconClass}`} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">{q.title}</p>
+                  <p className="text-xs text-muted-foreground truncate">{q.sub}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">Uyumluluk Raporu</p>
-                <p className="text-xs text-muted-foreground">Firma bazlı durum</p>
-              </div>
-            </div>
-          </Link>
-          <Link to="/admin/recurrence-report" className="stat-card group cursor-pointer hover:border-accent/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-warning/10 flex items-center justify-center">
-                <Clock className="h-4 w-4 text-warning" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">Tekrar Eğitim Vadesi</p>
-                <p className="text-xs text-muted-foreground">Yaklaşan vadeler</p>
-              </div>
-            </div>
-          </Link>
-          <Link to="/admin/f2f-attendance-report" className="stat-card group cursor-pointer hover:border-accent/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-info/10 flex items-center justify-center">
-                <Users className="h-4 w-4 text-info" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">Yüz Yüze Katılım</p>
-                <p className="text-xs text-muted-foreground">Oturum istatistikleri</p>
-              </div>
-            </div>
-          </Link>
-          <Link to="/admin/documents" className="stat-card group cursor-pointer hover:border-accent/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-accent/10 flex items-center justify-center">
-                <FileText className="h-4 w-4 text-accent" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">Belge Üretimi</p>
-                <p className="text-xs text-muted-foreground">Tutanak ve raporlar</p>
-              </div>
-            </div>
-          </Link>
+            </Link>
+          ))}
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
