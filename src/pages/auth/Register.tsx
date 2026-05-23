@@ -91,17 +91,26 @@ export default function Register() {
     });
 
     if (error) {
-      if (error.message.includes("already registered")) {
-        toast.error("Bu e-posta adresi zaten kayıtlı");
+      const msg = error.message?.toLowerCase() || "";
+      if (msg.includes("already registered") || msg.includes("already been registered") || msg.includes("user already")) {
+        toast.error("Bu e-posta adresi zaten kayıtlı. Lütfen giriş yapın.");
+      } else if (msg.includes("password")) {
+        toast.error("Şifre gereksinimleri karşılanmıyor (en az 6 karakter).");
       } else {
-        toast.error("Kayıt sırasında bir hata oluştu");
+        toast.error(error.message || "Kayıt sırasında bir hata oluştu");
       }
       setIsLoading(false);
       return;
     }
 
-    toast.success("Kayıt başarılı! Giriş yapabilirsiniz.");
-    navigate(firmCode ? `/login?firma=${firmCode}` : "/login");
+    toast.success("Kayıt başarılı! Yönlendiriliyorsunuz...");
+    // Otomatik giriş yap
+    const { error: signInError } = await signIn(email, password);
+    if (signInError) {
+      navigate(firmCode ? `/login?firma=${firmCode}` : "/login");
+      return;
+    }
+    navigate("/dashboard", { replace: true });
   };
 
   const logoUrl = branding?.logo_url;
