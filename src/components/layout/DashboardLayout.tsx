@@ -57,13 +57,41 @@ interface DashboardLayoutProps {
   userRole?: "student" | "admin" | "company" | "superadmin";
 }
 
-const companyNavItems = [
-  { icon: LayoutDashboard, label: "Gösterge Paneli", href: "/firm" },
-  { icon: Users, label: "Çalışanlar", href: "/firm/employees" },
-  { icon: BookOpen, label: "Eğitimler", href: "/firm/courses" },
-  { icon: BarChart3, label: "Raporlar", href: "/firm/reports" },
-  { icon: Award, label: "Sertifikalar", href: "/firm/certificates" },
+const companyNavGroups = [
+  {
+    label: "Genel",
+    items: [
+      { icon: LayoutDashboard, label: "Gösterge Paneli", href: "/firm" },
+    ],
+  },
+  {
+    label: "İnsan Kaynakları",
+    items: [
+      { icon: Users, label: "Çalışanlar", href: "/firm/employees" },
+    ],
+  },
+  {
+    label: "Eğitim ve Sertifika",
+    items: [
+      { icon: BookOpen, label: "Eğitimler", href: "/firm/courses" },
+      { icon: Award, label: "Sertifikalar", href: "/firm/certificates" },
+    ],
+  },
+  {
+    label: "Raporlama",
+    items: [
+      { icon: BarChart3, label: "Raporlar", href: "/firm/reports" },
+    ],
+  },
+  {
+    label: "Hesap",
+    items: [
+      { icon: Settings, label: "Profil Ayarları", href: "/dashboard/profile" },
+      { icon: HelpCircle, label: "Yardım", href: "/dashboard/help" },
+    ],
+  },
 ];
+const companyNavItems = companyNavGroups.flatMap((g) => g.items);
 
 const studentNavItems = [
   { icon: LayoutDashboard, label: "Gösterge Paneli", href: "/dashboard" },
