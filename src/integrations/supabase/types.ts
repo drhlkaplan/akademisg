@@ -2614,6 +2614,16 @@ export type Database = {
         Returns: undefined
       }
       get_email_by_tc: { Args: { tc_no: string }; Returns: string }
+      get_my_firm_basic: {
+        Args: never
+        Returns: {
+          id: string
+          logo_url: string
+          name: string
+          primary_color: string
+          secondary_color: string
+        }[]
+      }
       get_my_firm_id: { Args: never; Returns: string }
       has_role: {
         Args: {
