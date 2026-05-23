@@ -57,13 +57,41 @@ interface DashboardLayoutProps {
   userRole?: "student" | "admin" | "company" | "superadmin";
 }
 
-const companyNavItems = [
-  { icon: LayoutDashboard, label: "Gösterge Paneli", href: "/firm" },
-  { icon: Users, label: "Çalışanlar", href: "/firm/employees" },
-  { icon: BookOpen, label: "Eğitimler", href: "/firm/courses" },
-  { icon: BarChart3, label: "Raporlar", href: "/firm/reports" },
-  { icon: Award, label: "Sertifikalar", href: "/firm/certificates" },
+const companyNavGroups = [
+  {
+    label: "Genel",
+    items: [
+      { icon: LayoutDashboard, label: "Gösterge Paneli", href: "/firm" },
+    ],
+  },
+  {
+    label: "İnsan Kaynakları",
+    items: [
+      { icon: Users, label: "Çalışanlar", href: "/firm/employees" },
+    ],
+  },
+  {
+    label: "Eğitim ve Sertifika",
+    items: [
+      { icon: BookOpen, label: "Eğitimler", href: "/firm/courses" },
+      { icon: Award, label: "Sertifikalar", href: "/firm/certificates" },
+    ],
+  },
+  {
+    label: "Raporlama",
+    items: [
+      { icon: BarChart3, label: "Raporlar", href: "/firm/reports" },
+    ],
+  },
+  {
+    label: "Hesap",
+    items: [
+      { icon: Settings, label: "Profil Ayarları", href: "/dashboard/profile" },
+      { icon: HelpCircle, label: "Yardım", href: "/dashboard/help" },
+    ],
+  },
 ];
+const companyNavItems = companyNavGroups.flatMap((g) => g.items);
 
 const studentNavItems = [
   { icon: LayoutDashboard, label: "Gösterge Paneli", href: "/dashboard" },
@@ -158,7 +186,7 @@ export function DashboardLayout({
   const location = useLocation();
   const navigate = useNavigate();
   const { branding } = useFirmBranding();
-  const { user, profile, signOut, isFirmAdmin } = useAuth();
+  const { user, profile, signOut, isFirmAdmin, isAdmin } = useAuth();
 
   const navItems = userRole === "student" ? studentNavItems
     : userRole === "company" ? companyNavItems
@@ -270,8 +298,8 @@ export function DashboardLayout({
 
       {/* Navigation */}
       <nav className="sidebar-scroll flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
-        {userRole === "student" || userRole === "company" ? (
-          (userRole === "student" ? studentNavItems : companyNavItems).map((item) => {
+        {userRole === "student" ? (
+          studentNavItems.map((item) => {
             const isActive = location.pathname === item.href;
             return (
               <Link
@@ -290,8 +318,9 @@ export function DashboardLayout({
           })
         ) : (
           (() => {
+            const groups = userRole === "company" ? companyNavGroups : adminNavGroups;
             const q = navQuery.trim().toLocaleLowerCase("tr");
-            const filtered = adminNavGroups
+            const filtered = groups
               .map((g) => ({
                 ...g,
                 items: q ? g.items.filter((i) => i.label.toLocaleLowerCase("tr").includes(q)) : g.items,
@@ -359,55 +388,57 @@ export function DashboardLayout({
         )}
       </nav>
 
-      {/* Role Switcher - Admin only */}
-      {(userRole === "admin" || userRole === "superadmin") && (
-        <div className="px-3 pt-2 border-t border-sidebar-border/50">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-between text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 text-xs h-9"
-              >
-                <span className="flex items-center gap-2">
-                  <ArrowRightLeft className="h-3.5 w-3.5" />
-                  Rol Değiştir
-                </span>
-                <ChevronDown className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="center" className="w-52">
-              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-                Paneli Değiştir
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => navigate("/admin")}
-                className={cn("cursor-pointer", location.pathname.startsWith("/admin") && "bg-accent/10 font-medium")}
-              >
-                <Shield className="mr-2 h-4 w-4 text-accent" />
-                Yönetici Paneli
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => navigate("/dashboard")}
-                className={cn("cursor-pointer", location.pathname.startsWith("/dashboard") && "bg-accent/10 font-medium")}
-              >
-                <GraduationCap className="mr-2 h-4 w-4 text-blue-500" />
-                Öğrenci Paneli
-              </DropdownMenuItem>
-              {isFirmAdmin && (
-                <DropdownMenuItem
-                  onClick={() => navigate("/firm")}
-                  className={cn("cursor-pointer", location.pathname.startsWith("/firm") && "bg-accent/10 font-medium")}
+
+      {/* Role Switcher - shown when user has access to multiple panels */}
+      {(() => {
+        const availablePanels = [
+          isAdmin && { key: "admin", label: "Yönetici Paneli", icon: Shield, color: "text-accent", href: "/admin" },
+          isFirmAdmin && { key: "firm", label: "Firma Yetkilisi Paneli", icon: Building2, color: "text-emerald-500", href: "/firm" },
+          { key: "student", label: "Öğrenci Paneli", icon: GraduationCap, color: "text-blue-500", href: "/dashboard" },
+        ].filter(Boolean) as { key: string; label: string; icon: any; color: string; href: string }[];
+
+        if (availablePanels.length < 2) return null;
+
+        return (
+          <div className="px-3 pt-2 border-t border-sidebar-border/50">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-between text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 text-xs h-9"
                 >
-                  <Building2 className="mr-2 h-4 w-4 text-emerald-500" />
-                  Firma Yetkilisi Paneli
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      )}
+                  <span className="flex items-center gap-2">
+                    <ArrowRightLeft className="h-3.5 w-3.5" />
+                    Rol Değiştir
+                  </span>
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" align="center" className="w-52">
+                <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                  Paneli Değiştir
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {availablePanels.map((p) => {
+                  const Icon = p.icon;
+                  return (
+                    <DropdownMenuItem
+                      key={p.key}
+                      onClick={() => navigate(p.href)}
+                      className={cn("cursor-pointer", location.pathname.startsWith(p.href) && "bg-accent/10 font-medium")}
+                    >
+                      <Icon className={cn("mr-2 h-4 w-4", p.color)} />
+                      {p.label}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      })()}
+
 
       {/* User Section */}
       <div className="p-3 border-t border-sidebar-border/40 bg-sidebar-background/40">
