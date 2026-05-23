@@ -25,7 +25,7 @@ export default function Register() {
   const [isLoading, setIsLoading] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
 
-  const { signUp } = useAuth();
+  const { signUp, signIn } = useAuth();
   const { setFirmCode, branding } = useFirmBranding();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
