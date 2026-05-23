@@ -298,8 +298,8 @@ export function DashboardLayout({
 
       {/* Navigation */}
       <nav className="sidebar-scroll flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
-        {userRole === "student" || userRole === "company" ? (
-          (userRole === "student" ? studentNavItems : companyNavItems).map((item) => {
+        {userRole === "student" ? (
+          studentNavItems.map((item) => {
             const isActive = location.pathname === item.href;
             return (
               <Link
@@ -318,8 +318,9 @@ export function DashboardLayout({
           })
         ) : (
           (() => {
+            const groups = userRole === "company" ? companyNavGroups : adminNavGroups;
             const q = navQuery.trim().toLocaleLowerCase("tr");
-            const filtered = adminNavGroups
+            const filtered = groups
               .map((g) => ({
                 ...g,
                 items: q ? g.items.filter((i) => i.label.toLocaleLowerCase("tr").includes(q)) : g.items,
@@ -386,6 +387,7 @@ export function DashboardLayout({
           })()
         )}
       </nav>
+
 
       {/* Role Switcher - Admin only */}
       {(userRole === "admin" || userRole === "superadmin") && (
