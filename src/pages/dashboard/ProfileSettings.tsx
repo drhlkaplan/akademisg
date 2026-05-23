@@ -35,8 +35,8 @@ export default function ProfileSettings() {
 
   useEffect(() => {
     if (profile?.firm_id) {
-      supabase.from("firms").select("name").eq("id", profile.firm_id).maybeSingle()
-        .then(({ data }) => setFirmName(data?.name || null));
+      (supabase as any).rpc("get_my_firm_basic")
+        .then(({ data }: { data: Array<{ name: string }> | null }) => setFirmName(data?.[0]?.name || null));
     }
   }, [profile?.firm_id]);
 
