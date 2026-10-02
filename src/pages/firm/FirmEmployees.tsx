@@ -20,6 +20,7 @@ import { useFirmBranding } from "@/contexts/FirmBrandingContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useRef } from "react";
+import { parseUserFile, downloadUserTemplate } from "@/lib/userImport";
 import {
   Users, Search, Loader2, UserCircle, Plus, Upload, BookOpen,
   CheckCircle, AlertCircle, FileSpreadsheet, X,
@@ -190,52 +191,20 @@ export default function FirmEmployees() {
   });
 
   // CSV parsing
-  const handleCsvFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCsvFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      const lines = text.split("\n").filter((l) => l.trim());
-      if (lines.length < 2) {
-        toast({ title: "Hata", description: "CSV dosyasında veri bulunamadı.", variant: "destructive" });
-        return;
-      }
-
-      const headers = lines[0].split(/[,;]/).map((h) => h.trim().toLowerCase());
-      const employees = [];
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(/[,;]/).map((v) => v.trim().replace(/^["']|["']$/g, ""));
-        const row: any = {};
-        headers.forEach((h, idx) => {
-          if (h === "ad" || h === "first_name" || h === "isim") row.first_name = values[idx];
-          else if (h === "soyad" || h === "last_name") row.last_name = values[idx];
-          else if (h === "e-posta" || h === "email" || h === "eposta") row.email = values[idx];
-          else if (h === "şifre" || h === "password" || h === "sifre") row.password = values[idx];
-          else if (h === "tc" || h === "tc_identity" || h === "tc kimlik" || h === "tckimlik") row.tc_identity = values[idx];
-          else if (h === "telefon" || h === "phone" || h === "tel") row.phone = values[idx];
-        });
-
-        if (row.email && row.first_name && row.last_name) {
-          employees.push(row);
-        }
-      }
-
-      if (employees.length === 0) {
-        toast({
-          title: "Hata",
-          description: "Geçerli çalışan verisi bulunamadı. CSV sütunları: Ad, Soyad, E-posta (zorunlu), Şifre, TC, Telefon",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      csvUploadMutation.mutate(employees);
-    };
-    reader.readAsText(file);
     e.target.value = "";
+    if (!file) return;
+    try {
+      const employees = await parseUserFile(file);
+      if (employees.length === 0) {
+        toast({ title: "Hata", description: "Geçerli veri yok. Sütunlar: Ad, Soyad, E-posta (zorunlu), Şifre, TC, Telefon", variant: "destructive" });
+        return;
+      }
+      csvUploadMutation.mutate(employees.map(({ role, ...r }) => r));
+    } catch {
+      toast({ title: "Hata", description: "Dosya okunamadı.", variant: "destructive" });
+    }
   };
 
   // Toggle user selection
@@ -278,7 +247,7 @@ export default function FirmEmployees() {
               }}
             >
               <Upload className="mr-2 h-4 w-4" />
-              CSV Yükle
+              Excel Yükle
             </Button>
             <Button
               variant="outline"
@@ -476,10 +445,14 @@ export default function FirmEmployees() {
               <p>Ayşe;Demir;ayse@firma.com;Sifre456;;05559876543</p>
             </div>
 
+            <Button variant="outline" className="w-full" onClick={() => downloadUserTemplate(false)}>
+              Örnek Excel Şablonunu İndir
+            </Button>
+
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv,.txt"
+              accept=".xlsx,.xls,.csv"
               className="hidden"
               onChange={handleCsvFile}
             />

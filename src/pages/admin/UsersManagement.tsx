@@ -1,3 +1,4 @@
+import { AddUsersDialog } from "@/components/admin/AddUsersDialog";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -89,6 +90,7 @@ const roleBadgeVariants: Record<AppRole, "destructive" | "warning" | "info" | "s
 };
 
 export default function UsersManagement() {
+  const [addOpen, setAddOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -310,6 +312,7 @@ export default function UsersManagement() {
 
   return (
     <>
+      <AddUsersDialog open={addOpen} onOpenChange={setAddOpen} onDone={() => refetch()} />
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -326,7 +329,7 @@ export default function UsersManagement() {
               <RefreshCw className="mr-2 h-4 w-4" />
               Yenile
             </Button>
-            <Button variant="accent">
+            <Button variant="accent" onClick={() => setAddOpen(true)}>
               <UserPlus className="mr-2 h-4 w-4" />
               Yeni Kullanıcı
             </Button>

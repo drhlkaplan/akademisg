@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
       .eq("user_id", callerUser.id);
 
     const callerRoles = roles?.map((r: any) => r.role) || [];
-    const isFirmAdmin = callerRoles.includes("firm_admin");
+    const isFirmAdmin = callerRoles.includes("firm_admin") || callerRoles.includes("company_admin");
     const isAdmin = callerRoles.includes("admin") || callerRoles.includes("super_admin");
 
     if (!isFirmAdmin && !isAdmin) {
@@ -63,16 +63,24 @@ Deno.serve(async (req) => {
       .eq("user_id", callerUser.id)
       .single();
 
-    if (!callerProfile?.firm_id) {
+    const body = await req.json();
+    const { action } = body;
+    const ALLOWED_ROLES = isAdmin ? ["student", "company_admin", "trainer", "admin"] : ["student"];
+    const pickRole = (r: any) => (r && ALLOWED_ROLES.includes(r) ? r : "student");
+    const firmId: string | null = isAdmin
+      ? (body.firm_id && body.firm_id !== "none" ? body.firm_id : null)
+      : (callerProfile?.firm_id ?? null);
+    if (!isAdmin && !firmId) {
       return new Response(JSON.stringify({ error: "Firma bilgisi bulunamadı" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const firmId = callerProfile.firm_id;
-    const body = await req.json();
-    const { action } = body;
+    const applyRole = async (uid: string, role: string) => {
+      if (role !== "student") {
+        await adminClient.from("user_roles").upsert({ user_id: uid, role }, { onConflict: "user_id,role", ignoreDuplicates: true });
+      }
+    };
 
     // ---- ACTION: add_employee ----
     if (action === "add_employee") {
@@ -108,6 +116,7 @@ Deno.serve(async (req) => {
         .from("profiles")
         .update({ firm_id: firmId, phone: phone || null })
         .eq("user_id", newUser.user.id);
+      await applyRole(newUser.user.id, pickRole(body.role));
 
       return new Response(JSON.stringify({ success: true, user_id: newUser.user.id }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -158,6 +167,7 @@ Deno.serve(async (req) => {
             .from("profiles")
             .update({ firm_id: firmId, phone: phone || null })
             .eq("user_id", newUser.user.id);
+          await applyRole(newUser.user.id, pickRole(emp.role));
 
           results.push({ email, success: true });
         } catch (e) {
@@ -181,11 +191,9 @@ Deno.serve(async (req) => {
       }
 
       // Verify these users belong to the firm
-      const { data: firmProfiles } = await adminClient
-        .from("profiles")
-        .select("user_id")
-        .eq("firm_id", firmId)
-        .in("user_id", user_ids);
+      let pq = adminClient.from("profiles").select("user_id").in("user_id", user_ids);
+      if (!isAdmin) pq = pq.eq("firm_id", firmId);
+      const { data: firmProfiles } = await pq;
 
       const validUserIds = firmProfiles?.map((p: any) => p.user_id) || [];
 
