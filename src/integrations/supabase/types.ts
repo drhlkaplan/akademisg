@@ -2734,6 +2734,19 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_my_firm_branding: {
+        Args: {
+          _bg_color: string
+          _favicon_url: string
+          _footer_text: string
+          _login_bg_url: string
+          _logo_url: string
+          _primary_color: string
+          _secondary_color: string
+          _welcome_message: string
+        }
+        Returns: undefined
+      }
       verify_certificate: {
         Args: { _code: string }
         Returns: {
