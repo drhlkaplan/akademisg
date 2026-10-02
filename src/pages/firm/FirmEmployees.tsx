@@ -445,10 +445,14 @@ export default function FirmEmployees() {
               <p>Ayşe;Demir;ayse@firma.com;Sifre456;;05559876543</p>
             </div>
 
+            <Button variant="outline" className="w-full" onClick={() => downloadUserTemplate(false)}>
+              Örnek Excel Şablonunu İndir
+            </Button>
+
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv,.txt"
+              accept=".xlsx,.xls,.csv"
               className="hidden"
               onChange={handleCsvFile}
             />
