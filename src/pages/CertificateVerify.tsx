@@ -74,7 +74,6 @@ export default function CertificateVerify() {
     }
   };
 
-    return null; // TC masking now handled server-side
 
   return (
     <MainLayout>

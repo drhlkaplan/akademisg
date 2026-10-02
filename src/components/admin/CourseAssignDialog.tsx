@@ -81,28 +81,31 @@ export function CourseAssignDialog({
         throw new Error("Kullanıcı veya kurs seçilmedi");
       }
 
-      const inserts = resolvedUserIds.flatMap((userId) =>
-        selectedCourseIds.map((courseId) => ({
-          user_id: userId,
-          course_id: courseId,
-          status: "active" as const,
-          started_at: new Date().toISOString(),
-        }))
-      );
-
-      // Insert in batches to avoid conflicts
       const results: { success: number; skipped: number } = { success: 0, skipped: 0 };
-      for (const ins of inserts) {
-        const { error } = await supabase.from("enrollments").insert(ins);
-        if (error) {
-          if (error.code === "23505") {
-            results.skipped++;
-          } else {
-            console.error("Enrollment insert error:", error);
-            results.skipped++;
-          }
-        } else {
-          results.success++;
+      const nowIso = new Date().toISOString();
+      const { data: existing } = await supabase
+        .from("enrollments")
+        .select("id, user_id, course_id, deleted_at")
+        .in("user_id", resolvedUserIds)
+        .in("course_id", selectedCourseIds);
+      const key = (u: string, c: string) => `${u}|${c}`;
+      const existingMap = new Map((existing || []).map((e) => [key(e.user_id, e.course_id), e]));
+
+      for (const userId of resolvedUserIds) {
+        for (const courseId of selectedCourseIds) {
+          const ex = existingMap.get(key(userId, courseId));
+          if (ex && !ex.deleted_at) { results.skipped++; continue; }
+          const { error } = ex
+            ? await supabase.from("enrollments").update({
+                deleted_at: null, status: "active", started_at: nowIso, progress_percent: 0,
+                ...(firmId ? { firm_id: firmId } : {}),
+              }).eq("id", ex.id)
+            : await supabase.from("enrollments").insert({
+                user_id: userId, course_id: courseId, status: "active", started_at: nowIso,
+                ...(firmId ? { firm_id: firmId } : {}),
+              });
+          if (error) { console.error("Enrollment error:", error); results.skipped++; }
+          else results.success++;
         }
       }
       return results;
