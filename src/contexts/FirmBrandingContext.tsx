@@ -79,7 +79,7 @@ export function FirmBrandingProvider({ children }: { children: ReactNode }) {
       (async () => {
         const { data } = await supabase.rpc("get_my_firm_branding" as never);
         if (cancelled) return;
-        const row = Array.isArray(data) ? data[0] : null;
+        const rows = data as unknown as unknown[] | null; const row = Array.isArray(rows) ? rows[0] : null;
         if (row) {
           const b = toBranding(row);
           setBranding(b);
@@ -101,7 +101,7 @@ export function FirmBrandingProvider({ children }: { children: ReactNode }) {
     (async () => {
       const { data } = await supabase.rpc("get_firm_branding_by_code" as never, { _code: firmCode } as never);
       if (cancelled) return;
-      const row = Array.isArray(data) ? data[0] : null;
+      const rows = data as unknown as unknown[] | null; const row = Array.isArray(rows) ? rows[0] : null;
       setBranding(row ? toBranding(row) : null);
       setIsLoading(false);
     })();
