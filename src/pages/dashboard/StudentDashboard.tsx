@@ -75,7 +75,7 @@ const dangerClassLabel: Record<DangerClass, string> = {
 };
 
 export default function StudentDashboard() {
-  const { user, profile, isFirmAdmin } = useAuth();
+  const { user, profile, isFirmAdmin, roles } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [enrollments, setEnrollments] = useState<EnrollmentWithCourse[]>([]);
@@ -85,12 +85,12 @@ export default function StudentDashboard() {
   const [joiningGroup, setJoiningGroup] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Redirect firm admins to firm panel
+  // Redirect firm admins without a student role to the firm panel
   useEffect(() => {
-    if (isFirmAdmin) {
+    if (isFirmAdmin && !roles.includes("student")) {
       navigate("/firm", { replace: true });
     }
-  }, [isFirmAdmin, navigate]);
+  }, [isFirmAdmin, roles, navigate]);
 
   useEffect(() => {
     if (!user) return;
