@@ -33,12 +33,14 @@ export default function Login() {
 
   const from = (location.state as { from?: Location })?.from?.pathname || "/dashboard";
 
-  // Pre-fill firm code from URL
+  // Pre-fill firm code from URL; otherwise start with the default theme
   useEffect(() => {
     const codeFromUrl = searchParams.get("firma") || searchParams.get("code");
     if (codeFromUrl) {
       setFirmCodeLocal(codeFromUrl);
       setFirmCode(codeFromUrl);
+    } else {
+      setFirmCode(null);
     }
   }, [searchParams]);
 
@@ -168,7 +170,7 @@ export default function Login() {
                   value={firmCode}
                   onChange={(e) => {
                     setFirmCodeLocal(e.target.value);
-                    if (e.target.value.trim()) setFirmCode(e.target.value.trim());
+                    setFirmCode(e.target.value.trim() || null);
                   }}
                 />
               </div>
