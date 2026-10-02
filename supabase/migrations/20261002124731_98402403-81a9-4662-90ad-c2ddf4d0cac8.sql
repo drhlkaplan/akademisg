@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.set_enrollment_firm_id() FROM PUBLIC, anon, authenticated;
