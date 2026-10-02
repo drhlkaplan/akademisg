@@ -2614,6 +2614,23 @@ export type Database = {
         Returns: undefined
       }
       get_email_by_tc: { Args: { tc_no: string }; Returns: string }
+      get_firm_branding_by_code: {
+        Args: { _code: string }
+        Returns: {
+          bg_color: string
+          custom_css: string
+          favicon_url: string
+          firm_code: string
+          footer_text: string
+          id: string
+          login_bg_url: string
+          logo_url: string
+          name: string
+          primary_color: string
+          secondary_color: string
+          welcome_message: string
+        }[]
+      }
       get_my_firm_basic: {
         Args: never
         Returns: {
@@ -2622,6 +2639,23 @@ export type Database = {
           name: string
           primary_color: string
           secondary_color: string
+        }[]
+      }
+      get_my_firm_branding: {
+        Args: never
+        Returns: {
+          bg_color: string
+          custom_css: string
+          favicon_url: string
+          firm_code: string
+          footer_text: string
+          id: string
+          login_bg_url: string
+          logo_url: string
+          name: string
+          primary_color: string
+          secondary_color: string
+          welcome_message: string
         }[]
       }
       get_my_firm_id: { Args: never; Returns: string }
