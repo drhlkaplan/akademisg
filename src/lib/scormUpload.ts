@@ -232,29 +232,8 @@ export async function uploadAndCreateScormPackage(
       onProgress?.(Math.round((uploaded / total) * 90));
       return;
     }
-    const res = await fetch(proxyUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        apikey,
-        "Content-Type": ct,
-        "x-r2-key": fullKey,
-      },
-      body: fileBuf,
-    });
-    if (!res.ok) {
-      const t = await res.text().catch(() => "");
-      throw new Error(`Proxy upload başarısız (${res.status}): ${clean} ${t.slice(0, 200)}`);
-    }
-    try {
-      const json = await res.json();
-      if (!publicBase && typeof json?.publicUrl === "string" && json.key) {
-        const idx = json.publicUrl.lastIndexOf("/" + json.key);
-        if (idx > 0) publicBase = json.publicUrl.slice(0, idx);
-      }
-    } catch {
-      /* ignore */
-    }
+    const base = await putFileToR2(fullKey, fileBuf, ct, accessToken);
+    if (!publicBase && base) publicBase = base;
     uploaded++;
     onProgress?.(Math.round((uploaded / total) * 90));
   };

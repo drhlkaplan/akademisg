@@ -541,28 +541,8 @@ export function LessonManagement({ courseId, courseTitle, onBack }: LessonManage
           return;
         }
 
-        const res = await fetch(proxyUrl, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "apikey": apikey,
-            "Content-Type": contentType,
-            "x-r2-key": fullKey,
-          },
-          body: buffer,
-        });
-        if (!res.ok) {
-          const text = await res.text().catch(() => "");
-          throw new Error(`Proxy upload başarısız (${res.status}): ${cleanPath} ${text.slice(0, 200)}`);
-        }
-        try {
-          const json = await res.json();
-          if (!publicBaseFromServer && typeof json?.publicUrl === "string" && json.key) {
-            // strip the key suffix to get public base
-            const idx = json.publicUrl.lastIndexOf("/" + json.key);
-            if (idx > 0) publicBaseFromServer = json.publicUrl.slice(0, idx);
-          }
-        } catch { /* ignore parse */ }
+        const base = await putFileToR2(fullKey, buffer, contentType, accessToken);
+        if (!publicBaseFromServer && base) publicBaseFromServer = base;
         uploadedCount++;
         setUploadProgress(Math.round((uploadedCount / totalFiles) * 90));
       };
