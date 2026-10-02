@@ -2734,6 +2734,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      verify_certificate: {
+        Args: { _code: string }
+        Returns: {
+          certificate_number: string
+          course_title: string
+          danger_class: Database["public"]["Enums"]["danger_class"]
+          duration_hours: number
+          holder_name_short: string
+          holder_tc_masked: string
+          issue_date: string
+        }[]
+      }
     }
     Enums: {
       app_role:
