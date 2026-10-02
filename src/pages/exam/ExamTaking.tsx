@@ -88,10 +88,9 @@ export default function ExamTaking() {
     queryKey: ["exam-questions-take", examId],
     queryFn: async () => {
       if (!examId) throw new Error("Exam ID required");
-      const { data, error } = await supabase
-        .from("questions_for_students" as any)
-        .select("id, exam_id, question_text, question_type, options, points")
-        .eq("exam_id", examId);
+      const { data, error } = await (supabase.rpc as any)("get_exam_questions_for_student", {
+        _exam_id: examId,
+      });
       if (error) throw error;
 
       let questionList = (data || []) as unknown as QuestionForStudent[];

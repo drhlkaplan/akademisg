@@ -2614,6 +2614,17 @@ export type Database = {
         Returns: undefined
       }
       get_email_by_tc: { Args: { tc_no: string }; Returns: string }
+      get_exam_questions_for_student: {
+        Args: { _exam_id: string }
+        Returns: {
+          exam_id: string
+          id: string
+          options: Json
+          points: number
+          question_text: string
+          question_type: Database["public"]["Enums"]["question_type"]
+        }[]
+      }
       get_firm_branding_by_code: {
         Args: { _code: string }
         Returns: {
@@ -2694,6 +2705,10 @@ export type Database = {
           _total_time?: number
         }
         Returns: string
+      }
+      redistribute_exam_points: {
+        Args: { _exam_id: string }
+        Returns: undefined
       }
       reject_join_request: {
         Args: { _note?: string; _request_id: string }

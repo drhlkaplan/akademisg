@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.trg_redistribute_exam_points() FROM public, anon, authenticated;
