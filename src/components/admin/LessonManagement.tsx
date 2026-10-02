@@ -1,3 +1,4 @@
+import { putFileToR2 } from "@/lib/scormUpload";
 import { useState, useMemo } from "react";
 import JSZip from "jszip";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
