@@ -21,6 +21,7 @@ import {
   Users,
   Building2,
   Settings,
+  Palette,
   LogOut,
   Menu,
   Bell,
@@ -80,12 +81,13 @@ const companyNavGroups = [
   {
     label: "Raporlama",
     items: [
-      { icon: BarChart3, label: "Raporlar", href: "/firm/reports" },
+      { icon: BarChart3, label: "Raporlar ve Analizler", href: "/firm/reports" },
     ],
   },
   {
     label: "Hesap",
     items: [
+      { icon: Palette, label: "Firma Teması", href: "/firm/settings" },
       { icon: Settings, label: "Profil Ayarları", href: "/dashboard/profile" },
       { icon: HelpCircle, label: "Yardım", href: "/dashboard/help" },
     ],
