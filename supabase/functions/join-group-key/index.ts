@@ -171,8 +171,8 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        enrolledCount: enrollmentsToInsert.length,
-        message: `"${group.name}" grubuna katıldınız. ${enrollmentsToInsert.length} eğitim eklendi.`,
+        enrolledCount: addedCount,
+        message: `"${group.name}" grubuna katıldınız. ${addedCount} eğitim eklendi.`,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
