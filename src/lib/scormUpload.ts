@@ -98,6 +98,71 @@ function getContentTypeByPath(path: string): string {
   return map[ext] ?? "application/octet-stream";
 }
 
+const DIRECT_UPLOAD_THRESHOLD = 6 * 1024 * 1024; // 6 MB
+
+/**
+ * Upload one file to R2. Small files go through the r2-proxy-upload function;
+ * large files (videos etc.) use a presigned PUT URL directly to R2, because the
+ * function gateway rejects large request bodies.
+ * Returns the public base URL when it can be derived.
+ */
+export async function putFileToR2(
+  fullKey: string,
+  buf: ArrayBuffer,
+  contentType: string,
+  accessToken: string,
+): Promise<string> {
+  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID as string;
+  const apikey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+
+  if (buf.byteLength > DIRECT_UPLOAD_THRESHOLD) {
+    const slash = fullKey.lastIndexOf("/");
+    const prefix = fullKey.slice(0, slash);
+    const name = fullKey.slice(slash + 1);
+    const { data, error } = await supabase.functions.invoke("r2-sign-upload", {
+      body: { packagePrefix: prefix, files: [{ path: name, contentType }] },
+    });
+    if (error || !data?.signed?.[0]?.url) {
+      throw new Error(`Büyük dosya için yükleme adresi alınamadı: ${name}`);
+    }
+    const put = await fetch(data.signed[0].url, {
+      method: "PUT",
+      headers: { "Content-Type": contentType },
+      body: buf,
+    });
+    if (!put.ok) {
+      const t = await put.text().catch(() => "");
+      throw new Error(`Büyük dosya yüklenemedi (${put.status}): ${name} ${t.slice(0, 200)}`);
+    }
+    return (data.publicBase as string) || "";
+  }
+
+  const res = await fetch(`https://${projectId}.supabase.co/functions/v1/r2-proxy-upload`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      apikey,
+      "Content-Type": contentType,
+      "x-r2-key": fullKey,
+    },
+    body: buf,
+  });
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`Proxy upload başarısız (${res.status}): ${fullKey} ${t.slice(0, 200)}`);
+  }
+  try {
+    const json = await res.json();
+    if (typeof json?.publicUrl === "string" && json.key) {
+      const idx = json.publicUrl.lastIndexOf("/" + json.key);
+      if (idx > 0) return json.publicUrl.slice(0, idx);
+    }
+  } catch {
+    /* ignore */
+  }
+  return "";
+}
+
 export interface UploadScormResult {
   packageId: string;
   packageUrl: string;
