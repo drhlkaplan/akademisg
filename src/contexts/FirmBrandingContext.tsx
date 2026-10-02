@@ -29,21 +29,33 @@ const FirmBrandingContext = createContext<FirmBrandingContextType | undefined>(u
 
 const FIRM_CODE_KEY = "isg_firm_code";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const toBranding = (data: any): FirmBranding => ({
+  firm_id: data.id,
+  firm_code: data.firm_code || "",
+  name: data.name,
+  logo_url: data.logo_url,
+  primary_color: data.primary_color || "#f97316",
+  secondary_color: data.secondary_color || "#1a2744",
+  bg_color: data.bg_color || "#f8fafc",
+  welcome_message: data.welcome_message || "Eğitimlerinize hoş geldiniz",
+  login_bg_url: data.login_bg_url,
+  footer_text: data.footer_text,
+  custom_css: data.custom_css,
+  favicon_url: data.favicon_url,
+});
+
 export function FirmBrandingProvider({ children }: { children: ReactNode }) {
-  const { profile } = useAuth();
-  const [firmCode, setFirmCodeState] = useState<string | null>(() => {
-    return localStorage.getItem(FIRM_CODE_KEY);
-  });
+  const { user, profile, isLoading: authLoading } = useAuth();
+  const [firmCode, setFirmCodeState] = useState<string | null>(() => localStorage.getItem(FIRM_CODE_KEY));
   const [branding, setBranding] = useState<FirmBranding | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const setFirmCode = (code: string | null) => {
-    setFirmCodeState(code);
-    if (code) {
-      localStorage.setItem(FIRM_CODE_KEY, code);
-    } else {
-      localStorage.removeItem(FIRM_CODE_KEY);
-    }
+    const c = code?.trim() || null;
+    setFirmCodeState(c);
+    if (c) localStorage.setItem(FIRM_CODE_KEY, c);
+    else localStorage.removeItem(FIRM_CODE_KEY);
   };
 
   const clearBranding = () => {
@@ -51,110 +63,50 @@ export function FirmBrandingProvider({ children }: { children: ReactNode }) {
     setFirmCode(null);
   };
 
-  // Auto-load branding from profile's firm_id when user logs in
-  // Clear branding when user has no firm
   useEffect(() => {
-    // If user is logged in but has no firm, clear any existing branding
-    if (profile && !profile.firm_id) {
-      if (branding) {
-        setBranding(null);
-        // Clear stored firm code so it doesn't persist
-        setFirmCode(null);
-      }
-      return;
-    }
-
-    if (!profile?.firm_id) return;
-    // If we already have branding for this firm, skip
-    if (branding?.firm_id === profile.firm_id) return;
-
+    if (authLoading) return;
     let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase
-        .from("firms")
-        .select("id, firm_code, name, logo_url, primary_color, secondary_color, bg_color, welcome_message, login_bg_url, footer_text, custom_css, favicon_url")
-        .eq("id", profile.firm_id!)
-        .eq("is_active", true)
-        .maybeSingle();
 
-      if (cancelled) return;
-      if (data && !error) {
-        const code = data.firm_code || "";
-        setFirmCode(code);
-        setBranding({
-          firm_id: data.id,
-          firm_code: code,
-          name: data.name,
-          logo_url: data.logo_url,
-          primary_color: data.primary_color || "#f97316",
-          secondary_color: data.secondary_color || "#1a2744",
-          bg_color: data.bg_color || "#f8fafc",
-          welcome_message: data.welcome_message || "Eğitimlerinize hoş geldiniz",
-          login_bg_url: data.login_bg_url,
-          footer_text: data.footer_text,
-          custom_css: data.custom_css,
-          favicon_url: data.favicon_url,
-        });
+    // Signed-in: theme always comes from the user's own firm (never a stored code)
+    if (user) {
+      if (!profile) return;
+      if (!profile.firm_id) {
+        setBranding(null);
+        setFirmCode(null);
+        return;
       }
-    })();
-    return () => { cancelled = true; };
-  }, [profile?.firm_id]);
-
-  // Load branding by firm_code (for login page pre-fill)
-  // Only applies to users who are logged in AND have a firm_id, or on login pages with firm_code
-  useEffect(() => {
-    if (!firmCode) {
-      // Don't clear branding if it was loaded from profile
-      if (!profile?.firm_id) setBranding(null);
-      return;
+      setIsLoading(true);
+      (async () => {
+        const { data } = await supabase.rpc("get_my_firm_branding" as never);
+        if (cancelled) return;
+        const rows = data as unknown as unknown[] | null; const row = Array.isArray(rows) ? rows[0] : null;
+        if (row) {
+          const b = toBranding(row);
+          setBranding(b);
+          setFirmCode(b.firm_code || null);
+        } else {
+          setBranding(null);
+        }
+        setIsLoading(false);
+      })();
+      return () => { cancelled = true; };
     }
 
-    // IMPORTANT: If user is logged in but does NOT belong to a firm,
-    // do NOT apply firm branding (prevents theme leaking to non-firm users)
-    if (profile && !profile.firm_id) {
+    // Signed-out: theme only from an entered firm code
+    if (!firmCode) {
       setBranding(null);
       return;
     }
-
-    // If branding already loaded for this code, skip
-    if (branding?.firm_code === firmCode) return;
-
-    let cancelled = false;
     setIsLoading(true);
-
     (async () => {
-      const { data, error } = await supabase
-        .from("firms")
-        .select("id, firm_code, name, logo_url, primary_color, secondary_color, bg_color, welcome_message, login_bg_url, footer_text, custom_css, favicon_url")
-        .eq("firm_code", firmCode)
-        .eq("is_active", true)
-        .maybeSingle();
-
+      const { data } = await supabase.rpc("get_firm_branding_by_code" as never, { _code: firmCode } as never);
       if (cancelled) return;
-
-      if (data && !error) {
-        setBranding({
-          firm_id: data.id,
-          firm_code: data.firm_code || firmCode,
-          name: data.name,
-          logo_url: data.logo_url,
-          primary_color: data.primary_color || "#f97316",
-          secondary_color: data.secondary_color || "#1a2744",
-          bg_color: data.bg_color || "#f8fafc",
-          welcome_message: data.welcome_message || "Eğitimlerinize hoş geldiniz",
-          login_bg_url: data.login_bg_url,
-          footer_text: data.footer_text,
-          custom_css: data.custom_css,
-          favicon_url: data.favicon_url,
-        });
-      } else {
-        setBranding(null);
-      }
+      const rows = data as unknown as unknown[] | null; const row = Array.isArray(rows) ? rows[0] : null;
+      setBranding(row ? toBranding(row) : null);
       setIsLoading(false);
     })();
-
     return () => { cancelled = true; };
-  }, [firmCode, profile]);
+  }, [user?.id, profile?.firm_id, profile, firmCode, authLoading]);
 
   // Apply custom CSS and favicon when branding changes
   useEffect(() => {
