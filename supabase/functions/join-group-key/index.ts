@@ -128,18 +128,30 @@ Deno.serve(async (req) => {
 
     const { data: existingEnrollments } = await adminClient
       .from("enrollments")
-      .select("course_id")
+      .select("id, course_id, deleted_at")
       .eq("user_id", user.id)
       .in("course_id", courseIds);
 
-    const existingCourseIds = new Set((existingEnrollments || []).map((e) => e.course_id));
     const nowIso = new Date().toISOString();
+    const firmId = group.firm_id ?? null;
+
+    // Revive previously cancelled (soft-deleted) enrollments
+    const revived = (existingEnrollments || []).filter((e) => e.deleted_at);
+    for (const e of revived) {
+      await adminClient
+        .from("enrollments")
+        .update({ deleted_at: null, status: "active", started_at: nowIso, progress_percent: 0, ...(firmId ? { firm_id: firmId } : {}) })
+        .eq("id", e.id);
+    }
+
+    const existingCourseIds = new Set((existingEnrollments || []).map((e) => e.course_id));
 
     const enrollmentsToInsert = courseIds
       .filter((courseId) => !existingCourseIds.has(courseId))
       .map((courseId) => ({
         user_id: user.id,
         course_id: courseId,
+        firm_id: firmId,
         status: "active",
         started_at: nowIso,
         progress_percent: 0,
@@ -154,12 +166,13 @@ Deno.serve(async (req) => {
         });
       }
     }
+    const addedCount = enrollmentsToInsert.length + revived.length;
 
     return new Response(
       JSON.stringify({
         success: true,
-        enrolledCount: enrollmentsToInsert.length,
-        message: `"${group.name}" grubuna katıldınız. ${enrollmentsToInsert.length} eğitim eklendi.`,
+        enrolledCount: addedCount,
+        message: `"${group.name}" grubuna katıldınız. ${addedCount} eğitim eklendi.`,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

@@ -2734,6 +2734,31 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_my_firm_branding: {
+        Args: {
+          _bg_color: string
+          _favicon_url: string
+          _footer_text: string
+          _login_bg_url: string
+          _logo_url: string
+          _primary_color: string
+          _secondary_color: string
+          _welcome_message: string
+        }
+        Returns: undefined
+      }
+      verify_certificate: {
+        Args: { _code: string }
+        Returns: {
+          certificate_number: string
+          course_title: string
+          danger_class: Database["public"]["Enums"]["danger_class"]
+          duration_hours: number
+          holder_name_short: string
+          holder_tc_masked: string
+          issue_date: string
+        }[]
+      }
     }
     Enums: {
       app_role:

@@ -49,12 +49,10 @@ export default function CertificateVerify() {
     setSearchResult(null);
 
     try {
-      const { data, error } = await supabase
-        .from("public_certificates" as any)
-        .select("holder_name_short, holder_tc_masked, course_title, danger_class, duration_hours, issue_date, certificate_number")
-        .eq("certificate_number", certificateCode.trim().toUpperCase())
-        .eq("is_valid", true)
-        .maybeSingle();
+      const { data: rows, error } = await (supabase.rpc as any)("verify_certificate", {
+        _code: certificateCode.trim(),
+      });
+      const data = Array.isArray(rows) ? rows[0] : rows;
 
       if (error) throw error;
 
@@ -74,7 +72,6 @@ export default function CertificateVerify() {
     }
   };
 
-    return null; // TC masking now handled server-side
 
   return (
     <MainLayout>
