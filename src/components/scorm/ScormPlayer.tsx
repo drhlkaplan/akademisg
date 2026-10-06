@@ -97,7 +97,8 @@ function buildContentUrl(packageUrl: string, entryPoint: string): string {
 /**
  * HEAD-check a URL. Returns true on 2xx. Falls back to GET on opaque/CORS errors.
  */
-async function checkUrl(url: string): Promise<boolean> {
+async function checkUrl(url: string): Promise<boolean | null> {
+  // true = exists, false = definite 404/error status, null = unknown (CORS/network blocked)
   try {
     const res = await fetch(url, { method: "HEAD" });
     return res.ok;
@@ -106,35 +107,36 @@ async function checkUrl(url: string): Promise<boolean> {
       const res = await fetch(url, { method: "GET" });
       return res.ok;
     } catch {
-      return false;
+      return null;
     }
   }
 }
 
 /**
- * Resolve the actual launch file. Tries the configured entryPoint first,
- * then common SCORM launch paths.
+ * Resolve the actual launch file. Tries common SCORM launch paths.
+ * If the CDN blocks verification (CORS on other origins), falls back to story.html.
  */
 async function resolveLaunchUrl(packageUrl: string, _entryPoint: string): Promise<string | null> {
   const base = rewriteToCustomDomain(packageUrl).replace(/\/+$/, "");
-  // Priority: story.html → html5/story.html → index.html
-  // index_lms.html is intentionally excluded (incorrect launch file for our packages)
   const candidates = [
     `${base}/story.html`,
     `${base}/html5/story.html`,
     `${base}/index.html`,
   ];
 
-  // Deduplicate while preserving order
-  const seen = new Set<string>();
+  let unknown = false;
   for (const url of candidates) {
-    if (seen.has(url)) continue;
-    seen.add(url);
     // eslint-disable-next-line no-await-in-loop
-    if (await checkUrl(url)) {
+    const r = await checkUrl(url);
+    if (r === true) {
       console.log("[scorm] Resolved launch URL:", url);
       return url;
     }
+    if (r === null) unknown = true;
+  }
+  if (unknown) {
+    console.warn("[scorm] Launch check blocked; falling back to story.html");
+    return candidates[0];
   }
   return null;
 }
