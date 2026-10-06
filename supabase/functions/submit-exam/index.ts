@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
     const effectiveTotal = Math.min(totalQuestions, questions.length);
     const score = Math.round((correctAnswers / effectiveTotal) * 100);
     // Ön sınav (pre_test) türündeki sınavlarda geçme notu aranmaz, her zaman geçer
-    const isPreTest = exam.exam_type === "pre_test";
+    const isPreTest = isPreTestExam;
     const passed = isPreTest ? true : score >= (exam.passing_score || 70);
     const status = passed ? "passed" : "failed";
 
