@@ -97,44 +97,100 @@ Yanıtı SADECE şu JSON formatında ver (markdown kod bloğu kullanma, ham JSON
         });
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const questionsSchema = {
+      type: "json_schema",
+      name: "exam_questions",
+      strict: true,
+      schema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["questions"],
+        properties: {
+          questions: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["question_text", "options", "correct_answer", "points"],
+              properties: {
+                question_text: { type: "string" },
+                options: { type: "array", items: { type: "string" } },
+                correct_answer: { type: "string" },
+                points: { type: "integer" },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
       method: "POST",
       headers: {
+        "Lovable-API-Key": LOVABLE_API_KEY,
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "X-Lovable-AIG-SDK": "fetch",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
+        model: "openai/gpt-6-astra",
+        instructions: systemPrompt,
+        input: [{ role: "user", content: userPrompt }],
+        reasoning: { effort: "low" },
+        store: false,
+        stream: true,
+        ...(action === "generate_questions" ? { text: { format: questionsSchema } } : {}),
       }),
     });
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Çok fazla istek gönderildi, lütfen biraz bekleyin." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI kullanım limiti doldu." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+    if (!response.ok || !response.body) {
       const t = await response.text();
       console.error("AI gateway error:", response.status, t);
-      return new Response(JSON.stringify({ error: "AI servis hatası" }), {
-        status: 500,
+      const msg =
+        response.status === 429 ? "Çok fazla istek gönderildi, lütfen biraz bekleyin." :
+        response.status === 402 ? "AI kredisi yetersiz. Çalışma alanına kredi ekleyin." :
+        response.status === 403 ? "AI erişimi şu anda engelli. Çalışma alanı AI ayarlarını kontrol edin." :
+        "AI servis hatası";
+      return new Response(JSON.stringify({ error: msg }), {
+        status: [429, 402, 403].includes(response.status) ? response.status : 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || "";
+    // Consume the SSE stream and collect output text
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+    let content = "";
+    let streamError = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, idx).trim();
+        buf = buf.slice(idx + 1);
+        if (!line.startsWith("data:")) continue;
+        const payload = line.slice(5).trim();
+        if (!payload || payload === "[DONE]") continue;
+        try {
+          const ev = JSON.parse(payload);
+          if (ev.type === "response.output_text.delta") content += ev.delta || "";
+          else if (ev.type === "response.failed" || ev.type === "error") {
+            streamError = ev.response?.error?.message || ev.message || "AI yanıtı başarısız";
+          }
+        } catch { /* ignore partial */ }
+      }
+    }
+
+    if (!content) {
+      console.error("AI empty response", streamError);
+      return new Response(JSON.stringify({ error: streamError || "AI boş yanıt döndü" }), {
+        status: 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     return new Response(JSON.stringify({ content }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
