@@ -1693,6 +1693,45 @@ export type Database = {
           },
         ]
       }
+      question_bank: {
+        Row: {
+          category: string
+          correct_answer: string
+          created_at: string
+          exam_hint: string | null
+          id: string
+          main_category: string
+          options: Json
+          question_text: string
+          source: string | null
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          correct_answer: string
+          created_at?: string
+          exam_hint?: string | null
+          id?: string
+          main_category: string
+          options?: Json
+          question_text: string
+          source?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          correct_answer?: string
+          created_at?: string
+          exam_hint?: string | null
+          id?: string
+          main_category?: string
+          options?: Json
+          question_text?: string
+          source?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       questions: {
         Row: {
           correct_answer: string
