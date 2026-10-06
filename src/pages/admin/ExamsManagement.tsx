@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AIContentGenerator } from "@/components/admin/AIContentGenerator";
+import { QuestionBankPicker } from "@/components/admin/QuestionBankPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -868,8 +869,11 @@ export default function ExamsManagement() {
               <DialogTitle>Soru Bankasından Ekle</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
+              {selectedExamId && (
+                <QuestionBankPicker examId={selectedExamId} onDone={() => setIsQuestionBankOpen(false)} />
+              )}
               <div>
-                <Label>Kaynak Sınav Seçin</Label>
+                <Label>veya başka bir sınavdan soru kopyalayın</Label>
                 <Select value={bankSourceExamId} onValueChange={(v) => { setBankSourceExamId(v); setSelectedBankQuestions(new Set()); }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Soru alınacak sınavı seçin" />
