@@ -207,15 +207,33 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (examLesson) {
-      await adminClient.from("lesson_progress").upsert(
-        {
+      // Not: (enrollment_id, lesson_id) benzersiz indeksi kısmi (WHERE lesson_id IS NOT NULL)
+      // olduğu için upsert/onConflict çalışmıyor — elle güncelle/ekle.
+      const lessonStatus = isPreTest ? "completed" : (passed ? "passed" : "failed");
+      const { data: existingLp } = await adminClient
+        .from("lesson_progress")
+        .select("id, lesson_status")
+        .eq("enrollment_id", enrollment_id)
+        .eq("lesson_id", examLesson.id)
+        .maybeSingle();
+      if (existingLp) {
+        // Daha önce geçilmiş bir dersi başarısız durumuna düşürme
+        const alreadyDone = existingLp.lesson_status === "passed" || existingLp.lesson_status === "completed";
+        if (!(alreadyDone && lessonStatus === "failed")) {
+          const { error: upErr } = await adminClient.from("lesson_progress")
+            .update({ lesson_status: lessonStatus, score_raw: score, updated_at: new Date().toISOString() })
+            .eq("id", existingLp.id);
+          if (upErr) console.error("lesson_progress update error:", upErr);
+        }
+      } else {
+        const { error: insErr } = await adminClient.from("lesson_progress").insert({
           enrollment_id,
           lesson_id: examLesson.id,
-          lesson_status: isPreTest ? "completed" : (passed ? "passed" : "failed"),
+          lesson_status: lessonStatus,
           score_raw: score,
-        },
-        { onConflict: "enrollment_id,lesson_id" }
-      );
+        });
+        if (insErr) console.error("lesson_progress insert error:", insErr);
+      }
     }
 
     // Final geçildiyse eğitimi tamamla ve otomatik sertifika üret
