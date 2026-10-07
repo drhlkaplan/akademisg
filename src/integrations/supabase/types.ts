@@ -1029,6 +1029,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          currency: string
           deleted_at: string | null
           discount: number
           employees: number
@@ -1053,6 +1054,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          currency?: string
           deleted_at?: string | null
           discount?: number
           employees: number
@@ -1077,6 +1079,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          currency?: string
           deleted_at?: string | null
           discount?: number
           employees?: number

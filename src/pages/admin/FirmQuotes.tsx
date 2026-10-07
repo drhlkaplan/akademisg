@@ -28,8 +28,13 @@ const DEFAULT_COMPANY: Company = {
   name: "İSGAKADEMİ", logo: "", address: "", taxOffice: "", taxNo: "", phone: "", email: "", iban: "", bank: "", web: "www.gratisakademi.com",
 };
 
-const usd = (n: number) => `$${n.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const tl = (n: number) => `₺${n.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+type Cur = "USD" | "EUR" | "TRY";
+const CURS: Record<Cur, { label: string; sym: string }> = {
+  USD: { label: "Dolar ($)", sym: "$" },
+  EUR: { label: "Euro (€)", sym: "€" },
+  TRY: { label: "Türk Lirası (₺)", sym: "₺" },
+};
+const fmtCur = (n: number, c: Cur) => `${CURS[c].sym}${n.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 async function loadSetting<T>(key: string, def: T): Promise<T> {
   const { data } = await supabase.from("site_settings").select("value").eq("key", key).maybeSingle();
@@ -52,7 +57,8 @@ export default function FirmQuotes() {
   const [employees, setEmployees] = useState(1);
   const [unit, setUnit] = useState(8);
   const [discount, setDiscount] = useState(0);
-  const [rate, setRate] = useState(0);
+  const [currency, setCurrency] = useState<Cur>("USD");
+  const [rates, setRates] = useState<{ USD: number; EUR: number }>({ USD: 0, EUR: 0 });
   const [rateLoading, setRateLoading] = useState(false);
   const [validDays, setValidDays] = useState(15);
   const [notes, setNotes] = useState("Fiyatlara KDV dahil değildir. TL tutarları teklif tarihindeki kur üzerinden hesaplanmıştır; ödeme günündeki kur esas alınır.");
@@ -79,12 +85,24 @@ export default function FirmQuotes() {
   const fetchRate = async () => {
     setRateLoading(true);
     try {
-      const r = await fetch("https://open.er-api.com/v6/latest/USD");
-      const j = await r.json();
-      if (j?.rates?.TRY) setRate(Number(j.rates.TRY.toFixed(4)));
+      const [u, e] = await Promise.all([
+        fetch("https://open.er-api.com/v6/latest/USD").then((r) => r.json()),
+        fetch("https://open.er-api.com/v6/latest/EUR").then((r) => r.json()),
+      ]);
+      setRates({
+        USD: u?.rates?.TRY ? Number(u.rates.TRY.toFixed(4)) : 0,
+        EUR: e?.rates?.TRY ? Number(e.rates.TRY.toFixed(4)) : 0,
+      });
     } catch { toast({ title: "Kur alınamadı", description: "Kuru elle girebilirsiniz.", variant: "destructive" }); }
     setRateLoading(false);
   };
+
+  // Fiyat listesi USD bazlı; seçilen para birimine çevir
+  const toCur = (usdAmount: number, c: Cur) =>
+    c === "USD" ? usdAmount : c === "TRY" ? usdAmount * rates.USD : rates.EUR > 0 ? (usdAmount * rates.USD) / rates.EUR : usdAmount;
+  // Seçilen para birimindeki tutarın USD ve TL karşılığı
+  const toUsd = (n: number) => (currency === "USD" ? n : rates.USD > 0 ? (n * curRate) / rates.USD : n);
+  const curRate = currency === "TRY" ? 1 : rates[currency] || 0;
 
   useEffect(() => {
     loadSetting("quote_pricing", DEFAULT_PRICING).then(setPricing);
@@ -92,7 +110,7 @@ export default function FirmQuotes() {
     fetchRate();
   }, []);
 
-  useEffect(() => { setUnit(pricing[hz][usage]); }, [hz, usage, pricing]);
+  useEffect(() => { setUnit(Number(toCur(pricing[hz][usage], currency).toFixed(2))); }, [hz, usage, pricing, currency, rates.USD, rates.EUR]);
   useEffect(() => {
     if (!firm) return;
     if (firm.hazard_class_new) setHz(firm.hazard_class_new);
@@ -120,8 +138,8 @@ export default function FirmQuotes() {
     const { data: u } = await supabase.auth.getUser();
     const { error } = await (supabase as any).from("firm_quotes").upsert({
       quote_no: quoteNo, firm_id: firm?.id || null, firm_name: firm?.name || "-", hazard_class: hz, usage_type: usage,
-      employees, unit_price: unit, discount, vat_rate: pricing.vat, exchange_rate: rate,
-      net_usd: calc.net, total_usd: calc.total, total_try: calc.total * rate,
+      employees, unit_price: unit, discount, vat_rate: pricing.vat, exchange_rate: curRate, currency,
+      net_usd: toUsd(calc.net), total_usd: toUsd(calc.total), total_try: calc.total * curRate,
       valid_until: validUntil.toISOString().slice(0, 10), notes, html, created_by: u.user?.id,
     }, { onConflict: "quote_no" });
     if (error) { toast({ title: "Teklif kaydedilemedi", description: error.message, variant: "destructive" }); return false; }
@@ -183,14 +201,23 @@ export default function FirmQuotes() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Çalışan Sayısı</Label><Input type="number" min={1} value={employees} onChange={(e) => setEmployees(Math.max(1, num(e.target.value)))} /></div>
-                <div><Label>Kişi Başı ($)</Label><Input type="number" step="0.01" value={unit} onChange={(e) => setUnit(num(e.target.value))} /></div>
+                <div><Label>Kişi Başı ({CURS[currency].sym})</Label><Input type="number" step="0.01" value={unit} onChange={(e) => setUnit(num(e.target.value))} /></div>
                 <div><Label>İskonto (%)</Label><Input type="number" value={discount} onChange={(e) => setDiscount(num(e.target.value))} /></div>
                 <div><Label>Geçerlilik (gün)</Label><Input type="number" value={validDays} onChange={(e) => setValidDays(num(e.target.value))} /></div>
               </div>
-              <div><Label>USD/TRY Kuru</Label>
-                <div className="flex gap-2"><Input type="number" step="0.0001" value={rate} onChange={(e) => setRate(num(e.target.value))} />
-                  <Button variant="outline" size="icon" onClick={fetchRate} disabled={rateLoading}><RefreshCw className={`h-4 w-4 ${rateLoading ? "animate-spin" : ""}`} /></Button></div>
+              <div><Label>Teklif Para Birimi</Label>
+                <Select value={currency} onValueChange={(v) => setCurrency(v as Cur)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{(Object.keys(CURS) as Cur[]).map((c) => <SelectItem key={c} value={c}>{CURS[c].label}</SelectItem>)}</SelectContent>
+                </Select>
               </div>
+              {currency !== "TRY" && (
+                <div><Label>{currency}/TRY Kuru</Label>
+                  <div className="flex gap-2"><Input type="number" step="0.0001" value={rates[currency]} onChange={(e) => setRates({ ...rates, [currency]: num(e.target.value) })} />
+                    <Button variant="outline" size="icon" onClick={fetchRate} disabled={rateLoading}><RefreshCw className={`h-4 w-4 ${rateLoading ? "animate-spin" : ""}`} /></Button></div>
+                  <p className="text-xs text-muted-foreground mt-1">Diğer kur: {currency === "USD" ? `EUR/TRY ${rates.EUR || "-"}` : `USD/TRY ${rates.USD || "-"}`}</p>
+                </div>
+              )}
               <div><Label>Notlar</Label><Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
               <Button variant="outline" className="w-full" onClick={() => printRef.current && saveQuote(printRef.current.innerHTML)} disabled={!firm}><Save className="mr-2 h-4 w-4" />Teklifi Kaydet</Button>
               <Button className="w-full" onClick={print} disabled={!firm}><Printer className="mr-2 h-4 w-4" />Kaydet ve Yazdır / PDF</Button>
@@ -211,7 +238,7 @@ export default function FirmQuotes() {
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>PROFORMA FATURA / TEKLİF</h1>
-                    <div style={{ fontSize: 12 }}>No: <b>{quoteNo}</b><br />Tarih: {today.toLocaleDateString("tr-TR")}<br />Geçerlilik: {validUntil.toLocaleDateString("tr-TR")}<br />Kur (USD/TRY): {rate.toFixed(4)}</div>
+                    <div style={{ fontSize: 12 }}>No: <b>{quoteNo}</b><br />Tarih: {today.toLocaleDateString("tr-TR")}<br />Geçerlilik: {validUntil.toLocaleDateString("tr-TR")}<br />Para Birimi: {currency}{currency !== "TRY" && <> · Kur ({currency}/TRY): {curRate.toFixed(4)}</>}</div>
                   </div>
                 </div>
                 <div className="grid" style={{ display: "flex", gap: 24, marginBottom: 16, fontSize: 12 }}>
@@ -219,14 +246,14 @@ export default function FirmQuotes() {
                   <div style={{ flex: 1 }}><b>FİRMA ÖZELLİKLERİ</b><br />İş kolu: {firm?.sectors?.name || firm?.sector || "-"}<br />Tehlike sınıfı: {HZ[hz].label} ({HZ[hz].info})<br />Çalışan sayısı: {employees}<br />Kullanım: {usageLabel}</div>
                 </div>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                  <thead><tr>{["Açıklama", "Miktar", "Birim ($)", "Tutar ($)", "Tutar (₺)"].map((h, i) => <th key={h} style={{ border: "1px solid #ccc", padding: 6, textAlign: i ? "right" : "left", background: "hsl(var(--muted))" }}>{h}</th>)}</tr></thead>
+                  <thead><tr>{["Açıklama", "Miktar", `Birim (${CURS[currency].sym})`, `Tutar (${CURS[currency].sym})`].map((h, i) => <th key={h} style={{ border: "1px solid #ccc", padding: 6, textAlign: i ? "right" : "left", background: "hsl(var(--muted))" }}>{h}</th>)}</tr></thead>
                   <tbody>
                     {[
-                      [`${HZ[hz].label} İSG Eğitimi — ${usageLabel} (online platform, sınav, sertifika)`, `${employees} kişi`, usd(unit), usd(calc.gross), tl(calc.gross * rate)],
-                      ...(discount ? [[`İskonto (%${discount})`, "", "", `-${usd(calc.disc)}`, `-${tl(calc.disc * rate)}`]] : []),
-                      ["Ara Toplam", "", "", usd(calc.net), tl(calc.net * rate)],
-                      [`KDV (%${pricing.vat})`, "", "", usd(calc.vat), tl(calc.vat * rate)],
-                      ["GENEL TOPLAM", "", "", usd(calc.total), tl(calc.total * rate)],
+                      [`${HZ[hz].label} İSG Eğitimi — ${usageLabel} (online platform, sınav, sertifika)`, `${employees} kişi`, fmtCur(unit, currency), fmtCur(calc.gross, currency)],
+                      ...(discount ? [[`İskonto (%${discount})`, "", "", `-${fmtCur(calc.disc, currency)}`]] : []),
+                      ["Ara Toplam", "", "", fmtCur(calc.net, currency)],
+                      [`KDV (%${pricing.vat})`, "", "", fmtCur(calc.vat, currency)],
+                      ["GENEL TOPLAM", "", "", fmtCur(calc.total, currency)],
                     ].map((row, i, arr) => (
                       <tr key={i} style={{ fontWeight: i >= arr.length - 1 ? 700 : 400 }}>
                         {row.map((c, j) => <td key={j} style={{ border: "1px solid #ccc", padding: 6, textAlign: j ? "right" : "left" }}>{c}</td>)}
