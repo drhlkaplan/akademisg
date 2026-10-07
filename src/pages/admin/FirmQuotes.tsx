@@ -28,8 +28,13 @@ const DEFAULT_COMPANY: Company = {
   name: "İSGAKADEMİ", logo: "", address: "", taxOffice: "", taxNo: "", phone: "", email: "", iban: "", bank: "", web: "www.gratisakademi.com",
 };
 
-const usd = (n: number) => `$${n.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const tl = (n: number) => `₺${n.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+type Cur = "USD" | "EUR" | "TRY";
+const CURS: Record<Cur, { label: string; sym: string }> = {
+  USD: { label: "Dolar ($)", sym: "$" },
+  EUR: { label: "Euro (€)", sym: "€" },
+  TRY: { label: "Türk Lirası (₺)", sym: "₺" },
+};
+const fmtCur = (n: number, c: Cur) => `${CURS[c].sym}${n.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 async function loadSetting<T>(key: string, def: T): Promise<T> {
   const { data } = await supabase.from("site_settings").select("value").eq("key", key).maybeSingle();
@@ -52,7 +57,8 @@ export default function FirmQuotes() {
   const [employees, setEmployees] = useState(1);
   const [unit, setUnit] = useState(8);
   const [discount, setDiscount] = useState(0);
-  const [rate, setRate] = useState(0);
+  const [currency, setCurrency] = useState<Cur>("USD");
+  const [rates, setRates] = useState<{ USD: number; EUR: number }>({ USD: 0, EUR: 0 });
   const [rateLoading, setRateLoading] = useState(false);
   const [validDays, setValidDays] = useState(15);
   const [notes, setNotes] = useState("Fiyatlara KDV dahil değildir. TL tutarları teklif tarihindeki kur üzerinden hesaplanmıştır; ödeme günündeki kur esas alınır.");
@@ -79,12 +85,24 @@ export default function FirmQuotes() {
   const fetchRate = async () => {
     setRateLoading(true);
     try {
-      const r = await fetch("https://open.er-api.com/v6/latest/USD");
-      const j = await r.json();
-      if (j?.rates?.TRY) setRate(Number(j.rates.TRY.toFixed(4)));
+      const [u, e] = await Promise.all([
+        fetch("https://open.er-api.com/v6/latest/USD").then((r) => r.json()),
+        fetch("https://open.er-api.com/v6/latest/EUR").then((r) => r.json()),
+      ]);
+      setRates({
+        USD: u?.rates?.TRY ? Number(u.rates.TRY.toFixed(4)) : 0,
+        EUR: e?.rates?.TRY ? Number(e.rates.TRY.toFixed(4)) : 0,
+      });
     } catch { toast({ title: "Kur alınamadı", description: "Kuru elle girebilirsiniz.", variant: "destructive" }); }
     setRateLoading(false);
   };
+
+  // Fiyat listesi USD bazlı; seçilen para birimine çevir
+  const toCur = (usdAmount: number, c: Cur) =>
+    c === "USD" ? usdAmount : c === "TRY" ? usdAmount * rates.USD : rates.EUR > 0 ? (usdAmount * rates.USD) / rates.EUR : usdAmount;
+  // Seçilen para birimindeki tutarın USD ve TL karşılığı
+  const toUsd = (n: number) => (currency === "USD" ? n : rates.USD > 0 ? (n * curRate) / rates.USD : n);
+  const curRate = currency === "TRY" ? 1 : rates[currency] || 0;
 
   useEffect(() => {
     loadSetting("quote_pricing", DEFAULT_PRICING).then(setPricing);
