@@ -1151,6 +1151,7 @@ export type Database = {
         Row: {
           address: string | null
           bg_color: string | null
+          certificate_template_id: string | null
           created_at: string | null
           custom_css: string | null
           deleted_at: string | null
@@ -1181,6 +1182,7 @@ export type Database = {
         Insert: {
           address?: string | null
           bg_color?: string | null
+          certificate_template_id?: string | null
           created_at?: string | null
           custom_css?: string | null
           deleted_at?: string | null
@@ -1211,6 +1213,7 @@ export type Database = {
         Update: {
           address?: string | null
           bg_color?: string | null
+          certificate_template_id?: string | null
           created_at?: string | null
           custom_css?: string | null
           deleted_at?: string | null
@@ -1239,6 +1242,13 @@ export type Database = {
           workplace_type_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "firms_certificate_template_id_fkey"
+            columns: ["certificate_template_id"]
+            isOneToOne: false
+            referencedRelation: "certificate_templates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "firms_sector_id_fkey"
             columns: ["sector_id"]
