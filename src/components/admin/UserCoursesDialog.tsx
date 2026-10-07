@@ -30,6 +30,7 @@ import {
   AlertCircle,
   Trash2,
   Plus,
+  RotateCcw,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CourseAssignDialog } from "./CourseAssignDialog";
@@ -54,6 +55,23 @@ export function UserCoursesDialog({ open, onOpenChange, userId, userName }: User
   const queryClient = useQueryClient();
   const [assignOpen, setAssignOpen] = useState(false);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+  const [confirmResetId, setConfirmResetId] = useState<string | null>(null);
+
+  const resetMutation = useMutation({
+    mutationFn: async (enrollmentId: string) => {
+      const { error } = await supabase.rpc("admin_reset_enrollment", { _enrollment_id: enrollmentId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-enrollments", userId] });
+      queryClient.invalidateQueries({ queryKey: ["user-lesson-progress", userId] });
+      queryClient.invalidateQueries({ queryKey: ["user-exams", userId] });
+      queryClient.invalidateQueries({ queryKey: ["course-enrollments"] });
+      toast({ title: "Eğitim sıfırlandı", description: "Kullanıcı eğitime en baştan başlayacak." });
+      setConfirmResetId(null);
+    },
+    onError: (e: any) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
 
   const { data: enrollments = [], isLoading } = useQuery({
     queryKey: ["user-enrollments", userId],
@@ -195,6 +213,15 @@ export function UserCoursesDialog({ open, onOpenChange, userId, userName }: User
                           <Button
                             size="icon"
                             variant="ghost"
+                            className="h-8 w-8"
+                            title="Eğitimi sıfırla"
+                            onClick={() => setConfirmResetId(enrollment.id)}
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
                             className="h-8 w-8 text-destructive"
                             onClick={() => setConfirmRemoveId(enrollment.id)}
                           >
@@ -253,6 +280,22 @@ export function UserCoursesDialog({ open, onOpenChange, userId, userName }: User
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               İptal Et
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={!!confirmResetId} onOpenChange={(o) => !o && setConfirmResetId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eğitim sıfırlansın mı?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tüm ders ilerlemesi, SCORM verileri, sınav sonuçları ve bu eğitime ait sertifika silinecek. Kullanıcı eğitime yeni atanmış gibi en baştan başlayacak.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Vazgeç</AlertDialogCancel>
+            <AlertDialogAction onClick={() => confirmResetId && resetMutation.mutate(confirmResetId)}>
+              Sıfırla
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

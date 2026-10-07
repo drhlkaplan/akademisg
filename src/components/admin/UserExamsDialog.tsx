@@ -1,11 +1,18 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge-custom";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, FileQuestion } from "lucide-react";
+import { Loader2, FileQuestion, RotateCcw } from "lucide-react";
 
 interface UserExamsDialogProps {
   open: boolean;
@@ -15,6 +22,22 @@ interface UserExamsDialogProps {
 }
 
 export function UserExamsDialog({ open, onOpenChange, userId, userName }: UserExamsDialogProps) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [resetId, setResetId] = useState<string | null>(null);
+  const resetMutation = useMutation({
+    mutationFn: async (examId: string) => {
+      const { error } = await supabase.rpc("admin_reset_exam", { _user_id: userId, _exam_id: examId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["user-exams", userId] });
+      qc.invalidateQueries({ queryKey: ["user-lesson-progress", userId] });
+      toast({ title: "Sınav sıfırlandı", description: "Deneme hakları yenilendi." });
+      setResetId(null);
+    },
+    onError: (e: any) => toast({ title: "Hata", description: e.message, variant: "destructive" }),
+  });
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["user-exams", userId],
     queryFn: async () => {
@@ -100,6 +123,11 @@ export function UserExamsDialog({ open, onOpenChange, userId, userName }: UserEx
                       ) : (
                         <Badge variant="secondary" className="text-xs">Denenmedi</Badge>
                       )}
+                      {it.attempts > 0 && (
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setResetId(it.id)}>
+                          <RotateCcw className="h-3 w-3 mr-1" /> Sıfırla
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -108,6 +136,20 @@ export function UserExamsDialog({ open, onOpenChange, userId, userName }: UserEx
           )}
         </ScrollArea>
       </DialogContent>
+      <AlertDialog open={!!resetId} onOpenChange={(o) => !o && setResetId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sınav sıfırlansın mı?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Kullanıcının bu sınavdaki tüm denemeleri silinecek ve sınava yeniden başlayabilecek.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Vazgeç</AlertDialogCancel>
+            <AlertDialogAction onClick={() => resetId && resetMutation.mutate(resetId)}>Sıfırla</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
