@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge-custom";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -109,6 +110,7 @@ export default function FirmsManagement() {
     custom_css: "",
     favicon_url: "",
     sector_id: "",
+    sector_ids: [] as string[],
     hazard_class_new: "az_tehlikeli",
   });
 
@@ -210,6 +212,7 @@ export default function FirmsManagement() {
         custom_css: data.custom_css || null,
         favicon_url: data.favicon_url || null,
         sector_id: data.sector_id || null,
+        sector_ids: data.sector_ids,
         hazard_class_new: (data.hazard_class_new || "az_tehlikeli") as any,
       });
       if (error) throw error;
@@ -253,6 +256,7 @@ export default function FirmsManagement() {
           custom_css: data.custom_css || null,
           favicon_url: data.favicon_url || null,
           sector_id: data.sector_id || null,
+          sector_ids: data.sector_ids,
           hazard_class_new: (data.hazard_class_new || "az_tehlikeli") as any,
         })
         .eq("id", data.id);
@@ -367,7 +371,8 @@ export default function FirmsManagement() {
       searchQuery === "" ||
       firm.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       firm.tax_number?.includes(searchQuery) ||
-      firm.sector?.toLowerCase().includes(searchQuery.toLowerCase());
+      firm.sector?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      sectors.some(s => firm.sector_ids?.includes(s.id) && s.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesStatus =
       statusFilter === "all" ||
@@ -399,6 +404,7 @@ export default function FirmsManagement() {
       custom_css: "",
       favicon_url: "",
       sector_id: "",
+      sector_ids: [],
       hazard_class_new: "az_tehlikeli",
     });
     setDialogOpen(true);
@@ -426,6 +432,7 @@ export default function FirmsManagement() {
       custom_css: (firm as any).custom_css || "",
       favicon_url: (firm as any).favicon_url || "",
       sector_id: firm.sector_id || "",
+      sector_ids: firm.sector_ids?.length ? firm.sector_ids : firm.sector_id ? [firm.sector_id] : [],
       hazard_class_new: firm.hazard_class_new || "az_tehlikeli",
     });
     setDialogOpen(true);
@@ -469,6 +476,7 @@ export default function FirmsManagement() {
       custom_css: "",
       favicon_url: "",
       sector_id: "",
+      sector_ids: [],
       hazard_class_new: "az_tehlikeli",
     });
   };
@@ -609,7 +617,7 @@ export default function FirmsManagement() {
                       </TableCell>
                        <TableCell className="hidden md:table-cell">
                          <span className="text-muted-foreground">
-                           {firm.sector || "-"}
+                            {sectors.filter(s => firm.sector_ids?.includes(s.id)).map(s => s.name).join(", ") || firm.sector || "-"}
                          </span>
                        </TableCell>
                        <TableCell className="hidden md:table-cell">
@@ -747,17 +755,25 @@ export default function FirmsManagement() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Sektör Tanımı</Label>
-                <Select value={formData.sector_id || "__none__"} onValueChange={v => setFormData({ ...formData, sector_id: v === "__none__" ? "" : v })}>
-                  <SelectTrigger><SelectValue placeholder="Sektör seçin..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Seçilmedi</SelectItem>
-                    {sectors.map((s: any) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">Yönetmelik uyumlu sektör eşlemesi</p>
+                <Label>Sektörler</Label>
+                <div className="max-h-44 overflow-y-auto rounded-md border border-input p-3 space-y-2">
+                  {sectors.map(s => (
+                    <label key={s.id} className="flex items-start gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={formData.sector_ids.includes(s.id)}
+                        onCheckedChange={checked => setFormData(current => {
+                          const ids = checked === true
+                            ? [...current.sector_ids, s.id]
+                            : current.sector_ids.filter(id => id !== s.id);
+                          return { ...current, sector_ids: ids, sector_id: ids[0] || "" };
+                        })}
+                        className="mt-0.5"
+                      />
+                      <span>{s.name}</span>
+                    </label>
+                  ))}
+                  {sectors.length === 0 && <p className="text-sm text-muted-foreground">Sektör bulunamadı</p>}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Tehlike Sınıfı</Label>

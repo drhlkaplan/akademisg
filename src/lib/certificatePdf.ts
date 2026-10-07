@@ -143,7 +143,7 @@ export async function buildCertificatePdf(d: CertPrintData): Promise<jsPDF> {
   const cols = [
     { x: 60, head: t.trainer1_name ? "Eğitmen" : "", name: t.trainer1_name, title: t.trainer1_title },
     { x: 140, head: t.trainer2_name ? "Eğitmen" : "", name: t.trainer2_name, title: t.trainer2_title },
-    { x: 230, head: "", name: d.firm?.name || "", title: t.employer_title || "İşveren" },
+    { x: 230, head: t.employer_title || "İşveren", name: d.firm?.name || "", title: "" },
   ];
   doc.setFontSize(9.5);
   cols.forEach((c) => {
