@@ -2774,6 +2774,14 @@ export type Database = {
       }
     }
     Functions: {
+      admin_reset_enrollment: {
+        Args: { _enrollment_id: string }
+        Returns: undefined
+      }
+      admin_reset_exam: {
+        Args: { _exam_id: string; _user_id: string }
+        Returns: undefined
+      }
       approve_join_request: {
         Args: { _note?: string; _request_id: string }
         Returns: string
