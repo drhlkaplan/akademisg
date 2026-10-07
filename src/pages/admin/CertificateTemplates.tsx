@@ -17,6 +17,32 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Eye, Star, Palette, FileText } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DEFAULT_CERT_TOPICS, DEFAULT_LEGAL_TEXT, type CertTopicGroup } from "@/lib/certificateTopics";
+import { buildCertificatePdf } from "@/lib/certificatePdf";
+
+const emptyForm = () => ({
+  name: "",
+  description: "",
+  header_text: "TEMEL EĞİTİM BELGESİ",
+  body_text: "",
+  footer_text: "",
+  logo_url: "",
+  background_color: "#ffffff",
+  accent_color: "#c8561a",
+  is_default: false,
+  company_name: "İSGAKADEMİ",
+  company_contact: "www.gratisakademi.com",
+  legal_text: DEFAULT_LEGAL_TEXT,
+  delivery_method: "Uzaktan Eğitim",
+  trainer1_name: "",
+  trainer1_title: "İş Güvenliği Uzmanı",
+  trainer2_name: "",
+  trainer2_title: "İşyeri Hekimi",
+  employer_title: "İşveren",
+  use_firm_logo: true,
+  topics: JSON.parse(JSON.stringify(DEFAULT_CERT_TOPICS)) as CertTopicGroup[],
+});
 
 interface CertificateTemplate {
   id: string;
@@ -116,27 +142,35 @@ export default function CertificateTemplates() {
     if (template) {
       setIsEditing(true);
       setSelectedTemplate(template);
+      const t: any = template;
+      const base = emptyForm();
       setForm({
-        name: template.name,
-        description: template.description || "",
-        header_text: template.header_text || "",
-        body_text: template.body_text || "",
-        footer_text: template.footer_text || "",
-        logo_url: template.logo_url || "",
-        background_color: template.background_color || "#1a2744",
-        accent_color: template.accent_color || "#f97316",
-        is_default: template.is_default || false,
+        ...base,
+        name: t.name,
+        description: t.description || "",
+        header_text: t.header_text || base.header_text,
+        body_text: t.body_text || "",
+        footer_text: t.footer_text || "",
+        logo_url: t.logo_url || "",
+        background_color: t.background_color || base.background_color,
+        accent_color: t.accent_color || base.accent_color,
+        is_default: t.is_default || false,
+        company_name: t.company_name || "",
+        company_contact: t.company_contact || "",
+        legal_text: t.legal_text || DEFAULT_LEGAL_TEXT,
+        delivery_method: t.delivery_method || "Uzaktan Eğitim",
+        trainer1_name: t.trainer1_name || "",
+        trainer1_title: t.trainer1_title || base.trainer1_title,
+        trainer2_name: t.trainer2_name || "",
+        trainer2_title: t.trainer2_title || base.trainer2_title,
+        employer_title: t.employer_title || "İşveren",
+        use_firm_logo: t.use_firm_logo !== false,
+        topics: Array.isArray(t.topics) && t.topics.length ? t.topics : base.topics,
       });
     } else {
       setIsEditing(false);
       setSelectedTemplate(null);
-      setForm({
-        name: "", description: "",
-        header_text: "İŞ SAĞLIĞI VE GÜVENLİĞİ EĞİTİM SERTİFİKASI",
-        body_text: "Bu belge, {holder_name} adlı kişinin {course_title} eğitimini başarıyla tamamladığını belgeler.",
-        footer_text: "Bu sertifika {issue_date} tarihinde düzenlenmiştir ve {expiry_date} tarihine kadar geçerlidir.",
-        logo_url: "", background_color: "#1a2744", accent_color: "#f97316", is_default: false,
-      });
+      setForm(emptyForm());
     }
     setDialogOpen(true);
   };
