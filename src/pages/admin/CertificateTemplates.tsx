@@ -40,17 +40,28 @@ export default function CertificateTemplates() {
   const [selectedTemplate, setSelectedTemplate] = useState<CertificateTemplate | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  const [form, setForm] = useState({
-    name: "",
-    description: "",
-    header_text: "İŞ SAĞLIĞI VE GÜVENLİĞİ EĞİTİM SERTİFİKASI",
-    body_text: "Bu belge, {holder_name} adlı kişinin {course_title} eğitimini başarıyla tamamladığını belgeler.",
-    footer_text: "Bu sertifika {issue_date} tarihinde düzenlenmiştir ve {expiry_date} tarihine kadar geçerlidir.",
-    logo_url: "",
-    background_color: "#1a2744",
-    accent_color: "#f97316",
-    is_default: false,
-  });
+  const [form, setForm] = useState(emptyForm());
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+
+  const previewPdf = async (tpl: any) => {
+    const doc = await buildCertificatePdf({
+      certificate: {
+        certificate_number: "ISG-2026-ORNEK1", holder_name: "Ahmet Yılmaz", holder_tc: "12345678901",
+        course_title: "Az Tehlikeli Temel İSG Eğitimi", duration_hours: 8, issue_date: new Date().toISOString(),
+      },
+      holder: { first_name: "Ahmet", last_name: "Yılmaz", tc_identity: "12345678901", job_title: "Satış Danışmanı" },
+      enrollment: { started_at: new Date(Date.now() - 5 * 864e5).toISOString(), completed_at: new Date().toISOString() },
+      firm: { name: "Örnek Firma A.Ş.", logo_url: null },
+      template: tpl,
+    });
+    setPdfUrl(URL.createObjectURL(doc.output("blob")));
+  };
+
+  const toggleTopic = (gi: number, ii: number) =>
+    setForm((f) => ({
+      ...f,
+      topics: f.topics.map((g, a) => a !== gi ? g : { ...g, items: g.items.map((it, b) => b !== ii ? it : { ...it, checked: !it.checked }) }),
+    }));
 
   const { data: templates, isLoading } = useQuery({
     queryKey: ["certificate-templates"],
@@ -66,26 +77,29 @@ export default function CertificateTemplates() {
 
   const saveMutation = useMutation({
     mutationFn: async (data: typeof form & { id?: string }) => {
+      const payload: any = {
+        name: data.name, description: data.description || null,
+        header_text: data.header_text, body_text: data.body_text, footer_text: data.footer_text,
+        logo_url: data.logo_url || null, background_color: data.background_color,
+        accent_color: data.accent_color, is_default: data.is_default,
+        company_name: data.company_name || null, company_contact: data.company_contact || null,
+        legal_text: data.legal_text || null, delivery_method: data.delivery_method || null,
+        trainer1_name: data.trainer1_name || null, trainer1_title: data.trainer1_title || null,
+        trainer2_name: data.trainer2_name || null, trainer2_title: data.trainer2_title || null,
+        employer_title: data.employer_title || null, use_firm_logo: data.use_firm_logo,
+        topics: data.topics,
+      };
+      let savedId = data.id;
       if (data.id) {
-        const { error } = await supabase.from("certificate_templates").update({
-          name: data.name, description: data.description || null,
-          header_text: data.header_text, body_text: data.body_text, footer_text: data.footer_text,
-          logo_url: data.logo_url || null, background_color: data.background_color,
-          accent_color: data.accent_color, is_default: data.is_default,
-        }).eq("id", data.id);
+        const { error } = await supabase.from("certificate_templates").update(payload).eq("id", data.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("certificate_templates").insert({
-          name: data.name, description: data.description || null,
-          header_text: data.header_text, body_text: data.body_text, footer_text: data.footer_text,
-          logo_url: data.logo_url || null, background_color: data.background_color,
-          accent_color: data.accent_color, is_default: data.is_default,
-        });
+        const { data: ins, error } = await supabase.from("certificate_templates").insert(payload).select("id").single();
         if (error) throw error;
+        savedId = ins.id;
       }
-      // If setting as default, unset others
-      if (data.is_default && data.id) {
-        await supabase.from("certificate_templates").update({ is_default: false }).neq("id", data.id);
+      if (data.is_default && savedId) {
+        await supabase.from("certificate_templates").update({ is_default: false }).neq("id", savedId);
       }
     },
     onSuccess: () => {
