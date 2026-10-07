@@ -59,7 +59,7 @@ export default function SavedQuotesList() {
         <Table>
           <TableHeader><TableRow>
             <TableHead>Teklif No</TableHead><TableHead>Tarih</TableHead><TableHead>Firma</TableHead><TableHead>Sınıf / Kullanım</TableHead>
-            <TableHead className="text-right">Çalışan</TableHead><TableHead className="text-right">Toplam ($)</TableHead><TableHead className="text-right">Toplam (₺)</TableHead>
+            <TableHead className="text-right">Çalışan</TableHead><TableHead>Para Birimi</TableHead><TableHead className="text-right">Toplam ($)</TableHead><TableHead className="text-right">Toplam (₺)</TableHead>
             <TableHead>Geçerlilik</TableHead><TableHead>Durum</TableHead><TableHead />
           </TableRow></TableHeader>
           <TableBody>
@@ -71,6 +71,7 @@ export default function SavedQuotesList() {
                 <TableCell>{r.firm_name}</TableCell>
                 <TableCell>{HZL[r.hazard_class] || r.hazard_class} · {r.usage_type === "yearly" ? "Yıllık" : "Tek Seferlik"}</TableCell>
                 <TableCell className="text-right">{r.employees}</TableCell>
+                <TableCell>{r.currency || "USD"}{r.currency && r.currency !== "TRY" && r.exchange_rate ? ` · ${Number(r.exchange_rate).toFixed(2)}` : ""}</TableCell>
                 <TableCell className="text-right">{usd(r.total_usd)}</TableCell>
                 <TableCell className="text-right">{tl(r.total_try)}</TableCell>
                 <TableCell>{r.valid_until ? new Date(r.valid_until).toLocaleDateString("tr-TR") : "-"}</TableCell>
