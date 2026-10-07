@@ -57,7 +57,7 @@ export function StudentActivityCalendar() {
   const color = { lesson: "text-success", exam: "text-primary", cert: "text-accent" };
 
   return (
-    <div className="grid lg:grid-cols-2 gap-6">
+    <div className="grid md:grid-cols-2 gap-6 items-start">
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-lg flex items-center gap-2"><CalendarDays className="h-5 w-5" />Öğrenim Takvimim</CardTitle></CardHeader>
         <CardContent className="flex flex-col md:flex-row gap-4">
