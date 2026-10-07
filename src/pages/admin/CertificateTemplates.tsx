@@ -108,6 +108,15 @@ export default function CertificateTemplates() {
       topics: f.topics.map((g, a) => a !== gi ? g : { ...g, items: g.items.map((it, b) => b !== ii ? it : { ...it, checked: !it.checked }) }),
     }));
 
+  const { data: trainers = [] } = useQuery({
+    queryKey: ["certificate-trainers-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("certificate_trainers").select("id, role, full_name, title")
+        .is("deleted_at", null).eq("is_active", true).order("full_name");
+      if (error) throw error;
+      return data as Trainer[];
+    },
+  });
   const { data: templates, isLoading } = useQuery({
     queryKey: ["certificate-templates"],
     queryFn: async () => {
