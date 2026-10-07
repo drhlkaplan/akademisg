@@ -110,7 +110,7 @@ export default function FirmQuotes() {
     fetchRate();
   }, []);
 
-  useEffect(() => { setUnit(pricing[hz][usage]); }, [hz, usage, pricing]);
+  useEffect(() => { setUnit(Number(toCur(pricing[hz][usage], currency).toFixed(2))); }, [hz, usage, pricing, currency, rates.USD, rates.EUR]);
   useEffect(() => {
     if (!firm) return;
     if (firm.hazard_class_new) setHz(firm.hazard_class_new);
@@ -138,8 +138,8 @@ export default function FirmQuotes() {
     const { data: u } = await supabase.auth.getUser();
     const { error } = await (supabase as any).from("firm_quotes").upsert({
       quote_no: quoteNo, firm_id: firm?.id || null, firm_name: firm?.name || "-", hazard_class: hz, usage_type: usage,
-      employees, unit_price: unit, discount, vat_rate: pricing.vat, exchange_rate: rate,
-      net_usd: calc.net, total_usd: calc.total, total_try: calc.total * rate,
+      employees, unit_price: unit, discount, vat_rate: pricing.vat, exchange_rate: curRate, currency,
+      net_usd: toUsd(calc.net), total_usd: toUsd(calc.total), total_try: calc.total * curRate,
       valid_until: validUntil.toISOString().slice(0, 10), notes, html, created_by: u.user?.id,
     }, { onConflict: "quote_no" });
     if (error) { toast({ title: "Teklif kaydedilemedi", description: error.message, variant: "destructive" }); return false; }
@@ -201,14 +201,23 @@ export default function FirmQuotes() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Çalışan Sayısı</Label><Input type="number" min={1} value={employees} onChange={(e) => setEmployees(Math.max(1, num(e.target.value)))} /></div>
-                <div><Label>Kişi Başı ($)</Label><Input type="number" step="0.01" value={unit} onChange={(e) => setUnit(num(e.target.value))} /></div>
+                <div><Label>Kişi Başı ({CURS[currency].sym})</Label><Input type="number" step="0.01" value={unit} onChange={(e) => setUnit(num(e.target.value))} /></div>
                 <div><Label>İskonto (%)</Label><Input type="number" value={discount} onChange={(e) => setDiscount(num(e.target.value))} /></div>
                 <div><Label>Geçerlilik (gün)</Label><Input type="number" value={validDays} onChange={(e) => setValidDays(num(e.target.value))} /></div>
               </div>
-              <div><Label>USD/TRY Kuru</Label>
-                <div className="flex gap-2"><Input type="number" step="0.0001" value={rate} onChange={(e) => setRate(num(e.target.value))} />
-                  <Button variant="outline" size="icon" onClick={fetchRate} disabled={rateLoading}><RefreshCw className={`h-4 w-4 ${rateLoading ? "animate-spin" : ""}`} /></Button></div>
+              <div><Label>Teklif Para Birimi</Label>
+                <Select value={currency} onValueChange={(v) => setCurrency(v as Cur)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{(Object.keys(CURS) as Cur[]).map((c) => <SelectItem key={c} value={c}>{CURS[c].label}</SelectItem>)}</SelectContent>
+                </Select>
               </div>
+              {currency !== "TRY" && (
+                <div><Label>{currency}/TRY Kuru</Label>
+                  <div className="flex gap-2"><Input type="number" step="0.0001" value={rates[currency]} onChange={(e) => setRates({ ...rates, [currency]: num(e.target.value) })} />
+                    <Button variant="outline" size="icon" onClick={fetchRate} disabled={rateLoading}><RefreshCw className={`h-4 w-4 ${rateLoading ? "animate-spin" : ""}`} /></Button></div>
+                  <p className="text-xs text-muted-foreground mt-1">Diğer kur: {currency === "USD" ? `EUR/TRY ${rates.EUR || "-"}` : `USD/TRY ${rates.USD || "-"}`}</p>
+                </div>
+              )}
               <div><Label>Notlar</Label><Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
               <Button variant="outline" className="w-full" onClick={() => printRef.current && saveQuote(printRef.current.innerHTML)} disabled={!firm}><Save className="mr-2 h-4 w-4" />Teklifi Kaydet</Button>
               <Button className="w-full" onClick={print} disabled={!firm}><Printer className="mr-2 h-4 w-4" />Kaydet ve Yazdır / PDF</Button>
