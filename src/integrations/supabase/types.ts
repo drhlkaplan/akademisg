@@ -166,43 +166,79 @@ export type Database = {
           accent_color: string | null
           background_color: string | null
           body_text: string | null
+          company_contact: string | null
+          company_name: string | null
           created_at: string | null
+          delivery_method: string | null
           description: string | null
+          employer_title: string | null
           footer_text: string | null
           header_text: string | null
           id: string
           is_default: boolean | null
+          layout: string
+          legal_text: string | null
           logo_url: string | null
           name: string
+          topics: Json
+          trainer1_name: string | null
+          trainer1_title: string | null
+          trainer2_name: string | null
+          trainer2_title: string | null
           updated_at: string | null
+          use_firm_logo: boolean
         }
         Insert: {
           accent_color?: string | null
           background_color?: string | null
           body_text?: string | null
+          company_contact?: string | null
+          company_name?: string | null
           created_at?: string | null
+          delivery_method?: string | null
           description?: string | null
+          employer_title?: string | null
           footer_text?: string | null
           header_text?: string | null
           id?: string
           is_default?: boolean | null
+          layout?: string
+          legal_text?: string | null
           logo_url?: string | null
           name: string
+          topics?: Json
+          trainer1_name?: string | null
+          trainer1_title?: string | null
+          trainer2_name?: string | null
+          trainer2_title?: string | null
           updated_at?: string | null
+          use_firm_logo?: boolean
         }
         Update: {
           accent_color?: string | null
           background_color?: string | null
           body_text?: string | null
+          company_contact?: string | null
+          company_name?: string | null
           created_at?: string | null
+          delivery_method?: string | null
           description?: string | null
+          employer_title?: string | null
           footer_text?: string | null
           header_text?: string | null
           id?: string
           is_default?: boolean | null
+          layout?: string
+          legal_text?: string | null
           logo_url?: string | null
           name?: string
+          topics?: Json
+          trainer1_name?: string | null
+          trainer1_title?: string | null
+          trainer2_name?: string | null
+          trainer2_title?: string | null
           updated_at?: string | null
+          use_firm_logo?: boolean
         }
         Relationships: []
       }
@@ -1737,6 +1773,7 @@ export type Database = {
           firm_id: string | null
           first_name: string
           id: string
+          job_title: string | null
           last_name: string
           phone: string | null
           tc_identity: string | null
@@ -1750,6 +1787,7 @@ export type Database = {
           firm_id?: string | null
           first_name: string
           id?: string
+          job_title?: string | null
           last_name: string
           phone?: string | null
           tc_identity?: string | null
@@ -1763,6 +1801,7 @@ export type Database = {
           firm_id?: string | null
           first_name?: string
           id?: string
+          job_title?: string | null
           last_name?: string
           phone?: string | null
           tc_identity?: string | null
@@ -2737,6 +2776,10 @@ export type Database = {
       complete_enrollment: {
         Args: { _enrollment_id: string }
         Returns: undefined
+      }
+      get_certificate_print_data: {
+        Args: { _certificate_id: string }
+        Returns: Json
       }
       get_email_by_tc: { Args: { tc_no: string }; Returns: string }
       get_exam_questions_for_student: {
