@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge-custom";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -19,6 +19,7 @@ import {
   CalendarClock,
   AlertTriangle,
   Users,
+  ShieldCheck,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -482,77 +483,81 @@ export default function StudentDashboard() {
               </>
             )}
 
-            {/* Recent Certificates */}
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold text-foreground">
+
+            {/* Recurrence Info */}
+            <RecurrenceAlert userId={user?.id} />
+
+          </div>
+        </div>
+      </div>
+      <div className="mt-6"><StudentActivityCalendar /></div>
+      <div className="mt-6 grid md:grid-cols-2 gap-6 items-start">
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Award className="h-5 w-5 text-accent" />
                 Son Sertifikalar
-              </h3>
+              </CardTitle>
               <Button variant="ghost" size="sm" className="text-xs" asChild>
                 <Link to="/dashboard/certificates">Tümü</Link>
               </Button>
             </div>
-
+          </CardHeader>
+          <CardContent className="space-y-3">
             {certificates.length === 0 ? (
-              <div className="dashboard-card p-6 text-center">
+              <div className="text-center py-6">
                 <Award className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
                 <p className="text-sm text-muted-foreground">
                   Henüz sertifikanız yok
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {certificates.map((cert) => (
-                  <div key={cert.id} className="dashboard-card p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                        <Award className="h-5 w-5 text-accent" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-foreground text-sm truncate">
-                          {cert.course_title}
-                        </h4>
-                        <p className="text-[11px] text-muted-foreground">
-                          {cert.issue_date
-                            ? new Date(cert.issue_date).toLocaleDateString("tr-TR")
-                            : "-"}
-                        </p>
-                        <p className="text-[11px] text-accent font-mono mt-0.5">
-                          {cert.certificate_number}
-                        </p>
-                      </div>
-                      <Button variant="ghost" size="sm" className="text-xs">
-                        İndir
-                      </Button>
+              certificates.map((cert) => (
+                <div key={cert.id} className="dashboard-card p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                      <Award className="h-5 w-5 text-accent" />
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-foreground text-sm truncate">
+                        {cert.course_title}
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">
+                        {cert.issue_date
+                          ? new Date(cert.issue_date).toLocaleDateString("tr-TR")
+                          : "-"}
+                      </p>
+                      <p className="text-[11px] text-accent font-mono mt-0.5">
+                        {cert.certificate_number}
+                      </p>
+                    </div>
+                    <Button variant="ghost" size="sm" className="text-xs">
+                      İndir
+                    </Button>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))
             )}
-
-            {/* Recurrence Info */}
-            <RecurrenceAlert userId={user?.id} />
-
-            {/* Quick Actions */}
-            <div className="dashboard-card bg-gradient-accent p-5">
-              <h3 className="font-semibold text-accent-foreground text-sm mb-2">
-                Sertifika Doğrula
-              </h3>
-              <p className="text-xs text-accent-foreground/80 mb-3">
-                Sertifika numarası ile doğrulama yapın.
-              </p>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="w-full text-xs"
-                asChild
-              >
-                <Link to="/verify">Doğrula</Link>
-              </Button>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-accent">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5" />
+              Sertifika Doğrula
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-xs text-accent-foreground/80">
+              Sertifika numarası ile doğrulama yapın.
+            </p>
+            <Button variant="secondary" size="sm" className="w-full text-xs" asChild>
+              <Link to="/verify">Doğrula</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
-      <div className="mt-6"><StudentActivityCalendar /></div>
     </>
   );
 }
