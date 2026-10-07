@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import SavedQuotesList, { openQuotePrint } from "@/components/admin/SavedQuotesList";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ async function saveSetting(key: string, value: any) {
 
 export default function FirmQuotes() {
   const { toast } = useToast();
+  const qc = useQueryClient();
   const printRef = useRef<HTMLDivElement>(null);
   const [pricing, setPricing] = useState<Pricing>(DEFAULT_PRICING);
   const [company, setCompany] = useState<Company>(DEFAULT_COMPANY);
@@ -114,19 +116,25 @@ export default function FirmQuotes() {
     catch (e: any) { toast({ title: "Kaydedilemedi", description: e.message, variant: "destructive" }); }
   };
 
-  const print = () => {
+  const saveQuote = async (html: string) => {
+    const { data: u } = await supabase.auth.getUser();
+    const { error } = await (supabase as any).from("firm_quotes").upsert({
+      quote_no: quoteNo, firm_id: firm?.id || null, firm_name: firm?.name || "-", hazard_class: hz, usage_type: usage,
+      employees, unit_price: unit, discount, vat_rate: pricing.vat, exchange_rate: rate,
+      net_usd: calc.net, total_usd: calc.total, total_try: calc.total * rate,
+      valid_until: validUntil.toISOString().slice(0, 10), notes, html, created_by: u.user?.id,
+    }, { onConflict: "quote_no" });
+    if (error) { toast({ title: "Teklif kaydedilemedi", description: error.message, variant: "destructive" }); return false; }
+    qc.invalidateQueries({ queryKey: ["firm-quotes"] });
+    toast({ title: "Teklif kaydedildi", description: "Verilen Teklifler sekmesinden takip edebilirsiniz." });
+    return true;
+  };
+
+  const print = async () => {
     const html = printRef.current?.innerHTML;
     if (!html) return;
-    const w = window.open("", "_blank");
-    if (!w) return;
-    w.document.write(`<html><head><meta charset="utf-8"><title>${quoteNo}</title><style>
-      body{font-family:Arial,sans-serif;color:#111;margin:32px;font-size:12px}
-      table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:6px;text-align:left}
-      th{background:#f1f5f9}.r{text-align:right}.hd{display:flex;justify-content:space-between;border-bottom:3px solid #f97316;padding-bottom:12px;margin-bottom:16px}
-      .muted{color:#555}.tot td{font-weight:bold}img{max-height:60px}h1{margin:0;font-size:20px}.grid{display:flex;gap:24px;margin-bottom:16px}.grid>div{flex:1}
-      .sign{margin-top:48px;display:flex;justify-content:space-between}</style></head><body>${html}</body></html>`);
-    w.document.close();
-    setTimeout(() => { w.print(); }, 400);
+    await saveQuote(html);
+    openQuotePrint(quoteNo, html);
   };
 
   const today = new Date();
@@ -143,9 +151,11 @@ export default function FirmQuotes() {
       <Tabs defaultValue="quote">
         <TabsList>
           <TabsTrigger value="quote">Teklif Hazırla</TabsTrigger>
+          <TabsTrigger value="saved">Verilen Teklifler</TabsTrigger>
           <TabsTrigger value="pricing">Fiyat Listesi</TabsTrigger>
           <TabsTrigger value="company">Antet / Şirket Bilgileri</TabsTrigger>
         </TabsList>
+        <TabsContent value="saved"><SavedQuotesList /></TabsContent>
 
         <TabsContent value="quote" className="grid lg:grid-cols-[380px_1fr] gap-6">
           <Card>
@@ -182,7 +192,8 @@ export default function FirmQuotes() {
                   <Button variant="outline" size="icon" onClick={fetchRate} disabled={rateLoading}><RefreshCw className={`h-4 w-4 ${rateLoading ? "animate-spin" : ""}`} /></Button></div>
               </div>
               <div><Label>Notlar</Label><Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
-              <Button className="w-full" onClick={print} disabled={!firm}><Printer className="mr-2 h-4 w-4" />Yazdır / PDF Kaydet</Button>
+              <Button variant="outline" className="w-full" onClick={() => printRef.current && saveQuote(printRef.current.innerHTML)} disabled={!firm}><Save className="mr-2 h-4 w-4" />Teklifi Kaydet</Button>
+              <Button className="w-full" onClick={print} disabled={!firm}><Printer className="mr-2 h-4 w-4" />Kaydet ve Yazdır / PDF</Button>
             </CardContent>
           </Card>
 
