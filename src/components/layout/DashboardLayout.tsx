@@ -131,6 +131,7 @@ const adminNavGroups = [
       { icon: FolderOpen, label: "Eğitim Türleri", href: "/admin/training-types" },
       { icon: ClipboardCheck, label: "Şablon Kuralları", href: "/admin/course-template-rules" },
       { icon: FileCheck, label: "Sınavlar", href: "/admin/exams" },
+      { icon: Users, label: "Eğiticiler", href: "/admin/trainers" },
     ],
   },
   {

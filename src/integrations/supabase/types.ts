@@ -171,6 +171,7 @@ export type Database = {
           created_at: string | null
           delivery_method: string | null
           description: string | null
+          employer_name: string | null
           employer_title: string | null
           footer_text: string | null
           header_text: string | null
@@ -197,6 +198,7 @@ export type Database = {
           created_at?: string | null
           delivery_method?: string | null
           description?: string | null
+          employer_name?: string | null
           employer_title?: string | null
           footer_text?: string | null
           header_text?: string | null
@@ -223,6 +225,7 @@ export type Database = {
           created_at?: string | null
           delivery_method?: string | null
           description?: string | null
+          employer_name?: string | null
           employer_title?: string | null
           footer_text?: string | null
           header_text?: string | null
@@ -239,6 +242,48 @@ export type Database = {
           trainer2_title?: string | null
           updated_at?: string | null
           use_firm_logo?: boolean
+        }
+        Relationships: []
+      }
+      certificate_trainers: {
+        Row: {
+          certificate_no: string | null
+          created_at: string
+          deleted_at: string | null
+          email: string | null
+          full_name: string
+          id: string
+          is_active: boolean
+          phone: string | null
+          role: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          certificate_no?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          email?: string | null
+          full_name: string
+          id?: string
+          is_active?: boolean
+          phone?: string | null
+          role: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          certificate_no?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          phone?: string | null
+          role?: string
+          title?: string | null
+          updated_at?: string
         }
         Relationships: []
       }

@@ -20,6 +20,24 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DEFAULT_CERT_TOPICS, DEFAULT_LEGAL_TEXT, type CertTopicGroup } from "@/lib/certificateTopics";
 import { buildCertificatePdf } from "@/lib/certificatePdf";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+type Trainer = { id: string; role: string; full_name: string; title: string | null };
+
+function TrainerPick({ role, trainers, onPick }: { role: string; trainers: Trainer[]; onPick: (t: Trainer) => void }) {
+  const list = trainers.filter((t) => t.role === role);
+  return (
+    <div>
+      <Label>Kayıtlı eğiticiden seç</Label>
+      <Select value="" onValueChange={(id) => { const t = list.find((x) => x.id === id); if (t) onPick(t); }}>
+        <SelectTrigger><SelectValue placeholder={list.length ? "Seçiniz" : "Kayıtlı kişi yok"} /></SelectTrigger>
+        <SelectContent>
+          {list.map((t) => <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 const emptyForm = () => ({
   name: "",
@@ -40,6 +58,7 @@ const emptyForm = () => ({
   trainer2_name: "",
   trainer2_title: "İşyeri Hekimi",
   employer_title: "İşveren",
+  employer_name: "",
   use_firm_logo: true,
   topics: JSON.parse(JSON.stringify(DEFAULT_CERT_TOPICS)) as CertTopicGroup[],
 });
@@ -89,6 +108,15 @@ export default function CertificateTemplates() {
       topics: f.topics.map((g, a) => a !== gi ? g : { ...g, items: g.items.map((it, b) => b !== ii ? it : { ...it, checked: !it.checked }) }),
     }));
 
+  const { data: trainers = [] } = useQuery({
+    queryKey: ["certificate-trainers-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("certificate_trainers").select("id, role, full_name, title")
+        .is("deleted_at", null).eq("is_active", true).order("full_name");
+      if (error) throw error;
+      return data as Trainer[];
+    },
+  });
   const { data: templates, isLoading } = useQuery({
     queryKey: ["certificate-templates"],
     queryFn: async () => {
@@ -113,6 +141,7 @@ export default function CertificateTemplates() {
         trainer1_name: data.trainer1_name || null, trainer1_title: data.trainer1_title || null,
         trainer2_name: data.trainer2_name || null, trainer2_title: data.trainer2_title || null,
         employer_title: data.employer_title || null, use_firm_logo: data.use_firm_logo,
+        employer_name: data.employer_name || null,
         topics: data.topics,
       };
       let savedId = data.id;
@@ -164,6 +193,7 @@ export default function CertificateTemplates() {
         trainer2_name: t.trainer2_name || "",
         trainer2_title: t.trainer2_title || base.trainer2_title,
         employer_title: t.employer_title || "İşveren",
+        employer_name: t.employer_name || "",
         use_firm_logo: t.use_firm_logo !== false,
         topics: Array.isArray(t.topics) && t.topics.length ? t.topics : base.topics,
       });
@@ -315,17 +345,21 @@ export default function CertificateTemplates() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-3">
                     <p className="font-semibold text-sm">1. Eğitmen</p>
+                    <TrainerPick role="isg_uzmani" trainers={trainers} onPick={(t) => setForm(f => ({ ...f, trainer1_name: t.full_name, trainer1_title: t.title || "İş Güvenliği Uzmanı" }))} />
                     <div><Label>1. Eğitmen Adı</Label><Input value={form.trainer1_name} onChange={e => setForm(f => ({ ...f, trainer1_name: e.target.value }))} /></div>
                     <div><Label>1. Eğitmen Unvanı</Label><Input value={form.trainer1_title} onChange={e => setForm(f => ({ ...f, trainer1_title: e.target.value }))} /></div>
                   </div>
                   <div className="space-y-3">
                     <p className="font-semibold text-sm">2. Eğitmen</p>
+                    <TrainerPick role="isyeri_hekimi" trainers={trainers} onPick={(t) => setForm(f => ({ ...f, trainer2_name: t.full_name, trainer2_title: t.title || "İşyeri Hekimi" }))} />
                     <div><Label>2. Eğitmen Adı</Label><Input value={form.trainer2_name} onChange={e => setForm(f => ({ ...f, trainer2_name: e.target.value }))} /></div>
                     <div><Label>2. Eğitmen Unvanı</Label><Input value={form.trainer2_title} onChange={e => setForm(f => ({ ...f, trainer2_title: e.target.value }))} /></div>
                   </div>
                   <div className="space-y-3">
                     <p className="font-semibold text-sm">İşveren</p>
+                    <TrainerPick role="isveren_vekili" trainers={trainers} onPick={(t) => setForm(f => ({ ...f, employer_name: t.full_name }))} />
                     <div><Label>İşveren İmza Başlığı</Label><Input value={form.employer_title} onChange={e => setForm(f => ({ ...f, employer_title: e.target.value }))} /></div>
+                    <div><Label>İşveren Vekili Adı</Label><Input value={form.employer_name} placeholder="Boşsa firma adı yazılır" onChange={e => setForm(f => ({ ...f, employer_name: e.target.value }))} /></div>
                   </div>
                 </div>
                 <div><Label>Varsayılan Logo URL</Label><Input value={form.logo_url} onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))} placeholder="https://..." /></div>
