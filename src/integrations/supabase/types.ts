@@ -1025,6 +1025,89 @@ export type Database = {
         }
         Relationships: []
       }
+      firm_quotes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          discount: number
+          employees: number
+          exchange_rate: number
+          firm_id: string | null
+          firm_name: string
+          hazard_class: string
+          html: string | null
+          id: string
+          net_usd: number
+          notes: string | null
+          quote_no: string
+          status: string
+          total_try: number
+          total_usd: number
+          unit_price: number
+          updated_at: string
+          usage_type: string
+          valid_until: string | null
+          vat_rate: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          discount?: number
+          employees: number
+          exchange_rate: number
+          firm_id?: string | null
+          firm_name: string
+          hazard_class: string
+          html?: string | null
+          id?: string
+          net_usd: number
+          notes?: string | null
+          quote_no: string
+          status?: string
+          total_try: number
+          total_usd: number
+          unit_price: number
+          updated_at?: string
+          usage_type: string
+          valid_until?: string | null
+          vat_rate: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          discount?: number
+          employees?: number
+          exchange_rate?: number
+          firm_id?: string | null
+          firm_name?: string
+          hazard_class?: string
+          html?: string | null
+          id?: string
+          net_usd?: number
+          notes?: string | null
+          quote_no?: string
+          status?: string
+          total_try?: number
+          total_usd?: number
+          unit_price?: number
+          updated_at?: string
+          usage_type?: string
+          valid_until?: string | null
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "firm_quotes_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       firms: {
         Row: {
           address: string | null
