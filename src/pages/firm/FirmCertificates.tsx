@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Award, Search, Loader2, Download, ExternalLink } from "lucide-react";
 import { formatDateTR } from "@/lib/reportExport";
+import { CertificatePdfButton } from "@/components/CertificatePdfButton";
 
 export default function FirmCertificates() {
   const { branding } = useFirmBranding();
@@ -146,13 +147,7 @@ export default function FirmCertificates() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {cert.pdf_url && (
-                          <Button variant="ghost" size="icon" asChild>
-                            <a href={cert.pdf_url} target="_blank" rel="noopener noreferrer">
-                              <Download className="h-4 w-4" />
-                            </a>
-                          </Button>
-                        )}
+                        <CertificatePdfButton certificateId={cert.id} variant="ghost" size="icon" />
                       </TableCell>
                     </TableRow>
                   ))}

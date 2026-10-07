@@ -266,7 +266,7 @@ export default function CertificateTemplates() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => { setSelectedTemplate(tmpl); setPreviewOpen(true); }}>
+                          <Button variant="ghost" size="icon" onClick={() => previewPdf(tmpl)}>
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => handleOpen(tmpl)}>
