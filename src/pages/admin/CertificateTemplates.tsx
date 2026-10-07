@@ -312,14 +312,23 @@ export default function CertificateTemplates() {
                   <Textarea rows={4} value={form.legal_text} onChange={e => setForm(f => ({ ...f, legal_text: e.target.value }))} />
                   <p className="text-xs text-muted-foreground mt-1">Kullanılabilir: {"{company_name}"} {"{delivery_method}"} {"{firm_name}"} {"{holder_name}"} {"{course_title}"}</p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div><Label>1. Eğitmen Adı</Label><Input value={form.trainer1_name} onChange={e => setForm(f => ({ ...f, trainer1_name: e.target.value }))} /></div>
-                  <div><Label>1. Eğitmen Unvanı</Label><Input value={form.trainer1_title} onChange={e => setForm(f => ({ ...f, trainer1_title: e.target.value }))} /></div>
-                  <div><Label>2. Eğitmen Adı</Label><Input value={form.trainer2_name} onChange={e => setForm(f => ({ ...f, trainer2_name: e.target.value }))} /></div>
-                  <div><Label>2. Eğitmen Unvanı</Label><Input value={form.trainer2_title} onChange={e => setForm(f => ({ ...f, trainer2_title: e.target.value }))} /></div>
-                  <div><Label>İşveren İmza Başlığı</Label><Input value={form.employer_title} onChange={e => setForm(f => ({ ...f, employer_title: e.target.value }))} /></div>
-                  <div><Label>Varsayılan Logo URL</Label><Input value={form.logo_url} onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))} placeholder="https://..." /></div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-3">
+                    <p className="font-semibold text-sm">1. Eğitmen</p>
+                    <div><Label>1. Eğitmen Adı</Label><Input value={form.trainer1_name} onChange={e => setForm(f => ({ ...f, trainer1_name: e.target.value }))} /></div>
+                    <div><Label>1. Eğitmen Unvanı</Label><Input value={form.trainer1_title} onChange={e => setForm(f => ({ ...f, trainer1_title: e.target.value }))} /></div>
+                  </div>
+                  <div className="space-y-3">
+                    <p className="font-semibold text-sm">2. Eğitmen</p>
+                    <div><Label>2. Eğitmen Adı</Label><Input value={form.trainer2_name} onChange={e => setForm(f => ({ ...f, trainer2_name: e.target.value }))} /></div>
+                    <div><Label>2. Eğitmen Unvanı</Label><Input value={form.trainer2_title} onChange={e => setForm(f => ({ ...f, trainer2_title: e.target.value }))} /></div>
+                  </div>
+                  <div className="space-y-3">
+                    <p className="font-semibold text-sm">İşveren</p>
+                    <div><Label>İşveren İmza Başlığı</Label><Input value={form.employer_title} onChange={e => setForm(f => ({ ...f, employer_title: e.target.value }))} /></div>
+                  </div>
                 </div>
+                <div><Label>Varsayılan Logo URL</Label><Input value={form.logo_url} onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))} placeholder="https://..." /></div>
                 <div className="flex items-center gap-2">
                   <Switch checked={form.use_firm_logo} onCheckedChange={v => setForm(f => ({ ...f, use_firm_logo: v }))} />
                   <Label>Çalışanın firmasının logosunu kullan (yoksa varsayılan logo)</Label>

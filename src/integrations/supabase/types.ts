@@ -1172,6 +1172,7 @@ export type Database = {
           secondary_color: string | null
           sector: string | null
           sector_id: string | null
+          sector_ids: string[]
           tax_number: string | null
           updated_at: string | null
           welcome_message: string | null
@@ -1201,6 +1202,7 @@ export type Database = {
           secondary_color?: string | null
           sector?: string | null
           sector_id?: string | null
+          sector_ids?: string[]
           tax_number?: string | null
           updated_at?: string | null
           welcome_message?: string | null
@@ -1230,6 +1232,7 @@ export type Database = {
           secondary_color?: string | null
           sector?: string | null
           sector_id?: string | null
+          sector_ids?: string[]
           tax_number?: string | null
           updated_at?: string | null
           welcome_message?: string | null
