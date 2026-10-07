@@ -48,6 +48,7 @@ const AdminDashboard = lazyRetry(() => import("./pages/admin/AdminDashboard"));
 const UsersManagement = lazyRetry(() => import("./pages/admin/UsersManagement"));
 const CoursesManagement = lazyRetry(() => import("./pages/admin/CoursesManagement"));
 const FirmsManagement = lazyRetry(() => import("./pages/admin/FirmsManagement"));
+const FirmQuotes = lazyRetry(() => import("./pages/admin/FirmQuotes"));
 const ExamsManagement = lazyRetry(() => import("./pages/admin/ExamsManagement"));
 const ExamReports = lazyRetry(() => import("./pages/admin/ExamReports"));
 const CertificatesManagement = lazyRetry(() => import("./pages/admin/CertificatesManagement"));
@@ -173,6 +174,7 @@ const App = () => (
               <Route path="/admin/users" element={<UsersManagement />} />
               <Route path="/admin/courses" element={<CoursesManagement />} />
               <Route path="/admin/companies" element={<FirmsManagement />} />
+              <Route path="/admin/firm-quotes" element={<FirmQuotes />} />
               <Route path="/admin/join-requests" element={<JoinRequests />} />
               <Route path="/admin/blog" element={<AdminBlog />} />
               <Route path="/admin/services" element={<AdminServices />} />

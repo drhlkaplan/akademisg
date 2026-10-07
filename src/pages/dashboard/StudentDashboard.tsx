@@ -25,6 +25,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
+import { StudentActivityCalendar } from "@/components/dashboard/StudentActivityCalendar";
 
 type DangerClass = Database["public"]["Enums"]["danger_class"];
 
@@ -551,6 +552,7 @@ export default function StudentDashboard() {
           </div>
         </div>
       </div>
+      <div className="mt-6"><StudentActivityCalendar /></div>
     </>
   );
 }
