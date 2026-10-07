@@ -186,7 +186,12 @@ export default function ExamTaking() {
         passed: data.passed,
         correctAnswers: data.correctAnswers,
         totalQuestions: data.totalQuestions,
-      });
+        reset: data.reset,
+        attemptsLeft: data.attemptsLeft,
+      } as any);
+      if (data.certificateIssued) {
+        toast({ title: "Tebrikler!", description: "Sertifikanız oluşturuldu. Sertifikalarım sayfasından indirebilirsiniz." });
+      }
     } catch (error: any) {
       toast({
         title: "Hata",
@@ -313,9 +318,13 @@ export default function ExamTaking() {
                   <p className="text-muted-foreground mb-2">
                     Maalesef geçme notunu alamadınız.
                   </p>
-                  {!isPreTest && exam.max_attempts ? (
+                  {(examResult as any).reset ? (
+                    <p className="text-sm text-destructive mb-6">
+                      3 deneme hakkınızı da kullandınız. Eğitim sıfırlandı; derslere baştan başlamanız gerekiyor.
+                    </p>
+                  ) : !isPreTest ? (
                     <p className="text-sm text-muted-foreground mb-6">
-                      Kalan deneme hakkı: {Math.max(0, exam.max_attempts - (previousAttempts?.length || 0) - 1)} / {exam.max_attempts}
+                      Kalan deneme hakkı: {(examResult as any).attemptsLeft ?? 0} / 3
                     </p>
                   ) : (
                     <p className="text-sm text-muted-foreground mb-6">Tekrar deneyebilirsiniz.</p>
