@@ -77,6 +77,19 @@ export default function FirmReports() {
       }),
     },
     {
+      key: "students", label: "Öğrenci Sınav & Sertifika", icon: ClipboardCheck,
+      headers: ["Ad Soyad", "TC Kimlik", "Eğitim (İlerleme)", "Sınav Sonuçları", "Sertifikalar"],
+      rows: emps.map((e) => {
+        const my = enr.filter((x: any) => x.user_id === e.user_id);
+        const myEx = exams.filter((x: any) => x.user_id === e.user_id);
+        const myC = certs.filter((c) => c.user_id === e.user_id);
+        return [`${e.first_name} ${e.last_name}`, maskTc(e.tc_identity),
+          my.map((x: any) => `${x.courses?.title || "-"} (%${x.progress_percent || 0})`).join("; ") || "-",
+          myEx.map((x: any) => `${x.exams?.title || "Sınav"}: ${Math.round(Number(x.score))} - ${statusTR[x.status] || x.status || "-"}`).join("; ") || "-",
+          myC.map((c) => `${c.certificate_number} (${c.issue_date ? new Date(c.issue_date).toLocaleDateString("tr-TR") : "-"})`).join("; ") || "-"];
+      }),
+    },
+    {
       key: "courses", label: "Eğitim Bazlı", icon: BookOpen,
       headers: ["Eğitim", "Atanan", "Devam Eden", "Tamamlanan", "Tamamlama (%)", "Ort. İlerleme (%)"],
       rows: [...courseMap.values()].map((c) => [c.title, c.total, c.active, c.done, Math.round((c.done / c.total) * 100), Math.round(c.prog / c.total)]),
