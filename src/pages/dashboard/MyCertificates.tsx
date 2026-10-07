@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { CertificatePdfButton } from "@/components/CertificatePdfButton";
 import type { Database } from "@/integrations/supabase/types";
 
 type DangerClass = Database["public"]["Enums"]["danger_class"];
@@ -192,6 +193,7 @@ export default function MyCertificates() {
                         <ExternalLink className="h-4 w-4 mr-1" />
                         Doğrula
                       </Button>
+                      <CertificatePdfButton certificateId={cert.id} label="PDF İndir" />
                     </div>
                   </CardContent>
                 </Card>

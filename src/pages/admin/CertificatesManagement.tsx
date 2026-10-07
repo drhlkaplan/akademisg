@@ -26,6 +26,7 @@ import {
   Download, Users, Zap, Eye,
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+import { CertificatePdfButton } from "@/components/CertificatePdfButton";
 
 type Certificate = Database["public"]["Tables"]["certificates"]["Row"];
 type DangerClass = Database["public"]["Enums"]["danger_class"];
@@ -413,6 +414,7 @@ export default function CertificatesManagement() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
+                          <CertificatePdfButton certificateId={cert.id} variant="ghost" size="icon" />
                           {cert.is_valid ? (
                             <Button
                               variant="ghost"

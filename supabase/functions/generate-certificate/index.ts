@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
     // Fetch course info
     const { data: course } = await adminClient
       .from("courses")
-      .select("id, title, duration_minutes, category_id")
+      .select("id, title, duration_minutes, category_id, certificate_template_id")
       .eq("id", enrollment.course_id)
       .single();
 
@@ -155,6 +155,7 @@ Deno.serve(async (req) => {
         expiry_date: expiryDate.toISOString(),
         is_valid: true,
         qr_code: qrCode,
+        template_id: course.certificate_template_id || null,
       })
       .select()
       .single();
