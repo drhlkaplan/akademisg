@@ -26,7 +26,7 @@ const faqItems = [
   },
   {
     q: "Sertifikamın geçerlilik süresi ne kadardır?",
-    a: "İSG sertifikalarının geçerlilik süresi tehlike sınıfına göre değişir. Az tehlikeli işyerleri için 8 yıl, tehlikeli işyerleri için 6 yıl, çok tehlikeli işyerleri için 4 yıldır.",
+    a: "İSG sertifikalarının geçerlilik süresi tehlike sınıfına göre değişir. Az tehlikeli işyerleri için 3 yıl, tehlikeli işyerleri için 2 yıl, çok tehlikeli işyerleri için 1 yıldır.",
   },
   {
     q: "Eğitim içeriği yüklenmiyor, ne yapmalıyım?",

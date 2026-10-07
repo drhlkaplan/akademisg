@@ -131,12 +131,24 @@ Deno.serve(async (req) => {
     const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
     const certificateNumber = `ISG-${year}-${randomPart}`;
 
-    // Calculate expiry (1 year from now for ISG certificates)
+    // Firma şablonu + tehlike sınıfı
+    const { data: enr2 } = await adminClient.from("enrollments").select("firm_id").eq("id", enrollment_id).single();
+    let firmTemplate: string | null = null;
+    let firmHazard: string | null = null;
+    if (enr2?.firm_id) {
+      const { data: firm } = await adminClient.from("firms").select("certificate_template_id, hazard_class_new").eq("id", enr2.firm_id).single();
+      firmTemplate = firm?.certificate_template_id || null;
+      firmHazard = firm?.hazard_class_new || null;
+    }
+    const { data: c2 } = await adminClient.from("courses").select("hazard_class_new").eq("id", course.id).single();
+    const hz = c2?.hazard_class_new || firmHazard;
+    const years = hz === "cok_tehlikeli" || dangerClass === "high" ? 1
+      : hz === "tehlikeli" || dangerClass === "medium" ? 2 : 3;
     const expiryDate = new Date(now);
-    expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+    expiryDate.setFullYear(expiryDate.getFullYear() + years);
 
     // Generate QR verification URL
-    const qrCode = `https://isg-guvenli-akademi.lovable.app/verify?code=${certificateNumber}`;
+    const qrCode = `https://gratisakademi.com/verify?code=${certificateNumber}`;
 
     // Insert certificate
     const { data: cert, error: certErr } = await adminClient
@@ -155,7 +167,7 @@ Deno.serve(async (req) => {
         expiry_date: expiryDate.toISOString(),
         is_valid: true,
         qr_code: qrCode,
-        template_id: course.certificate_template_id || null,
+        template_id: firmTemplate || course.certificate_template_id || null,
       })
       .select()
       .single();

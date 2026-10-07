@@ -86,16 +86,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check max attempts
+    // Check max attempts (per enrollment; final exams: 3 attempts)
     const { data: previousAttempts } = await adminClient
       .from("exam_results")
       .select("id")
       .eq("exam_id", exam_id)
-      .eq("user_id", user.id);
+      .eq("enrollment_id", enrollment_id);
 
     const attemptCount = previousAttempts?.length || 0;
     const isPreTestExam = exam.exam_type === "pre_test" || exam.exam_type === "pre";
-    if (!isPreTestExam && exam.max_attempts && attemptCount >= exam.max_attempts) {
+    const MAX_FINAL_ATTEMPTS = 3;
+    if (!isPreTestExam && attemptCount >= MAX_FINAL_ATTEMPTS) {
       return new Response(JSON.stringify({ error: "Maximum attempts reached" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -152,15 +153,14 @@ Deno.serve(async (req) => {
     // Only count questions that were actually presented
     const effectiveTotal = Math.min(totalQuestions, questions.length);
     const score = Math.round((correctAnswers / effectiveTotal) * 100);
-    // Ön sınav (pre_test) türündeki sınavlarda geçme notu aranmaz, her zaman geçer
+    // Ön değerlendirmede baraj yok, her zaman geçer. Final barajı 60.
     const isPreTest = isPreTestExam;
-    const passed = isPreTest ? true : score >= (exam.passing_score || 70);
+    const passed = isPreTest ? true : score >= 60;
     const status = passed ? "passed" : "failed";
 
     const durationMinutes = exam.duration_minutes || 60;
     const timeUsedSeconds = durationMinutes * 60 - (time_remaining || 0);
 
-    // Insert result with service role
     const { error: insertErr } = await adminClient.from("exam_results").insert({
       exam_id,
       enrollment_id,
@@ -183,8 +183,21 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Record lesson_progress for the exam lesson so sequential unlock works
-    // Find the lesson linked to this exam
+    // 3. denemede de başarısızsa tüm eğitimi sıfırla
+    if (!isPreTest && !passed && attemptCount + 1 >= MAX_FINAL_ATTEMPTS) {
+      await adminClient.from("scorm_runtime_data").delete().eq("enrollment_id", enrollment_id);
+      await adminClient.from("lesson_progress").delete().eq("enrollment_id", enrollment_id);
+      await adminClient.from("exam_results").delete().eq("enrollment_id", enrollment_id);
+      await adminClient.from("enrollments").update({
+        progress_percent: 0, status: "active", completed_at: null,
+      }).eq("id", enrollment_id);
+      return new Response(JSON.stringify({
+        score, passed: false, correctAnswers, totalQuestions: effectiveTotal,
+        reset: true, attemptsLeft: 0,
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Ön değerlendirme sonucu ne olursa olsun ders tamamlanmış sayılır (sıralı kilit açılır)
     const { data: examLesson } = await adminClient
       .from("lessons")
       .select("id")
@@ -194,17 +207,32 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (examLesson) {
-      const lessonStatus = passed ? "passed" : "failed";
-      // Use upsert to record lesson progress
       await adminClient.from("lesson_progress").upsert(
         {
           enrollment_id,
           lesson_id: examLesson.id,
-          lesson_status: lessonStatus,
+          lesson_status: isPreTest ? "completed" : (passed ? "passed" : "failed"),
           score_raw: score,
         },
         { onConflict: "enrollment_id,lesson_id" }
       );
+    }
+
+    // Final geçildiyse eğitimi tamamla ve otomatik sertifika üret
+    let certificateIssued = false;
+    if (!isPreTest && passed) {
+      try {
+        await adminClient.from("enrollments").update({
+          status: "completed", progress_percent: 100, completed_at: new Date().toISOString(),
+        }).eq("id", enrollment_id);
+        const r = await fetch(`${supabaseUrl}/functions/v1/generate-certificate`, {
+          method: "POST",
+          headers: { Authorization: authHeader, apikey: Deno.env.get("SUPABASE_ANON_KEY")!, "Content-Type": "application/json" },
+          body: JSON.stringify({ enrollment_id }),
+        });
+        certificateIssued = r.ok;
+        if (!r.ok) console.error("cert error", await r.text());
+      } catch (e) { console.error("cert exception", e); }
     }
 
     return new Response(
@@ -213,6 +241,8 @@ Deno.serve(async (req) => {
         passed,
         correctAnswers,
         totalQuestions: effectiveTotal,
+        attemptsLeft: isPreTest ? null : Math.max(0, MAX_FINAL_ATTEMPTS - attemptCount - 1),
+        certificateIssued,
       }),
       {
         status: 200,

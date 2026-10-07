@@ -1,0 +1,2 @@
+ALTER TABLE public.firms ADD COLUMN IF NOT EXISTS certificate_template_id uuid REFERENCES public.certificate_templates(id) ON DELETE SET NULL;
+UPDATE public.exams SET passing_score = 60, max_attempts = 3 WHERE exam_type NOT IN ('pre_test','pre') OR exam_type IS NULL;
