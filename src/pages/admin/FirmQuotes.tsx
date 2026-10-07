@@ -238,7 +238,7 @@ export default function FirmQuotes() {
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>PROFORMA FATURA / TEKLİF</h1>
-                    <div style={{ fontSize: 12 }}>No: <b>{quoteNo}</b><br />Tarih: {today.toLocaleDateString("tr-TR")}<br />Geçerlilik: {validUntil.toLocaleDateString("tr-TR")}<br />Kur (USD/TRY): {rate.toFixed(4)}</div>
+                    <div style={{ fontSize: 12 }}>No: <b>{quoteNo}</b><br />Tarih: {today.toLocaleDateString("tr-TR")}<br />Geçerlilik: {validUntil.toLocaleDateString("tr-TR")}<br />Para Birimi: {currency}{currency !== "TRY" && <> · Kur ({currency}/TRY): {curRate.toFixed(4)}</>}</div>
                   </div>
                 </div>
                 <div className="grid" style={{ display: "flex", gap: 24, marginBottom: 16, fontSize: 12 }}>
@@ -246,14 +246,14 @@ export default function FirmQuotes() {
                   <div style={{ flex: 1 }}><b>FİRMA ÖZELLİKLERİ</b><br />İş kolu: {firm?.sectors?.name || firm?.sector || "-"}<br />Tehlike sınıfı: {HZ[hz].label} ({HZ[hz].info})<br />Çalışan sayısı: {employees}<br />Kullanım: {usageLabel}</div>
                 </div>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                  <thead><tr>{["Açıklama", "Miktar", "Birim ($)", "Tutar ($)", "Tutar (₺)"].map((h, i) => <th key={h} style={{ border: "1px solid #ccc", padding: 6, textAlign: i ? "right" : "left", background: "hsl(var(--muted))" }}>{h}</th>)}</tr></thead>
+                  <thead><tr>{["Açıklama", "Miktar", `Birim (${CURS[currency].sym})`, `Tutar (${CURS[currency].sym})`].map((h, i) => <th key={h} style={{ border: "1px solid #ccc", padding: 6, textAlign: i ? "right" : "left", background: "hsl(var(--muted))" }}>{h}</th>)}</tr></thead>
                   <tbody>
                     {[
-                      [`${HZ[hz].label} İSG Eğitimi — ${usageLabel} (online platform, sınav, sertifika)`, `${employees} kişi`, usd(unit), usd(calc.gross), tl(calc.gross * rate)],
-                      ...(discount ? [[`İskonto (%${discount})`, "", "", `-${usd(calc.disc)}`, `-${tl(calc.disc * rate)}`]] : []),
-                      ["Ara Toplam", "", "", usd(calc.net), tl(calc.net * rate)],
-                      [`KDV (%${pricing.vat})`, "", "", usd(calc.vat), tl(calc.vat * rate)],
-                      ["GENEL TOPLAM", "", "", usd(calc.total), tl(calc.total * rate)],
+                      [`${HZ[hz].label} İSG Eğitimi — ${usageLabel} (online platform, sınav, sertifika)`, `${employees} kişi`, fmtCur(unit, currency), fmtCur(calc.gross, currency)],
+                      ...(discount ? [[`İskonto (%${discount})`, "", "", `-${fmtCur(calc.disc, currency)}`]] : []),
+                      ["Ara Toplam", "", "", fmtCur(calc.net, currency)],
+                      [`KDV (%${pricing.vat})`, "", "", fmtCur(calc.vat, currency)],
+                      ["GENEL TOPLAM", "", "", fmtCur(calc.total, currency)],
                     ].map((row, i, arr) => (
                       <tr key={i} style={{ fontWeight: i >= arr.length - 1 ? 700 : 400 }}>
                         {row.map((c, j) => <td key={j} style={{ border: "1px solid #ccc", padding: 6, textAlign: j ? "right" : "left" }}>{c}</td>)}
