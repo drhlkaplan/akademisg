@@ -111,7 +111,16 @@ export default function FirmsManagement() {
     favicon_url: "",
     sector_id: "",
     sector_ids: [] as string[],
+    certificate_template_id: "",
     hazard_class_new: "az_tehlikeli",
+  });
+
+  const { data: certTemplates = [] } = useQuery({
+    queryKey: ["cert-templates-list"],
+    queryFn: async () => {
+      const { data } = await supabase.from("certificate_templates").select("id, name").order("name");
+      return data || [];
+    },
   });
 
   // Fetch sectors for dropdown
@@ -213,6 +222,7 @@ export default function FirmsManagement() {
         favicon_url: data.favicon_url || null,
         sector_id: data.sector_id || null,
         sector_ids: data.sector_ids,
+        certificate_template_id: data.certificate_template_id || null,
         hazard_class_new: (data.hazard_class_new || "az_tehlikeli") as any,
       });
       if (error) throw error;
@@ -257,6 +267,7 @@ export default function FirmsManagement() {
           favicon_url: data.favicon_url || null,
           sector_id: data.sector_id || null,
           sector_ids: data.sector_ids,
+          certificate_template_id: data.certificate_template_id || null,
           hazard_class_new: (data.hazard_class_new || "az_tehlikeli") as any,
         })
         .eq("id", data.id);
@@ -405,6 +416,7 @@ export default function FirmsManagement() {
       favicon_url: "",
       sector_id: "",
       sector_ids: [],
+      certificate_template_id: "",
       hazard_class_new: "az_tehlikeli",
     });
     setDialogOpen(true);
@@ -433,6 +445,7 @@ export default function FirmsManagement() {
       favicon_url: (firm as any).favicon_url || "",
       sector_id: firm.sector_id || "",
       sector_ids: firm.sector_ids?.length ? firm.sector_ids : firm.sector_id ? [firm.sector_id] : [],
+      certificate_template_id: (firm as any).certificate_template_id || "",
       hazard_class_new: firm.hazard_class_new || "az_tehlikeli",
     });
     setDialogOpen(true);
@@ -477,6 +490,7 @@ export default function FirmsManagement() {
       favicon_url: "",
       sector_id: "",
       sector_ids: [],
+      certificate_template_id: "",
       hazard_class_new: "az_tehlikeli",
     });
   };
@@ -786,6 +800,14 @@ export default function FirmsManagement() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">Eğitim süresi ve yöntemi buna göre belirlenir</p>
+                <Label className="pt-2 block">Sertifika Şablonu</Label>
+                <Select value={formData.certificate_template_id || "none"} onValueChange={v => setFormData({ ...formData, certificate_template_id: v === "none" ? "" : v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Varsayılan şablon</SelectItem>
+                    {certTemplates.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
