@@ -1,0 +1,1 @@
+ALTER TABLE public.firm_quotes ADD COLUMN IF NOT EXISTS currency text NOT NULL DEFAULT 'USD';
