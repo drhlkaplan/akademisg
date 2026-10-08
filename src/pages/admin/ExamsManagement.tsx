@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AIContentGenerator } from "@/components/admin/AIContentGenerator";
 import { QuestionBankPicker } from "@/components/admin/QuestionBankPicker";
+import { QuestionAudioButton, generateQuestionAudio } from "@/components/exam/QuestionAudioButton";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -678,6 +679,24 @@ export default function ExamsManagement() {
                                   <TableCell>{question.points}</TableCell>
                                   <TableCell>
                                     <div className="flex gap-1">
+                                      <QuestionAudioButton questionText={question.question_text} options={(question.options as string[]) || []} audioPath={(question as any).audio_url} label={false} />
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        title="AI ile seslendirilmiş soru oluştur"
+                                        onClick={async () => {
+                                          try {
+                                            toast({ title: "Seslendiriliyor..." });
+                                            await generateQuestionAudio("questions", question.id);
+                                            toast({ title: "Soru seslendirildi" });
+                                            queryClient.invalidateQueries({ queryKey: ["exam-questions"] });
+                                          } catch (e: any) {
+                                            toast({ title: "Seslendirme hatası", description: e.message, variant: "destructive" });
+                                          }
+                                        }}
+                                      >
+                                        {(question as any).audio_url ? "Yenile" : "Ses"}
+                                      </Button>
                                       <Button variant="ghost" size="icon" onClick={() => handleEditQuestion(question)}>
                                         <Edit className="h-3 w-3" />
                                       </Button>
