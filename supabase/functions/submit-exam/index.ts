@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
     // Ön değerlendirmede baraj yok, her zaman geçer. Final barajı 60.
     const isPreTest = isPreTestExam;
     const passed = isPreTest ? true : score >= 60;
-    const status = passed ? "passed" : "failed";
+    const status = isPreTest ? "completed" : (passed ? "passed" : "failed");
 
     const durationMinutes = exam.duration_minutes || 60;
     const timeUsedSeconds = durationMinutes * 60 - (time_remaining || 0);

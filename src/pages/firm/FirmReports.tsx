@@ -52,7 +52,9 @@ export default function FirmReports() {
   const completed = enr.filter((e) => e.status === "completed").length;
   const completionRate = enr.length ? Math.round((completed / enr.length) * 100) : 0;
   const passedExams = exams.filter((e) => e.status === "passed" || e.status === "completed").length;
-  const avgScore = exams.length ? Math.round(exams.reduce((s, e) => s + Number(e.score), 0) / exams.length) : 0;
+  const isPre = (e: any) => ["pre_test", "pre"].includes(e.exams?.exam_type);
+  const finals = exams.filter((e: any) => !isPre(e));
+  const avgScore = finals.length ? Math.round(finals.reduce((s, e) => s + Number(e.score), 0) / finals.length) : 0;
 
   const courseMap = new Map<string, { title: string; total: number; done: number; active: number; prog: number }>();
   enr.forEach((e: any) => {
@@ -68,7 +70,7 @@ export default function FirmReports() {
       headers: ["Ad Soyad", "TC Kimlik", "Atanan Eğitim", "Tamamlanan", "Oran (%)", "Ort. Sınav", "Sertifika"],
       rows: emps.map((e) => {
         const my = enr.filter((x) => x.user_id === e.user_id);
-        const myEx = exams.filter((x) => x.user_id === e.user_id);
+        const myEx = finals.filter((x) => x.user_id === e.user_id);
         const d = my.filter((x) => x.status === "completed").length;
         return [`${e.first_name} ${e.last_name}`, maskTc(e.tc_identity), my.length, d,
           my.length ? Math.round((d / my.length) * 100) : 0,
