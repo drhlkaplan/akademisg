@@ -32,6 +32,7 @@ import {
   Trophy,
 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+import { QuestionAudioButton } from "@/components/exam/QuestionAudioButton";
 
 type Exam = Database["public"]["Tables"]["exams"]["Row"];
 
@@ -46,6 +47,7 @@ interface QuestionForStudent {
   question_type: string | null;
   options: any;
   points: number | null;
+  audio_url?: string | null;
 }
 
 export default function ExamTaking() {
@@ -66,6 +68,8 @@ export default function ExamTaking() {
     totalQuestions: number;
   } | null>(null);
   const [autoNavigating, setAutoNavigating] = useState(false);
+  const [autoRead, setAutoRead] = useState(() => localStorage.getItem("examAutoRead") === "1");
+  const [speechRate, setSpeechRate] = useState(1);
 
   // Fetch exam details
   const { data: exam, isLoading: examLoading } = useQuery({
@@ -449,9 +453,33 @@ export default function ExamTaking() {
         {currentQuestion && (
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <Badge variant="outline">Soru {currentQuestionIndex + 1}/{questions.length}</Badge>
-                <Badge variant="secondary">{currentQuestion.points || 1} puan</Badge>
+                <div className="flex flex-wrap items-center gap-2">
+                  <QuestionAudioButton
+                    key={currentQuestion.id}
+                    questionText={currentQuestion.question_text}
+                    options={(currentQuestion.options as string[] | null) || []}
+                    audioPath={currentQuestion.audio_url}
+                    autoPlay={autoRead}
+                    rate={speechRate}
+                  />
+                  <select
+                    aria-label="Okuma hızı"
+                    className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                    value={speechRate}
+                    onChange={(e) => setSpeechRate(Number(e.target.value))}
+                  >
+                    <option value={0.8}>0.8x</option>
+                    <option value={1}>1x</option>
+                    <option value={1.2}>1.2x</option>
+                  </select>
+                  <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <input type="checkbox" checked={autoRead} onChange={(e) => { setAutoRead(e.target.checked); localStorage.setItem("examAutoRead", e.target.checked ? "1" : "0"); }} />
+                    Otomatik sesli okuma
+                  </label>
+                  <Badge variant="secondary">{currentQuestion.points || 1} puan</Badge>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">

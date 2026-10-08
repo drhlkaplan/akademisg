@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { QuestionAudioButton, generateQuestionAudio } from "@/components/exam/QuestionAudioButton";
 
 interface BankQuestion {
   id: string;
@@ -16,6 +17,7 @@ interface BankQuestion {
   options: string[];
   correct_answer: string;
   exam_hint: string | null;
+  audio_url: string | null;
 }
 
 const HINT_LABEL: Record<string, string> = { pre: "Ön değ.", final: "Final", both: "Ön + Final" };
@@ -29,13 +31,14 @@ export function QuestionBankPicker({ examId, onDone }: { examId: string; onDone?
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [voicing, setVoicing] = useState<Set<string>>(new Set());
 
   const { data: bank = [], isLoading } = useQuery({
     queryKey: ["question-bank"],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("question_bank")
-        .select("id, main_category, category, question_text, options, correct_answer, exam_hint")
+        .select("id, main_category, category, question_text, options, correct_answer, exam_hint, audio_url")
         .order("main_category")
         .order("category");
       if (error) throw error;
@@ -63,6 +66,24 @@ export function QuestionBankPicker({ examId, onDone }: { examId: string; onDone?
     setSelected(next);
   };
 
+  const voice = async (ids: string[]) => {
+    let ok = 0;
+    for (const id of ids) {
+      setVoicing((s) => new Set(s).add(id));
+      try {
+        await generateQuestionAudio("question_bank", id);
+        ok++;
+      } catch (e: any) {
+        toast({ title: "Seslendirme hatası", description: e.message, variant: "destructive" });
+        setVoicing(new Set());
+        break;
+      }
+      setVoicing((s) => { const n = new Set(s); n.delete(id); return n; });
+    }
+    if (ok) toast({ title: "Seslendirildi", description: `${ok} soru seslendirildi.` });
+    qc.invalidateQueries({ queryKey: ["question-bank"] });
+  };
+
   const handleAdd = async () => {
     setSaving(true);
     try {
@@ -77,6 +98,7 @@ export function QuestionBankPicker({ examId, onDone }: { examId: string; onDone?
           options: q.options,
           correct_answer: q.correct_answer,
           points: 1,
+          audio_url: q.audio_url,
         }));
       if (rows.length) {
         const { error } = await supabase.from("questions").insert(rows);
@@ -133,11 +155,16 @@ export function QuestionBankPicker({ examId, onDone }: { examId: string; onDone?
         <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin" /></div>
       ) : (
         <>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-sm text-muted-foreground">{filtered.length} soru listeleniyor • {selected.size} seçili</span>
-            <Button size="sm" variant="ghost" onClick={toggleAll} disabled={!filtered.length}>
-              {allSelected ? "Listedekileri Kaldır" : "Listedekileri Seç"}
-            </Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" disabled={!selected.size || voicing.size > 0} onClick={() => voice([...selected])}>
+                {voicing.size ? `Seslendiriliyor (${voicing.size})...` : "Seçilenleri Seslendir"}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={toggleAll} disabled={!filtered.length}>
+                {allSelected ? "Listedekileri Kaldır" : "Listedekileri Seç"}
+              </Button>
+            </div>
           </div>
           <div className="max-h-[35vh] divide-y overflow-y-auto rounded-md border border-border">
             {filtered.map((q) => (
@@ -157,7 +184,14 @@ export function QuestionBankPicker({ examId, onDone }: { examId: string; onDone?
                   <p className="mt-1 text-xs text-muted-foreground">
                     {q.main_category} • {q.category}
                     {q.exam_hint ? ` • ${HINT_LABEL[q.exam_hint]}` : ""} • Cevap: {q.correct_answer}
+                    {q.audio_url ? " • 🔊 Seslendirilmiş" : ""}
                   </p>
+                </div>
+                <div className="flex shrink-0 gap-1">
+                  <QuestionAudioButton questionText={q.question_text} options={q.options} audioPath={q.audio_url} label={false} />
+                  <Button type="button" size="sm" variant="ghost" disabled={voicing.has(q.id)} onClick={(e) => { e.preventDefault(); e.stopPropagation(); voice([q.id]); }}>
+                    {voicing.has(q.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : q.audio_url ? "Yenile" : "Seslendir"}
+                  </Button>
                 </div>
               </label>
             ))}
