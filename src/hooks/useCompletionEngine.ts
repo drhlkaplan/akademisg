@@ -111,8 +111,9 @@ export function useCompletionEngine() {
       if (rules?.requires_final_assessment) {
         const { data: examResults } = await supabase
           .from("exam_results")
-          .select("score")
+          .select("score, exams!inner(exam_type)")
           .eq("enrollment_id", enrollmentId)
+          .eq("exams.exam_type", "final")
           .order("score", { ascending: false })
           .limit(1);
 
