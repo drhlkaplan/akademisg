@@ -68,6 +68,7 @@ interface ScormPlayerProps {
 
 // ─── SCORM CDN base (Cloudflare R2 custom domain) ───────────
 const SCORM_BASE_URL = "https://scorm.gratisakademi.com";
+export const SCORM_RESUME_PREFIX = "scorm_resume:";
 
 /**
  * Rewrite any stored packageUrl (r2.dev, direct R2 host, signed URL, etc.)
@@ -328,10 +329,19 @@ export function ScormPlayer({
           .maybeSingle();
         if (cancelled) return;
 
+        // Same browser session (tab switch, minimise, page change) → resume exact position.
+        // New session (tab closed or logged out) → restart this lesson from its beginning.
+        const resumeKey = `${SCORM_RESUME_PREFIX}${p.enrollmentId}:${lessonId}`;
+        let sameSession = false;
+        try {
+          sameSession = sessionStorage.getItem(resumeKey) === "1";
+          sessionStorage.setItem(resumeKey, "1");
+        } catch { /* noop */ }
+        const isDone = prior.lesson_status === "completed" || prior.lesson_status === "passed";
         const initialData: ScormInitialData = {
-          lesson_status: prior.lesson_status,
-          lesson_location: prior.lesson_location,
-          suspend_data: prior.suspend_data,
+          lesson_status: sameSession || isDone ? prior.lesson_status : prior.lesson_status ? "incomplete" : undefined,
+          lesson_location: sameSession ? prior.lesson_location : undefined,
+          suspend_data: sameSession ? prior.suspend_data : undefined,
           score_raw: prior.score_raw,
           total_time: prior.total_time,
           student_id: p.userId,
@@ -388,6 +398,20 @@ export function ScormPlayer({
       });
     }
   }, []);
+
+  // ─── Save immediately when the tab is hidden / page is left ───
+  useEffect(() => {
+    const flush = () => {
+      if (lastSnapshotRef.current) persist(lastSnapshotRef.current, "Hidden");
+    };
+    const onVis = () => { if (document.visibilityState === "hidden") flush(); };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("pagehide", flush);
+    };
+  }, [persist]);
 
   // ─── Final flush on unmount ──────────────────────────────────
   useEffect(() => {

@@ -146,6 +146,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    // Forget in-lesson SCORM positions so the next login restarts the current lesson from its start
+    try {
+      Object.keys(sessionStorage).filter((k) => k.startsWith("scorm_resume:")).forEach((k) => sessionStorage.removeItem(k));
+    } catch { /* noop */ }
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
