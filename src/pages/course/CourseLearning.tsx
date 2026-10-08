@@ -68,9 +68,11 @@ export default function CourseLearning() {
   const resumeNotifiedRef = useRef(false);
   const { checkAndComplete } = useCompletionEngine();
 
+  // Depend on the user id only: token refreshes on tab switch must not reload the lesson.
   useEffect(() => {
     if (user && courseId) fetchCourseData();
-  }, [user, courseId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, courseId]);
 
   const fetchCourseData = async () => {
     setIsLoading(true);
