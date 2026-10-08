@@ -1878,6 +1878,7 @@ export type Database = {
       }
       question_bank: {
         Row: {
+          audio_url: string | null
           category: string
           correct_answer: string
           created_at: string
@@ -1890,6 +1891,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          audio_url?: string | null
           category: string
           correct_answer: string
           created_at?: string
@@ -1902,6 +1904,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          audio_url?: string | null
           category?: string
           correct_answer?: string
           created_at?: string
@@ -1917,6 +1920,7 @@ export type Database = {
       }
       questions: {
         Row: {
+          audio_url: string | null
           correct_answer: string
           created_at: string | null
           exam_id: string
@@ -1927,6 +1931,7 @@ export type Database = {
           question_type: Database["public"]["Enums"]["question_type"] | null
         }
         Insert: {
+          audio_url?: string | null
           correct_answer: string
           created_at?: string | null
           exam_id: string
@@ -1937,6 +1942,7 @@ export type Database = {
           question_type?: Database["public"]["Enums"]["question_type"] | null
         }
         Update: {
+          audio_url?: string | null
           correct_answer?: string
           created_at?: string | null
           exam_id?: string
@@ -2851,6 +2857,7 @@ export type Database = {
       get_exam_questions_for_student: {
         Args: { _exam_id: string }
         Returns: {
+          audio_url: string
           exam_id: string
           id: string
           options: Json
