@@ -167,7 +167,7 @@ export default function StudentDashboard() {
         }, {} as Record<string, number>) || {};
 
         const passedExams = new Set(
-          resultsData?.filter((r) => r.status === "passed").map((r) => r.exam_id) || []
+          resultsData?.filter((r) => r.status === "passed" || r.status === "completed").map((r) => r.exam_id) || []
         );
 
         const examsWithEnrollment: AvailableExam[] = [];

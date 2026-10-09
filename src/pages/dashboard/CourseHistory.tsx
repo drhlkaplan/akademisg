@@ -269,12 +269,14 @@ export default function CourseHistory() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y divide-border">
-                {examResults.map((result: any) => (
+                {examResults.map((result: any) => {
+                  const done = result.status === "passed" || result.status === "completed";
+                  return (
                   <div key={result.id} className="flex items-center gap-3 px-6 py-3">
                     <div className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      result.status === "passed" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                      done ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
                     }`}>
-                      {result.status === "passed" ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                      {done ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm text-foreground truncate">{result.exam?.title || "Sınav"}</p>
@@ -284,12 +286,13 @@ export default function CourseHistory() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-bold text-foreground">{result.correct_answers}/{result.total_questions}</span>
-                      <Badge variant={result.status === "passed" ? "success" : "destructive"} className="text-xs">
+                      <Badge variant={done ? "success" : "destructive"} className="text-xs">
                         %{Math.round(result.score)}
                       </Badge>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
