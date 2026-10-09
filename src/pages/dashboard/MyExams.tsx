@@ -81,7 +81,7 @@ export default function MyExams() {
         attemptsByExam[r.exam_id] = (attemptsByExam[r.exam_id] || 0) + 1;
         const current = bestScoreByExam[r.exam_id] ?? 0;
         if (r.score > current) bestScoreByExam[r.exam_id] = r.score;
-        if (r.status === "passed") passedExams.add(r.exam_id);
+        if (r.status === "passed" || r.status === "completed") passedExams.add(r.exam_id);
       });
 
       const items: ExamItem[] = [];
