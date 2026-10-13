@@ -145,11 +145,36 @@ async function resolveLaunchUrl(packageUrl: string, _entryPoint: string): Promis
 }
 
 /**
- * Fetch the LMS-enabled launch page and return it as an inline document.
- * Content on the CDN is a different origin, so it cannot reach window.API in this page.
- * Inlining the HTML (srcdoc + <base>) makes the frame same-origin while all assets still
- * load from the CDN — the package can then report progress, completion and resume data.
+ * Lesson packages live on the SCORM CDN (another origin), so their pages cannot reach
+ * window.API here. The /scorm-proxy/ service worker serves CDN files from this origin,
+ * letting the package report progress, completion and resume position.
  */
+let proxyReady: Promise<boolean> | null = null;
+function ensureScormProxy(): Promise<boolean> {
+  if (proxyReady) return proxyReady;
+  proxyReady = (async () => {
+    try {
+      if (!("serviceWorker" in navigator)) return false;
+      const reg = await navigator.serviceWorker.register("/scorm-sw.js", { scope: "/scorm-proxy/" });
+      if (reg.active) return true;
+      const sw = reg.installing || reg.waiting;
+      if (!sw) return false;
+      return await new Promise<boolean>((resolve) => {
+        const t = setTimeout(() => resolve(false), 8000);
+        sw.addEventListener("statechange", () => {
+          if (sw.state === "activated") { clearTimeout(t); resolve(true); }
+          if (sw.state === "redundant") { clearTimeout(t); resolve(false); }
+        });
+      });
+    } catch (e) {
+      console.warn("[scorm] proxy unavailable:", e);
+      return false;
+    }
+  })();
+  return proxyReady;
+}
+
+/** Pick the LMS-enabled launch page (reports to the SCORM API) before plain story pages. */
 async function resolveLaunchDoc(packageUrl: string, entryPoint: string): Promise<{ url: string; html: string } | null> {
   const base = rewriteToCustomDomain(packageUrl).replace(/\/+$/, "");
   const names = Array.from(new Set([
@@ -161,28 +186,20 @@ async function resolveLaunchDoc(packageUrl: string, entryPoint: string): Promise
     "html5/story.html",
     "index.html",
   ].filter(Boolean)));
+  let chosen: string | null = null;
   for (const name of names) {
     const url = `${base}/${name.split("/").map(encodeURIComponent).join("/")}`;
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      const res = await fetch(url, { cache: "no-cache" });
-      if (!res.ok) continue;
-      // eslint-disable-next-line no-await-in-loop
-      const raw = (await res.text()).replace(/^\uFEFF/, "");
-      if (!/<html|<head|<script/i.test(raw)) continue;
-      const dir = url.slice(0, url.lastIndexOf("/") + 1);
-      const baseTag = `<base href="${dir}">`;
-      const html = /<head[^>]*>/i.test(raw)
-        ? raw.replace(/<head[^>]*>/i, (m) => m + baseTag)
-        : baseTag + raw;
-      console.log("[scorm] Inline launch:", url);
-      return { url, html };
-    } catch {
-      // CORS / network blocked — caller falls back to direct src
-      return null;
-    }
+    // eslint-disable-next-line no-await-in-loop
+    const r = await checkUrl(url);
+    if (r === true) { chosen = url; break; }
+    if (r === null) return null; // CDN check blocked — caller uses legacy resolution
   }
-  return null;
+  if (!chosen) return null;
+  const proxied = await ensureScormProxy();
+  if (!proxied) return { url: chosen, html: "" };
+  const url = `${window.location.origin}/scorm-proxy${chosen.slice(SCORM_BASE_URL.length)}`;
+  console.log("[scorm] Proxied launch:", url);
+  return { url, html: "" };
 }
 
 export function ScormPlayer({
@@ -240,7 +257,6 @@ export function ScormPlayer({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
-  const [iframeDoc, setIframeDoc] = useState<string | null>(null);
   const [status, setStatus] = useState("not attempted");
   const [scoreRaw, setScoreRaw] = useState("");
   const [sessionSeconds, setSessionSeconds] = useState(0);
@@ -358,7 +374,6 @@ export function ScormPlayer({
       setIsLoading(true);
       setError(null);
       setIframeSrc(null);
-      setIframeDoc(null);
 
       const p = propsRef.current;
       if (!p.packageUrl) {
@@ -412,7 +427,6 @@ export function ScormPlayer({
         const doc = await resolveLaunchDoc(p.packageUrl, p.entryPoint || "index.html");
         if (cancelled) return;
         if (doc) {
-          setIframeDoc(doc.html);
           setIframeSrc(doc.url);
           return;
         }
@@ -446,14 +460,12 @@ export function ScormPlayer({
 
   const handleRetry = useCallback(() => {
     setIframeSrc(null);
-    setIframeDoc(null);
     setError(null);
     setIsLoading(true);
     const p = propsRef.current;
     if (p.packageUrl) {
       resolveLaunchDoc(p.packageUrl, p.entryPoint || "index.html").then((doc) => {
         if (doc) {
-          setIframeDoc(doc.html);
           setIframeSrc(doc.url);
           return;
         }
@@ -605,7 +617,6 @@ export function ScormPlayer({
             iframeRef={iframeRef}
             lessonKey={lessonId}
             src={iframeSrc}
-            srcDoc={iframeDoc}
             title={lessonTitle || "SCORM"}
             onLoaded={() => {
               setIsLoading(false);
@@ -645,12 +656,11 @@ interface IframeTrackingProps {
   iframeRef: React.RefObject<HTMLIFrameElement>;
   lessonKey: string;
   src: string;
-  srcDoc?: string | null;
   title: string;
   onLoaded: () => void;
   onMount: () => void;
 }
-function IframeWithMountTracking({ iframeRef, lessonKey, src, srcDoc, title, onLoaded, onMount }: IframeTrackingProps) {
+function IframeWithMountTracking({ iframeRef, lessonKey, src, title, onLoaded, onMount }: IframeTrackingProps) {
   // Fires once per real mount (re-mount happens only when key changes)
   useEffect(() => {
     onMount();
@@ -660,7 +670,7 @@ function IframeWithMountTracking({ iframeRef, lessonKey, src, srcDoc, title, onL
     <iframe
       ref={iframeRef}
       key={lessonKey}
-      {...(srcDoc ? { srcDoc } : { src })}
+      src={src}
       className="w-full h-full border-0"
       title={title}
       sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals"
