@@ -14,7 +14,7 @@ interface TopBarProps {
   onToggleFullscreen: () => void;
   canFinish?: boolean;
   finishing?: boolean;
-  remainingSeconds?: number;
+  waitingForContent?: boolean;
   onFinish?: () => void;
 }
 
@@ -27,7 +27,7 @@ export function ScormTopBar({
   onToggleFullscreen,
   canFinish,
   finishing,
-  remainingSeconds = 0,
+  waitingForContent = false,
   onFinish,
 }: TopBarProps) {
   const statusLabel: Record<string, string> = {
@@ -46,15 +46,15 @@ export function ScormTopBar({
       </div>
       <div className="flex items-center gap-2 text-xs">
         <span className="px-2 py-1 rounded bg-muted text-muted-foreground">{statusLabel[status] || status}</span>
-        {canFinish && onFinish && (
-          <Button size="sm" onClick={onFinish} disabled={finishing}>
-            {finishing ? "Kaydediliyor..." : "Dersi Tamamla"}
+        {onFinish && (
+          <Button
+            size="sm"
+            onClick={onFinish}
+            disabled={!canFinish || finishing}
+            title={waitingForContent ? "Ders içeriğini sonuna kadar tamamladığınızda aktif olur" : undefined}
+          >
+            {finishing ? "Kaydediliyor..." : canFinish ? "Dersi Tamamla" : "İçerik bitince aktif olur"}
           </Button>
-        )}
-        {!canFinish && remainingSeconds > 0 && (
-          <span className="px-2 py-1 rounded bg-muted text-muted-foreground tabular-nums">
-            Tamamlamaya {Math.ceil(remainingSeconds / 60)} dk
-          </span>
         )}
         {scoreRaw && <span className="px-2 py-1 rounded bg-primary/10 text-primary">Skor: {scoreRaw}</span>}
         <Button variant="ghost" size="icon" onClick={onToggleFullscreen}>
