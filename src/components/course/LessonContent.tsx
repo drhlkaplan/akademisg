@@ -118,6 +118,7 @@ export function LessonContent({
             userId={userId}
             scormVersion={pkg.scorm_version || "1.2"}
             onComplete={onScormComplete}
+                durationMinutes={lesson.duration_minutes || 0}
             {...scormProps}
           />
         </div>
@@ -140,6 +141,7 @@ export function LessonContent({
                 userId={userId}
                 scormVersion={pkg.scorm_version || "1.2"}
                 onComplete={onScormComplete}
+                durationMinutes={lesson.duration_minutes || 0}
                 {...scormProps}
               />
             </div>
