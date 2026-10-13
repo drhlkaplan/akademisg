@@ -225,7 +225,6 @@ export function LessonContent({
           lessonId={lesson.id}
           enrollmentId={enrollmentId}
           onComplete={onScormComplete}
-                durationMinutes={lesson.duration_minutes || 0}
         />
       );
     }
