@@ -58,6 +58,7 @@ interface ScormPlayerProps {
   userId: string;
   scormVersion?: string;
   onComplete?: () => void;
+  durationMinutes?: number;
   onPrevious?: () => void;
   onNext?: () => void;
   lessonTitle?: string;
@@ -151,6 +152,7 @@ export function ScormPlayer({
   userId,
   scormVersion,
   onComplete,
+  durationMinutes = 0,
   onPrevious,
   onNext,
   lessonTitle,
@@ -201,6 +203,9 @@ export function ScormPlayer({
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [progressPercent, setProgressPercent] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [priorSeconds, setPriorSeconds] = useState(0);
+  const [finishing, setFinishing] = useState(false);
+  const apiSeenRef = useRef(false);
 
   // Track every render
   debugRef.current.renders += 1;
@@ -266,6 +271,7 @@ export function ScormPlayer({
   const handleApiEvent = useCallback(
     (method: string, snapshot: ScormCmiSnapshot) => {
       lastSnapshotRef.current = snapshot;
+      apiSeenRef.current = true;
       bumpDebug({ apiEvents: debugRef.current.apiEvents + 1, lastEvent: `api:${method}` });
       dbg("api event", method);
       setStatus(snapshot.lesson_status || "not attempted");
@@ -321,6 +327,11 @@ export function ScormPlayer({
         if (cancelled) return;
         if (prior.lesson_status) setStatus(prior.lesson_status);
         if (prior.score_raw) setScoreRaw(prior.score_raw);
+        {
+          const parts = (prior.total_time || "0:0:0").split(":").map((x) => parseInt(x) || 0);
+          setPriorSeconds(parts.length === 3 ? parts[0] * 3600 + parts[1] * 60 + parts[2] : 0);
+        }
+        if (!prior.lesson_status) setStatus("incomplete");
 
         const { data: profile } = await supabase
           .from("profiles")
@@ -399,6 +410,58 @@ export function ScormPlayer({
     }
   }, []);
 
+  // ─── Fallback when the content cannot reach the SCORM API (cross-origin CDN) ──
+  const isDoneStatus = status === "completed" || status === "passed";
+  const watchedSeconds = priorSeconds + sessionSeconds;
+  const requiredSeconds = Math.round(Math.max(0, durationMinutes) * 60 * 0.9);
+  const canFinish = !isDoneStatus && watchedSeconds >= requiredSeconds;
+  const realPkgId = /^[0-9a-f-]{36}$/i.test(scormPackageId) ? scormPackageId : null;
+
+  const saveTimeOnly = useCallback(async () => {
+    if (apiSeenRef.current) return;
+    const p = propsRef.current;
+    await supabase.rpc("record_lesson_progress", {
+      _enrollment_id: p.enrollmentId,
+      _lesson_id: lessonId,
+      _lesson_status: "incomplete",
+      _total_time: priorSecondsRef.current + sessionSecondsRef.current,
+      ...(realPkgId ? { _scorm_package_id: realPkgId } : {}),
+    } as any);
+  }, [lessonId, realPkgId]);
+  const priorSecondsRef = useRef(0);
+  priorSecondsRef.current = priorSeconds;
+  const statusRef = useRef(status);
+  statusRef.current = status;
+
+  useEffect(() => {
+    const i = setInterval(() => {
+      if (statusRef.current !== "completed" && statusRef.current !== "passed") saveTimeOnly();
+    }, 30000);
+    return () => clearInterval(i);
+  }, [saveTimeOnly]);
+
+  const finishLesson = useCallback(async () => {
+    setFinishing(true);
+    try {
+      const p = propsRef.current;
+      const { error: e } = await supabase.rpc("record_lesson_progress", {
+        _enrollment_id: p.enrollmentId,
+        _lesson_id: lessonId,
+        _lesson_status: "completed",
+        _total_time: priorSecondsRef.current + sessionSecondsRef.current,
+        ...(realPkgId ? { _scorm_package_id: realPkgId } : {}),
+      } as any);
+      if (e) throw e;
+      setStatus("completed");
+      p.onComplete?.();
+      if (hasNext) setTimeout(() => onNext?.(), 800);
+    } catch (e) {
+      console.error("[scorm] finish error:", e);
+    } finally {
+      setFinishing(false);
+    }
+  }, [lessonId, realPkgId, hasNext, onNext]);
+
   // ─── Save immediately when the tab is hidden / page is left ───
   useEffect(() => {
     const flush = () => {
@@ -467,6 +530,10 @@ export function ScormPlayer({
         scoreRaw={scoreRaw}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
+        canFinish={canFinish}
+        finishing={finishing}
+        remainingSeconds={isDoneStatus ? 0 : Math.max(0, requiredSeconds - watchedSeconds)}
+        onFinish={finishLesson}
       />
       <div className="relative flex-1 min-h-0 bg-black">
         {isLoading && (
