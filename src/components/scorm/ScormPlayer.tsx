@@ -121,6 +121,7 @@ async function checkUrl(url: string): Promise<boolean | null> {
 async function resolveLaunchUrl(packageUrl: string, _entryPoint: string): Promise<string | null> {
   const base = rewriteToCustomDomain(packageUrl).replace(/\/+$/, "");
   const candidates = [
+    `${base}/index_lms.html`,
     `${base}/story.html`,
     `${base}/html5/story.html`,
     `${base}/index.html`,
@@ -138,7 +139,48 @@ async function resolveLaunchUrl(packageUrl: string, _entryPoint: string): Promis
   }
   if (unknown) {
     console.warn("[scorm] Launch check blocked; falling back to story.html");
-    return candidates[0];
+    return candidates[1];
+  }
+  return null;
+}
+
+/**
+ * Fetch the LMS-enabled launch page and return it as an inline document.
+ * Content on the CDN is a different origin, so it cannot reach window.API in this page.
+ * Inlining the HTML (srcdoc + <base>) makes the frame same-origin while all assets still
+ * load from the CDN — the package can then report progress, completion and resume data.
+ */
+async function resolveLaunchDoc(packageUrl: string, entryPoint: string): Promise<{ url: string; html: string } | null> {
+  const base = rewriteToCustomDomain(packageUrl).replace(/\/+$/, "");
+  const names = Array.from(new Set([
+    "index_lms_html5.html",
+    "index_lms.html",
+    entryPoint && entryPoint !== "index.html" ? entryPoint.replace(/^\/+/, "") : "",
+    "story_html5.html",
+    "story.html",
+    "html5/story.html",
+    "index.html",
+  ].filter(Boolean)));
+  for (const name of names) {
+    const url = `${base}/${name.split("/").map(encodeURIComponent).join("/")}`;
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const res = await fetch(url, { cache: "no-cache" });
+      if (!res.ok) continue;
+      // eslint-disable-next-line no-await-in-loop
+      const raw = (await res.text()).replace(/^\uFEFF/, "");
+      if (!/<html|<head|<script/i.test(raw)) continue;
+      const dir = url.slice(0, url.lastIndexOf("/") + 1);
+      const baseTag = `<base href="${dir}">`;
+      const html = /<head[^>]*>/i.test(raw)
+        ? raw.replace(/<head[^>]*>/i, (m) => m + baseTag)
+        : baseTag + raw;
+      console.log("[scorm] Inline launch:", url);
+      return { url, html };
+    } catch {
+      // CORS / network blocked — caller falls back to direct src
+      return null;
+    }
   }
   return null;
 }
