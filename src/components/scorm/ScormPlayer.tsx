@@ -269,12 +269,13 @@ export function ScormPlayer({
     }
   }, [isLoading, debugEnabled]);
 
-  // ─── Session timer (display only — never feeds back into load chain) ──
+  // ─── Session timer — counts only while the lesson tab is visible ──
   useEffect(() => {
     sessionStartRef.current = Date.now();
     sessionSecondsRef.current = 0;
     const i = setInterval(() => {
-      const s = Math.floor((Date.now() - sessionStartRef.current) / 1000);
+      if (document.visibilityState !== "visible") return;
+      const s = sessionSecondsRef.current + 1;
       sessionSecondsRef.current = s;
       setSessionSeconds(s);
     }, 1000);
@@ -406,6 +407,13 @@ export function ScormPlayer({
         uninstall =
           version === "2004" ? installScorm2004(initialData, apiHandler) : installScorm12(initialData, apiHandler);
 
+        const doc = await resolveLaunchDoc(p.packageUrl, p.entryPoint || "index.html");
+        if (cancelled) return;
+        if (doc) {
+          setIframeDoc(doc.html);
+          setIframeSrc(doc.url);
+          return;
+        }
         const url = await resolveLaunchUrl(p.packageUrl, p.entryPoint || "index.html");
         if (cancelled) return;
         if (!url) {
