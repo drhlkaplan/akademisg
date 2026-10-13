@@ -240,6 +240,7 @@ export function ScormPlayer({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
+  const [iframeDoc, setIframeDoc] = useState<string | null>(null);
   const [status, setStatus] = useState("not attempted");
   const [scoreRaw, setScoreRaw] = useState("");
   const [sessionSeconds, setSessionSeconds] = useState(0);
@@ -357,6 +358,7 @@ export function ScormPlayer({
       setIsLoading(true);
       setError(null);
       setIframeSrc(null);
+      setIframeDoc(null);
 
       const p = propsRef.current;
       if (!p.packageUrl) {
@@ -444,11 +446,18 @@ export function ScormPlayer({
 
   const handleRetry = useCallback(() => {
     setIframeSrc(null);
+    setIframeDoc(null);
     setError(null);
     setIsLoading(true);
     const p = propsRef.current;
     if (p.packageUrl) {
-      resolveLaunchUrl(p.packageUrl, p.entryPoint || "index.html").then((url) => {
+      resolveLaunchDoc(p.packageUrl, p.entryPoint || "index.html").then((doc) => {
+        if (doc) {
+          setIframeDoc(doc.html);
+          setIframeSrc(doc.url);
+          return;
+        }
+        return resolveLaunchUrl(p.packageUrl, p.entryPoint || "index.html").then((url) => {
         if (url) {
           console.log("[scorm] iframe SRC (retry):", url);
           setIframeSrc(url);
@@ -457,14 +466,14 @@ export function ScormPlayer({
           setIsLoading(false);
         }
       });
+      });
     }
   }, []);
 
   // ─── Fallback when the content cannot reach the SCORM API (cross-origin CDN) ──
+  // The finish button only unlocks once the package itself reports completion.
   const isDoneStatus = status === "completed" || status === "passed";
-  const watchedSeconds = priorSeconds + sessionSeconds;
-  const requiredSeconds = Math.round(Math.max(0, durationMinutes) * 60 * 0.9);
-  const canFinish = !isDoneStatus && watchedSeconds >= requiredSeconds;
+  const canFinish = isDoneStatus;
   const realPkgId = /^[0-9a-f-]{36}$/i.test(scormPackageId) ? scormPackageId : null;
 
   const saveTimeOnly = useCallback(async () => {
@@ -582,7 +591,7 @@ export function ScormPlayer({
         onToggleFullscreen={toggleFullscreen}
         canFinish={canFinish}
         finishing={finishing}
-        remainingSeconds={isDoneStatus ? 0 : Math.max(0, requiredSeconds - watchedSeconds)}
+        waitingForContent={!isDoneStatus}
         onFinish={finishLesson}
       />
       <div className="relative flex-1 min-h-0 bg-black">
@@ -596,6 +605,7 @@ export function ScormPlayer({
             iframeRef={iframeRef}
             lessonKey={lessonId}
             src={iframeSrc}
+            srcDoc={iframeDoc}
             title={lessonTitle || "SCORM"}
             onLoaded={() => {
               setIsLoading(false);
@@ -635,11 +645,12 @@ interface IframeTrackingProps {
   iframeRef: React.RefObject<HTMLIFrameElement>;
   lessonKey: string;
   src: string;
+  srcDoc?: string | null;
   title: string;
   onLoaded: () => void;
   onMount: () => void;
 }
-function IframeWithMountTracking({ iframeRef, lessonKey, src, title, onLoaded, onMount }: IframeTrackingProps) {
+function IframeWithMountTracking({ iframeRef, lessonKey, src, srcDoc, title, onLoaded, onMount }: IframeTrackingProps) {
   // Fires once per real mount (re-mount happens only when key changes)
   useEffect(() => {
     onMount();
@@ -649,7 +660,7 @@ function IframeWithMountTracking({ iframeRef, lessonKey, src, title, onLoaded, o
     <iframe
       ref={iframeRef}
       key={lessonKey}
-      src={src}
+      {...(srcDoc ? { srcDoc } : { src })}
       className="w-full h-full border-0"
       title={title}
       sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals"
