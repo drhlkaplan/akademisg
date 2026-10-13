@@ -121,6 +121,7 @@ async function checkUrl(url: string): Promise<boolean | null> {
 async function resolveLaunchUrl(packageUrl: string, _entryPoint: string): Promise<string | null> {
   const base = rewriteToCustomDomain(packageUrl).replace(/\/+$/, "");
   const candidates = [
+    `${base}/index_lms.html`,
     `${base}/story.html`,
     `${base}/html5/story.html`,
     `${base}/index.html`,
@@ -138,9 +139,67 @@ async function resolveLaunchUrl(packageUrl: string, _entryPoint: string): Promis
   }
   if (unknown) {
     console.warn("[scorm] Launch check blocked; falling back to story.html");
-    return candidates[0];
+    return candidates[1];
   }
   return null;
+}
+
+/**
+ * Lesson packages live on the SCORM CDN (another origin), so their pages cannot reach
+ * window.API here. The /scorm-proxy/ service worker serves CDN files from this origin,
+ * letting the package report progress, completion and resume position.
+ */
+let proxyReady: Promise<boolean> | null = null;
+function ensureScormProxy(): Promise<boolean> {
+  if (proxyReady) return proxyReady;
+  proxyReady = (async () => {
+    try {
+      if (!("serviceWorker" in navigator)) return false;
+      const reg = await navigator.serviceWorker.register("/scorm-sw.js", { scope: "/scorm-proxy/" });
+      if (reg.active) return true;
+      const sw = reg.installing || reg.waiting;
+      if (!sw) return false;
+      return await new Promise<boolean>((resolve) => {
+        const t = setTimeout(() => resolve(false), 8000);
+        sw.addEventListener("statechange", () => {
+          if (sw.state === "activated") { clearTimeout(t); resolve(true); }
+          if (sw.state === "redundant") { clearTimeout(t); resolve(false); }
+        });
+      });
+    } catch (e) {
+      console.warn("[scorm] proxy unavailable:", e);
+      return false;
+    }
+  })();
+  return proxyReady;
+}
+
+/** Pick the LMS-enabled launch page (reports to the SCORM API) before plain story pages. */
+async function resolveLaunchDoc(packageUrl: string, entryPoint: string): Promise<{ url: string; html: string } | null> {
+  const base = rewriteToCustomDomain(packageUrl).replace(/\/+$/, "");
+  const names = Array.from(new Set([
+    "index_lms_html5.html",
+    "index_lms.html",
+    entryPoint && entryPoint !== "index.html" ? entryPoint.replace(/^\/+/, "") : "",
+    "story_html5.html",
+    "story.html",
+    "html5/story.html",
+    "index.html",
+  ].filter(Boolean)));
+  let chosen: string | null = null;
+  for (const name of names) {
+    const url = `${base}/${name.split("/").map(encodeURIComponent).join("/")}`;
+    // eslint-disable-next-line no-await-in-loop
+    const r = await checkUrl(url);
+    if (r === true) { chosen = url; break; }
+    if (r === null) return null; // CDN check blocked — caller uses legacy resolution
+  }
+  if (!chosen) return null;
+  const proxied = await ensureScormProxy();
+  if (!proxied) return { url: chosen, html: "" };
+  const url = `${window.location.origin}/scorm-proxy${chosen.slice(SCORM_BASE_URL.length)}`;
+  console.log("[scorm] Proxied launch:", url);
+  return { url, html: "" };
 }
 
 export function ScormPlayer({
@@ -227,12 +286,13 @@ export function ScormPlayer({
     }
   }, [isLoading, debugEnabled]);
 
-  // ─── Session timer (display only — never feeds back into load chain) ──
+  // ─── Session timer — counts only while the lesson tab is visible ──
   useEffect(() => {
     sessionStartRef.current = Date.now();
     sessionSecondsRef.current = 0;
     const i = setInterval(() => {
-      const s = Math.floor((Date.now() - sessionStartRef.current) / 1000);
+      if (document.visibilityState !== "visible") return;
+      const s = sessionSecondsRef.current + 1;
       sessionSecondsRef.current = s;
       setSessionSeconds(s);
     }, 1000);
@@ -364,6 +424,12 @@ export function ScormPlayer({
         uninstall =
           version === "2004" ? installScorm2004(initialData, apiHandler) : installScorm12(initialData, apiHandler);
 
+        const doc = await resolveLaunchDoc(p.packageUrl, p.entryPoint || "index.html");
+        if (cancelled) return;
+        if (doc) {
+          setIframeSrc(doc.url);
+          return;
+        }
         const url = await resolveLaunchUrl(p.packageUrl, p.entryPoint || "index.html");
         if (cancelled) return;
         if (!url) {
@@ -398,7 +464,12 @@ export function ScormPlayer({
     setIsLoading(true);
     const p = propsRef.current;
     if (p.packageUrl) {
-      resolveLaunchUrl(p.packageUrl, p.entryPoint || "index.html").then((url) => {
+      resolveLaunchDoc(p.packageUrl, p.entryPoint || "index.html").then((doc) => {
+        if (doc) {
+          setIframeSrc(doc.url);
+          return;
+        }
+        return resolveLaunchUrl(p.packageUrl, p.entryPoint || "index.html").then((url) => {
         if (url) {
           console.log("[scorm] iframe SRC (retry):", url);
           setIframeSrc(url);
@@ -407,14 +478,14 @@ export function ScormPlayer({
           setIsLoading(false);
         }
       });
+      });
     }
   }, []);
 
   // ─── Fallback when the content cannot reach the SCORM API (cross-origin CDN) ──
+  // The finish button only unlocks once the package itself reports completion.
   const isDoneStatus = status === "completed" || status === "passed";
-  const watchedSeconds = priorSeconds + sessionSeconds;
-  const requiredSeconds = Math.round(Math.max(0, durationMinutes) * 60 * 0.9);
-  const canFinish = !isDoneStatus && watchedSeconds >= requiredSeconds;
+  const canFinish = isDoneStatus;
   const realPkgId = /^[0-9a-f-]{36}$/i.test(scormPackageId) ? scormPackageId : null;
 
   const saveTimeOnly = useCallback(async () => {
@@ -532,7 +603,7 @@ export function ScormPlayer({
         onToggleFullscreen={toggleFullscreen}
         canFinish={canFinish}
         finishing={finishing}
-        remainingSeconds={isDoneStatus ? 0 : Math.max(0, requiredSeconds - watchedSeconds)}
+        waitingForContent={!isDoneStatus}
         onFinish={finishLesson}
       />
       <div className="relative flex-1 min-h-0 bg-black">
