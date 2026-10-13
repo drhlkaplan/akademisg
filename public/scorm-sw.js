@@ -24,7 +24,7 @@ async function proxy(request) {
   }
   let upstream;
   try {
-    upstream = await fetch(target, { mode: "cors", credentials: "omit", headers, cache: "no-cache" });
+    upstream = await fetch(target, { mode: "cors", credentials: "omit", headers });
   } catch (e) {
     // CORS blocked (origin not allowed on CDN) — media/scripts can still use an opaque copy
     if (request.mode === "no-cors") return fetch(target, { mode: "no-cors", credentials: "omit" });
