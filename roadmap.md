@@ -1,4 +1,6 @@
 # Tasks
+- [ ] Add and validate the public sitemap and site icon link.
+- [ ] Complete Google Search Console verification and sitemap submission; requires live verification tag and Google access.
 - [x] Allow multiple sectors in firm creation and editing without losing existing sector selections.
 - [x] Put İşveren at the top of the rightmost certificate signature column.
 - [x] Verify existing sector preservation in the database and certificate heading alignment; 13 compliance tests pass.
