@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Mail, Phone, MapPin, Clock, Send, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
 
 export default function Contact() {
@@ -51,10 +52,21 @@ export default function Contact() {
       return;
     }
     setSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const { error } = await supabase.from("lead_submissions").insert({
+      source: "contact",
+      name: formData.name.trim(),
+      email: formData.email.trim(),
+      phone: formData.phone.trim() || null,
+      subject: formData.subject || null,
+      message: formData.message.trim(),
+    });
+    setSubmitting(false);
+    if (error) {
+      toast({ title: "Gönderilemedi", description: "Lütfen tekrar deneyin veya bizi telefonla arayın.", variant: "destructive" });
+      return;
+    }
     toast({ title: "Mesajınız Alındı!", description: "En kısa sürede sizinle iletişime geçeceğiz." });
     setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
-    setSubmitting(false);
   };
 
   return (

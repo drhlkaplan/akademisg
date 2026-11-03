@@ -9,6 +9,7 @@ import {
   Upload, CheckCircle, ArrowRight, Send, FileSpreadsheet
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const steps = [
   { icon: Building2, title: "Firma Hesabı Oluşturun", description: "Şirketinizi platforma kaydedin ve yönetici panelinize erişin." },
@@ -40,11 +41,22 @@ export default function CorporateSolutions() {
       return;
     }
     setSubmitting(true);
-    // Simulate form submission
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const { error } = await supabase.from("lead_submissions").insert({
+      source: "corporate",
+      name: formData.contactName.trim(),
+      company_name: formData.companyName.trim(),
+      email: formData.email.trim(),
+      phone: formData.phone.trim() || null,
+      employee_count: formData.employeeCount.trim() || null,
+      message: formData.message.trim() || null,
+    });
+    setSubmitting(false);
+    if (error) {
+      toast({ title: "Gönderilemedi", description: "Lütfen tekrar deneyin veya bizi telefonla arayın.", variant: "destructive" });
+      return;
+    }
     toast({ title: "Başarılı!", description: "Teklif talebiniz alınmıştır. En kısa sürede sizinle iletişime geçeceğiz." });
     setFormData({ companyName: "", contactName: "", email: "", phone: "", employeeCount: "", message: "" });
-    setSubmitting(false);
   };
 
   return (
