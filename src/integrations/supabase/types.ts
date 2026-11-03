@@ -1538,6 +1538,48 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_submissions: {
+        Row: {
+          company_name: string | null
+          created_at: string
+          email: string
+          employee_count: string | null
+          id: string
+          message: string | null
+          name: string
+          phone: string | null
+          source: string
+          status: string
+          subject: string | null
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string
+          email: string
+          employee_count?: string | null
+          id?: string
+          message?: string | null
+          name: string
+          phone?: string | null
+          source: string
+          status?: string
+          subject?: string | null
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string
+          email?: string
+          employee_count?: string | null
+          id?: string
+          message?: string | null
+          name?: string
+          phone?: string | null
+          source?: string
+          status?: string
+          subject?: string | null
+        }
+        Relationships: []
+      }
       lesson_method_rules: {
         Row: {
           allowed_methods: Database["public"]["Enums"]["lesson_delivery_method"][]
