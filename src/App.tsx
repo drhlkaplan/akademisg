@@ -88,6 +88,7 @@ const DocumentGeneration = lazyRetry(() => import("./pages/admin/DocumentGenerat
 const MigrationDashboard = lazyRetry(() => import("./pages/admin/MigrationDashboard"));
 const R2CorsTest = lazyRetry(() => import("./pages/admin/R2CorsTest"));
 const JoinRequests = lazyRetry(() => import("./pages/admin/JoinRequests"));
+const LeadSubmissions = lazyRetry(() => import("./pages/admin/LeadSubmissions"));
 const AdminBlog = lazyRetry(() => import("./pages/admin/AdminBlog"));
 const AdminServices = lazyRetry(() => import("./pages/admin/AdminServices"));
 const AdminCourseCovers = lazyRetry(() => import("./pages/admin/AdminCourseCovers"));
@@ -177,6 +178,7 @@ const App = () => (
               <Route path="/admin/companies" element={<FirmsManagement />} />
               <Route path="/admin/firm-quotes" element={<FirmQuotes />} />
               <Route path="/admin/join-requests" element={<JoinRequests />} />
+              <Route path="/admin/leads" element={<LeadSubmissions />} />
               <Route path="/admin/blog" element={<AdminBlog />} />
               <Route path="/admin/services" element={<AdminServices />} />
               <Route path="/admin/course-covers" element={<AdminCourseCovers />} />

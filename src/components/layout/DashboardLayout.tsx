@@ -121,6 +121,7 @@ const adminNavGroups = [
       { icon: KeyRound, label: "Gruplar", href: "/admin/groups" },
       { icon: Briefcase, label: "Sektörler", href: "/admin/sectors" },
       { icon: UserPlus, label: "Katılma Talepleri", href: "/admin/join-requests" },
+      { icon: UserPlus, label: "Gelen Talepler", href: "/admin/leads" },
     ],
   },
   {
