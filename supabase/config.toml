@@ -25,3 +25,7 @@ project_id = "evrceedcbvhjifdildlq"
     verify_jwt = false
   [functions.submit-exam]
     verify_jwt = false
+  [functions.preview-transactional-email]
+    verify_jwt = false
+  [functions.submit-lead]
+    verify_jwt = false
