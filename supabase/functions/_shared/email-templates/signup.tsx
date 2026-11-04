@@ -27,33 +27,32 @@ export const SignupEmail = ({
   recipient,
   confirmationUrl,
 }: SignupEmailProps) => (
-  <Html lang="en" dir="ltr">
+  <Html lang="tr" dir="ltr">
     <Head>
       <style>{darkModeCss}</style>
     </Head>
-    <Preview>Confirm your email for {siteName}</Preview>
+    <Preview>{siteName} için e-posta adresinizi doğrulayın</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Confirm your email</Heading>
+        <Heading style={h1}>E-posta adresinizi doğrulayın</Heading>
         <Text style={text}>
-          Thanks for signing up for{' '}
           <Link href={siteUrl} style={link}>
             <strong>{siteName}</strong>
-          </Link>
-          !
+          </Link>{' '}
+          hesabına kaydolduğunuz için teşekkür ederiz!
         </Text>
         <Text style={text}>
-          Please confirm your email address (
+          Lütfen e-posta adresinizi (
           <Link href={`mailto:${recipient}`} style={link}>
             {recipient}
           </Link>
-          ) by clicking the button below:
+          ) aşağıdaki düğmeye tıklayarak doğrulayın:
         </Text>
         <Button className="dm-btn" style={button} href={confirmationUrl}>
-          Verify Email
+          E-postamı Doğrula
         </Button>
         <Text style={footer}>
-          If you didn't create an account, you can safely ignore this email.
+          Hesap oluşturmadıysanız bu e-postayı yok sayabilirsiniz.
         </Text>
       </Container>
     </Body>

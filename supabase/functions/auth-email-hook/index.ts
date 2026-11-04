@@ -129,7 +129,7 @@ const handler = createAuthEmailHandler({
   sendUrl: Deno.env.get('LOVABLE_SEND_URL'),
   emails: {
     signup: {
-      subject: 'Confirm your email',
+      subject: 'E-posta adresinizi doğrulayın',
       render: (data) =>
         React.createElement(SignupEmail, {
           siteName: SITE_NAME,
@@ -139,7 +139,7 @@ const handler = createAuthEmailHandler({
         }),
     },
     invite: {
-      subject: "You've been invited",
+      subject: `${SITE_NAME} platformuna davet edildiniz`,
       render: (data) =>
         React.createElement(InviteEmail, {
           siteName: SITE_NAME,
@@ -148,7 +148,7 @@ const handler = createAuthEmailHandler({
         }),
     },
     magiclink: {
-      subject: 'Your login link',
+      subject: `${SITE_NAME} giriş bağlantınız`,
       render: (data) =>
         React.createElement(MagicLinkEmail, {
           siteName: SITE_NAME,
@@ -156,7 +156,7 @@ const handler = createAuthEmailHandler({
         }),
     },
     recovery: {
-      subject: 'Reset your password',
+      subject: 'Şifrenizi sıfırlayın',
       render: (data) =>
         React.createElement(RecoveryEmail, {
           siteName: SITE_NAME,
@@ -164,7 +164,7 @@ const handler = createAuthEmailHandler({
         }),
     },
     email_change: {
-      subject: 'Confirm your new email',
+      subject: 'Yeni e-posta adresinizi onaylayın',
       render: (data) =>
         React.createElement(EmailChangeEmail, {
           siteName: SITE_NAME,
@@ -175,7 +175,7 @@ const handler = createAuthEmailHandler({
         }),
     },
     reauthentication: {
-      subject: 'Your verification code',
+      subject: 'Doğrulama kodunuz',
       render: (data) =>
         React.createElement(ReauthenticationEmail, { token: data.token ?? '' }),
     },
