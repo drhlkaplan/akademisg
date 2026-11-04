@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -6,10 +6,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { Link } from "react-router-dom";
 import { Loader2, RefreshCw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+const NOTIFICATION_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  sent: { label: "E-posta gönderildi", variant: "secondary" },
+  failed: { label: "E-posta gönderilemedi", variant: "destructive" },
+  suppressed: { label: "Adres engelli", variant: "destructive" },
+  no_recipient: { label: "Alıcı adresi yok", variant: "destructive" },
+  disabled: { label: "Bildirim kapalı", variant: "outline" },
+};
 
 export default function LeadSubmissions() {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const { data = [], isLoading, refetch } = useQuery({
     queryKey: ["lead_submissions"],
     queryFn: async () => {
@@ -23,7 +34,11 @@ export default function LeadSubmissions() {
   });
 
   const markDone = async (id: string, status: string) => {
-    await supabase.from("lead_submissions").update({ status }).eq("id", id);
+    const { error } = await supabase.from("lead_submissions").update({ status }).eq("id", id);
+    if (error) {
+      toast({ title: "Güncellenemedi", description: error.message, variant: "destructive" });
+      return;
+    }
     qc.invalidateQueries({ queryKey: ["lead_submissions"] });
   };
 
