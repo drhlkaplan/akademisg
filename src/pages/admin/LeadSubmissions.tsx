@@ -18,6 +18,14 @@ const NOTIFICATION_LABELS: Record<string, { label: string; variant: "default" | 
   disabled: { label: "Bildirim kapalı", variant: "outline" },
 };
 
+const SUBJECT_LABELS: Record<string, string> = {
+  genel: "Genel Bilgi",
+  kurumsal: "Kurumsal Teklif",
+  teknik: "Teknik Destek",
+  sertifika: "Sertifika Sorgulama",
+  diger: "Diğer",
+};
+
 export default function LeadSubmissions() {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -53,6 +61,10 @@ export default function LeadSubmissions() {
       <Card>
         <CardHeader>
           <CardTitle>İletişim ve kurumsal teklif formları</CardTitle>
+          <CardDescription>
+            Her yeni talep için e-posta bildirimi gönderilir. Alıcı adresini{" "}
+            <Link to="/admin/settings" className="text-primary underline">Ayarlar → Bildirimler</Link> bölümünden değiştirebilirsiniz.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -68,6 +80,7 @@ export default function LeadSubmissions() {
                   <TableHead>Kişi / Firma</TableHead>
                   <TableHead>İletişim</TableHead>
                   <TableHead>Mesaj</TableHead>
+                  <TableHead>Bildirim</TableHead>
                   <TableHead>Durum</TableHead>
                 </TableRow>
               </TableHeader>
@@ -92,8 +105,17 @@ export default function LeadSubmissions() {
                       {l.phone && <div>{l.phone}</div>}
                     </TableCell>
                     <TableCell className="max-w-xs text-sm whitespace-pre-wrap">
-                      {l.subject && <div className="text-xs text-muted-foreground">{l.subject}</div>}
+                      {l.subject && <div className="text-xs text-muted-foreground">{SUBJECT_LABELS[l.subject] ?? l.subject}</div>}
                       {l.message}
+                    </TableCell>
+                    <TableCell>
+                      {l.notification_status && NOTIFICATION_LABELS[l.notification_status] ? (
+                        <Badge variant={NOTIFICATION_LABELS[l.notification_status].variant} className="whitespace-nowrap">
+                          {NOTIFICATION_LABELS[l.notification_status].label}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Button
