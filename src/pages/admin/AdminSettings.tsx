@@ -11,7 +11,10 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useSiteSettings } from "@/contexts/SiteSettingsContext";
-import { Globe, Bell, Shield, Palette, Save, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Globe, Bell, Shield, Palette, Save, Loader2, Inbox } from "lucide-react";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export default function AdminSettings() {
   const { toast } = useToast();
@@ -22,6 +25,7 @@ export default function AdminSettings() {
   const [security, setSecurity] = useState(settings.security);
   const [footer, setFooter] = useState(settings.footer);
   const [saving, setSaving] = useState<string | null>(null);
+  const [companyEmail, setCompanyEmail] = useState<string>("");
 
   useEffect(() => {
     setGeneral(settings.general);
@@ -30,12 +34,31 @@ export default function AdminSettings() {
     setFooter(settings.footer);
   }, [settings]);
 
+  useEffect(() => {
+    (supabase as any)
+      .from("site_settings")
+      .select("value")
+      .eq("key", "quote_company")
+      .maybeSingle()
+      .then(({ data }: { data: { value?: { email?: string } } | null }) => {
+        setCompanyEmail(data?.value?.email?.trim() ?? "");
+      });
+  }, []);
+
+  const leadEmail = notifications.leadNotificationEmail?.trim() ?? "";
+  const leadEmailInvalid = leadEmail !== "" && !EMAIL_RE.test(leadEmail);
+  const effectiveLeadEmail = leadEmail && !leadEmailInvalid ? leadEmail : companyEmail;
+
   const handleSave = async (section: "general" | "notifications" | "security" | "footer") => {
+    if (section === "notifications" && leadEmailInvalid) {
+      toast({ title: "Geçersiz e-posta", description: "Talep bildirim e-postası geçerli bir adres olmalı.", variant: "destructive" });
+      return;
+    }
     setSaving(section);
     try {
       const value =
         section === "general" ? general :
-        section === "notifications" ? notifications :
+        section === "notifications" ? { ...notifications, leadNotificationEmail: leadEmail } :
         section === "security" ? security : footer;
       await updateSection(section, value as any);
       toast({ title: "Kaydedildi", description: "Ayarlar veritabanına kaydedildi." });
@@ -137,6 +160,51 @@ export default function AdminSettings() {
                 <CardDescription>E-posta bildirim tercihlerini yönetin</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="rounded-lg border border-accent/40 bg-accent/5 p-4 space-y-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="h-9 w-9 rounded-lg bg-accent/15 flex items-center justify-center flex-shrink-0">
+                        <Inbox className="h-4 w-4 text-accent" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">Form Talepleri (İletişim ve Kurumsal Teklif)</p>
+                        <p className="text-xs text-muted-foreground">
+                          Sitedeki iletişim veya kurumsal teklif formundan her yeni talep geldiğinde e-posta gönder. Talepler her durumda Gelen Talepler sayfasına kaydedilir.
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      aria-label="Form talebi e-posta bildirimi"
+                      checked={notifications.emailOnLeadSubmission !== false}
+                      onCheckedChange={(v) => setNotifications({ ...notifications, emailOnLeadSubmission: v })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="leadNotificationEmail">Bildirim gidecek e-posta adresi</Label>
+                    <Input
+                      id="leadNotificationEmail"
+                      type="email"
+                      maxLength={255}
+                      value={notifications.leadNotificationEmail ?? ""}
+                      onChange={(e) => setNotifications({ ...notifications, leadNotificationEmail: e.target.value })}
+                      placeholder={companyEmail || "ornek@firma.com"}
+                      disabled={notifications.emailOnLeadSubmission === false}
+                      aria-invalid={leadEmailInvalid}
+                    />
+                    {leadEmailInvalid ? (
+                      <p className="text-xs text-destructive">Geçerli bir e-posta adresi yazın.</p>
+                    ) : notifications.emailOnLeadSubmission === false ? (
+                      <p className="text-xs text-muted-foreground">Bildirimler kapalı; talepler yalnızca Gelen Talepler sayfasında görünür.</p>
+                    ) : effectiveLeadEmail ? (
+                      <p className="text-xs text-muted-foreground">
+                        Bildirimler <span className="font-medium text-foreground">{effectiveLeadEmail}</span> adresine gider.
+                        {!leadEmail && " Boş bırakıldığı için teklif şirket bilgilerindeki e-posta kullanılıyor."}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-destructive">Henüz bir alıcı adresi yok; bildirim gönderilemez. Bir adres yazıp kaydedin.</p>
+                    )}
+                  </div>
+                </div>
                 {[
                   { key: "emailOnEnrollment" as const, label: "Eğitime Kayıt", desc: "Kullanıcı eğitime kaydolduğunda bildirim gönder" },
                   { key: "emailOnCertificate" as const, label: "Sertifika Oluşturma", desc: "Sertifika oluşturulduğunda kullanıcıya bildir" },
