@@ -63,7 +63,7 @@ export default function Contact() {
       website,
     });
     setSubmitting(false);
-    if (!result.ok) {
+    if (result.ok === false) {
       toast({ title: "Gönderilemedi", description: result.message, variant: "destructive" });
       return;
     }
