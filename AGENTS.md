@@ -3,3 +3,4 @@
 - Use the shared certificate PDF renderer for template previews and downloads so signature headings and placement stay consistent.
 - Store certificate signatories (İSG uzmanı, işyeri hekimi, işveren vekili) in `certificate_trainers`; templates copy the chosen person's name/title into their own fields so issued certificates stay stable if a trainer record changes.
 - Launch SCORM packages through the `/scorm-proxy/` service worker (`public/scorm-sw.js`) and prefer LMS launch pages (`index_lms*.html`) over `story.html`; CDN-origin frames cannot reach `window.API`, so tracking, completion and resume only work same-origin.
+- Keep the Search Console setup sitemap as static XML in `public/sitemap.xml`; include only confirmed public URLs and omit lastmod without authoritative page-specific dates.
