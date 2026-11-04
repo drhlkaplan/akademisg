@@ -9,7 +9,7 @@ import {
   Upload, CheckCircle, ArrowRight, Send, FileSpreadsheet
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { submitLead } from "@/lib/submitLead";
 
 const steps = [
   { icon: Building2, title: "Firma Hesabı Oluşturun", description: "Şirketinizi platforma kaydedin ve yönetici panelinize erişin." },
@@ -32,6 +32,7 @@ export default function CorporateSolutions() {
   const [formData, setFormData] = useState({
     companyName: "", contactName: "", email: "", phone: "", employeeCount: "", message: "",
   });
+  const [website, setWebsite] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,18 +42,19 @@ export default function CorporateSolutions() {
       return;
     }
     setSubmitting(true);
-    const { error } = await supabase.from("lead_submissions").insert({
+    const result = await submitLead({
       source: "corporate",
       name: formData.contactName.trim(),
       company_name: formData.companyName.trim(),
       email: formData.email.trim(),
-      phone: formData.phone.trim() || null,
-      employee_count: formData.employeeCount.trim() || null,
-      message: formData.message.trim() || null,
+      phone: formData.phone.trim(),
+      employee_count: formData.employeeCount.trim(),
+      message: formData.message.trim(),
+      website,
     });
     setSubmitting(false);
-    if (error) {
-      toast({ title: "Gönderilemedi", description: "Lütfen tekrar deneyin veya bizi telefonla arayın.", variant: "destructive" });
+    if (!result.ok) {
+      toast({ title: "Gönderilemedi", description: result.message, variant: "destructive" });
       return;
     }
     toast({ title: "Başarılı!", description: "Teklif talebiniz alınmıştır. En kısa sürede sizinle iletişime geçeceğiz." });
@@ -147,6 +149,10 @@ export default function CorporateSolutions() {
             <div className="space-y-2">
               <Label htmlFor="message">Mesajınız</Label>
               <Textarea id="message" value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })} placeholder="Eğitim ihtiyaçlarınız hakkında bilgi verin..." rows={4} maxLength={1000} />
+            </div>
+            <div className="hidden" aria-hidden="true">
+              <label htmlFor="corporate-website">Web sitesi</label>
+              <input id="corporate-website" name="website" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
             </div>
             <Button type="submit" variant="accent" size="lg" className="w-full" disabled={submitting}>
               {submitting ? "Gönderiliyor..." : "Teklif Talep Et"} <Send className="h-4 w-4 ml-1" />

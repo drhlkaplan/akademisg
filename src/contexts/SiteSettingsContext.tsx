@@ -17,6 +17,10 @@ export interface NotificationSettings {
   emailOnExamResult: boolean;
   emailOnCourseComplete: boolean;
   adminDailyDigest: boolean;
+  /** E-mail the owner on every new contact / corporate quote form request. */
+  emailOnLeadSubmission: boolean;
+  /** Where those e-mails go; empty = the company e-mail used on quotes. */
+  leadNotificationEmail: string;
 }
 
 export interface SecuritySettings {
@@ -55,6 +59,8 @@ const DEFAULTS: SiteSettings = {
     emailOnExamResult: true,
     emailOnCourseComplete: true,
     adminDailyDigest: false,
+    emailOnLeadSubmission: true,
+    leadNotificationEmail: "",
   },
   security: {
     requireEmailVerification: true,

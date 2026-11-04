@@ -1547,6 +1547,8 @@ export type Database = {
           id: string
           message: string | null
           name: string
+          notification_status: string | null
+          notified_at: string | null
           phone: string | null
           source: string
           status: string
@@ -1560,6 +1562,8 @@ export type Database = {
           id?: string
           message?: string | null
           name: string
+          notification_status?: string | null
+          notified_at?: string | null
           phone?: string | null
           source: string
           status?: string
@@ -1573,6 +1577,8 @@ export type Database = {
           id?: string
           message?: string | null
           name?: string
+          notification_status?: string | null
+          notified_at?: string | null
           phone?: string | null
           source?: string
           status?: string
